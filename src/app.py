@@ -139,11 +139,7 @@ def main():
         return run_summary()
     else:
         # Scheduled mode: run as daemon with CRON schedule
-        cron_schedule = os.environ.get("CRON_SCHEDULE")
-        if not cron_schedule:
-            logger.error("CRON_SCHEDULE is required when RUN_ONCE is false")
-            return 1
-        logger.info("📅 Starting in SCHEDULED mode (CRON: %s)", cron_schedule)
+        logger.info("📅 Starting in SCHEDULED mode")
         from scheduler import run_scheduled
         return run_scheduled(run_summary)
 
