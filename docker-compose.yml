@@ -1,0 +1,7 @@
+services:
+  app:
+    image: ghcr.io/thomas-lg/plex-releases-summary:latest
+    container_name: plex-releases-summary
+    env_file:
+      - .env
+    restart: "no" # One-shot execution, no restart

@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: plex-releases-summary-dev
+    volumes:
+      - ./src:/app/src
+    env_file:
+      - .env
+    environment:
+      - LOG_LEVEL=DEBUG # Override .env for development
+    command: >
+      watchmedo auto-restart
+      --directory=src
+      --pattern="*.py"
+      --recursive
+      -- python -u src/app.py

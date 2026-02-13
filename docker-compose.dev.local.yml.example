@@ -1,0 +1,13 @@
+# Example local development overrides
+# Copy this file to docker-compose.dev.local.yml and customize for your environment
+# Usage: docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up
+
+# Example: Add custom network
+services:
+  app:
+    networks:
+      - your-network-name
+
+networks:
+  your-network-name:
+    external: true
