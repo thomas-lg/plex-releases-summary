@@ -4,11 +4,13 @@ A lightweight Docker container that fetches and displays recently added media it
 
 ## Features
 
+- � **Scheduled execution** with CRON-like timing (runs as daemon)
+- 👍 **One-shot mode** for external cron jobs or manual runs
 - 📺 Fetches recently added movies, TV shows, episodes, music, and more
 - 🎯 Configurable time range (e.g., last 7 days)
 - 🐳 Docker-ready with minimal footprint
 - 📊 Clean, formatted output with media type detection
-- ⚡ One-shot execution ideal for cron jobs or scheduled tasks
+- ⚡ Graceful shutdown handling for containerized environments
 
 ## Prerequisites
 
@@ -40,6 +42,99 @@ cp .env.example .env
 docker compose up
 ```
 
+## Execution Modes
+
+The application supports two execution modes:
+
+### 📅 Scheduled Mode (Daemon)
+
+Run the container with a CRON schedule to execute summaries automatically at specific times. The container stays running and executes on schedule.
+
+**Docker Compose:**
+
+```yaml
+services:
+  app:
+    image: ghcr.io/thomas-lg/plex-releases-summary:latest
+    container_name: plex-releases-summary
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CRON_SCHEDULE: "0 9 * * MON" # Every Monday at 9:00 AM
+```
+
+**Docker CLI:**
+
+```bash
+docker run -d \
+  --name plex-releases-summary \
+  --restart unless-stopped \
+  -e TAUTULLI_URL=http://your-tautulli-host:8181 \
+  -e TAUTULLI_API_KEY=your-api-key \
+  -e DAYS_BACK=7 \
+  -e CRON_SCHEDULE="0 9 * * MON" \
+  ghcr.io/thomas-lg/plex-releases-summary:latest
+```
+
+**Common CRON Schedule Examples:**
+
+| Schedule                   | CRON Expression   | Description               |
+| -------------------------- | ----------------- | ------------------------- |
+| Daily at 9:00 AM           | `0 9 * * *`       | Every day at 9:00 AM      |
+| Every Monday at 9:00 AM    | `0 9 * * MON`     | Weekly summary on Mondays |
+| Every 6 hours              | `0 */6 * * *`     | Four times per day        |
+| First of month at midnight | `0 0 1 * *`       | Monthly summary           |
+| Weekdays at 8:00 AM        | `0 8 * * MON-FRI` | Business days only        |
+
+**CRON Format:** `minute hour day month day_of_week`
+
+- `minute`: 0-59
+- `hour`: 0-23
+- `day`: 1-31
+- `month`: 1-12
+- `day_of_week`: 0-6 (0=Sunday) or MON, TUE, WED, THU, FRI, SAT, SUN
+
+**Graceful Shutdown:**
+
+The scheduler handles `SIGTERM` and `SIGINT` signals gracefully, making it safe to stop with `docker stop` or Kubernetes pod termination.
+
+### ▶️ One-Shot Mode
+
+Run once and exit immediately. Ideal for external cron jobs, manual execution, or CI/CD pipelines.
+
+**Docker Compose:**
+
+```yaml
+services:
+  app:
+    image: ghcr.io/thomas-lg/plex-releases-summary:latest
+    container_name: plex-releases-summary
+    restart: "no"
+    env_file:
+      - .env
+    # No CRON_SCHEDULE = one-shot mode
+```
+
+**Docker CLI:**
+
+```bash
+docker run --rm \
+  -e TAUTULLI_URL=http://your-tautulli-host:8181 \
+  -e TAUTULLI_API_KEY=your-api-key \
+  -e DAYS_BACK=7 \
+  ghcr.io/thomas-lg/plex-releases-summary:latest
+```
+
+### External Scheduling with System Cron
+
+For external scheduling using system cron (one-shot mode):
+
+```bash
+# Run every Monday at 9:00 AM
+0 9 * * 1 docker run --rm --env-file /path/to/.env ghcr.io/thomas-lg/plex-releases-summary:latest
+```
+
 ### Using Docker CLI
 
 ```bash
@@ -51,25 +146,17 @@ docker run --rm \
   ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
 
-### Scheduled Execution with Cron
-
-Add to your crontab to run weekly summaries:
-
-```bash
-# Run every Monday at 9:00 AM
-0 9 * * 1 docker run --rm --env-file /path/to/.env ghcr.io/thomas-lg/plex-releases-summary:latest
-```
-
 ## Configuration
 
 All configuration is done via environment variables:
 
-| Variable           | Required | Default | Description                                                       |
-| ------------------ | -------- | ------- | ----------------------------------------------------------------- |
-| `TAUTULLI_URL`     | Yes      | -       | Full URL to your Tautulli instance (e.g., `http://tautulli:8181`) |
-| `TAUTULLI_API_KEY` | Yes      | -       | Your Tautulli API key (found in Tautulli settings)                |
-| `DAYS_BACK`        | Yes      | -       | Number of days to look back for new media                         |
-| `LOG_LEVEL`        | No       | `INFO`  | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`                |
+| Variable           | Required | Default | Description                                                                                      |
+| ------------------ | -------- | ------- | ------------------------------------------------------------------------------------------------ |
+| `TAUTULLI_URL`     | Yes      | -       | Full URL to your Tautulli instance (e.g., `http://tautulli:8181`)                                |
+| `TAUTULLI_API_KEY` | Yes      | -       | Your Tautulli API key (found in Tautulli settings)                                               |
+| `DAYS_BACK`        | Yes      | -       | Number of days to look back for new media                                                        |
+| `CRON_SCHEDULE`    | No       | -       | CRON expression for scheduled execution (e.g., `0 9 * * MON`). If not set, runs in one-shot mode |
+| `LOG_LEVEL`        | No       | `INFO`  | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`                                               |
 
 ### Getting Your Tautulli API Key
 
@@ -179,7 +266,69 @@ docker pull ghcr.io/thomas-lg/plex-releases-summary:v1.0.0
 
 See [docker-compose.yml](docker-compose.yml) for a production-ready configuration.
 
-### Kubernetes CronJob
+**Scheduled Mode (Recommended):**
+
+```yaml
+services:
+  app:
+    image: ghcr.io/thomas-lg/plex-releases-summary:latest
+    container_name: plex-releases-summary
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CRON_SCHEDULE: "0 9 * * MON" # Every Monday at 9:00 AM
+```
+
+**One-Shot Mode (For External Cron):**
+
+```yaml
+services:
+  app:
+    image: ghcr.io/thomas-lg/plex-releases-summary:latest
+    container_name: plex-releases-summary
+    restart: "no"
+    env_file:
+      - .env
+```
+
+### Kubernetes Deployment
+
+**Option 1: Deployment with Built-in Scheduler (Recommended)**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plex-summary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: plex-summary
+  template:
+    metadata:
+      labels:
+        app: plex-summary
+    spec:
+      containers:
+        - name: plex-summary
+          image: ghcr.io/thomas-lg/plex-releases-summary:latest
+          env:
+            - name: TAUTULLI_URL
+              value: "http://tautulli:8181"
+            - name: TAUTULLI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: tautulli-secret
+                  key: api-key
+            - name: DAYS_BACK
+              value: "7"
+            - name: CRON_SCHEDULE
+              value: "0 9 * * MON" # Every Monday at 9 AM
+```
+
+**Option 2: Kubernetes CronJob (External Scheduling)**
 
 ```yaml
 apiVersion: batch/v1

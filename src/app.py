@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from logging_config import setup_logging
 from tautulli_client import TautulliClient
@@ -10,7 +10,13 @@ setup_logging()
 logger = logging.getLogger("plex-weekly")
 
 
-def main():
+def run_summary() -> int:
+    """
+    Execute the Plex summary task: fetch and display recently added media.
+    
+    Returns:
+        Exit code: 0 for success, 1 for error
+    """
     logger.info("🚀 Plex weekly summary starting")
 
     # Validate required environment variables
@@ -54,7 +60,7 @@ def main():
         items = []
 
     # Filter items client-side by date (Tautulli API doesn't support date filtering)
-    cutoff_timestamp = int((datetime.utcnow() - timedelta(days=days)).timestamp())
+    cutoff_timestamp = int((datetime.now(timezone.utc) - timedelta(days=days)).timestamp())
     logger.debug("Filtering items to show only those added after timestamp: %d", cutoff_timestamp)
     items_before_filter = len(items)
     items = [item for item in items if int(item.get("added_at", 0)) >= cutoff_timestamp]
@@ -68,7 +74,7 @@ def main():
     display_count = len(items) if logger.isEnabledFor(logging.DEBUG) else min(10, len(items))
     for item in items[:display_count]:
         added_at = int(item.get("added_at", 0))
-        date_str = datetime.fromtimestamp(added_at).strftime("%Y-%m-%d %H:%M")
+        date_str = datetime.fromtimestamp(added_at, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
         media_type = item.get("media_type", "unknown")
         
         # Format the display based on media type
@@ -116,6 +122,30 @@ def main():
     # Summary
     logger.info("✅ Summary complete: Found %d items in the last %d days", len(items), days)
     return 0  # Success
+
+
+def main():
+    """
+    Main entry point: Choose between scheduled or one-shot execution mode.
+    
+    If RUN_ONCE is true, run once and exit.
+    Otherwise, run as a persistent scheduler with CRON schedule.
+    """
+    run_once = os.environ.get("RUN_ONCE", "false").lower() in ("true", "1", "yes")
+    
+    if run_once:
+        # One-shot mode: run once and exit
+        logger.info("▶️  Starting in ONE-SHOT mode (RUN_ONCE=true)")
+        return run_summary()
+    else:
+        # Scheduled mode: run as daemon with CRON schedule
+        cron_schedule = os.environ.get("CRON_SCHEDULE")
+        if not cron_schedule:
+            logger.error("CRON_SCHEDULE is required when RUN_ONCE is false")
+            return 1
+        logger.info("📅 Starting in SCHEDULED mode (CRON: %s)", cron_schedule)
+        from scheduler import run_scheduled
+        return run_scheduled(run_summary)
 
 
 if __name__ == "__main__":

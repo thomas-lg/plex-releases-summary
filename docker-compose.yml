@@ -4,4 +4,4 @@ services:
     container_name: plex-releases-summary
     env_file:
       - .env
-    restart: "no" # One-shot execution, no restart
+    restart: unless-stopped # For scheduled mode; change to "no" for one-shot execution
