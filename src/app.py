@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from logging_config import setup_logging
 from tautulli_client import TautulliClient
@@ -10,7 +11,7 @@ setup_logging()
 logger = logging.getLogger("plex-weekly")
 
 
-def _calculate_batch_params(days: int, override: int = None) -> tuple[int, int]:
+def _calculate_batch_params(days: int, override: Optional[int] = None) -> tuple[int, int]:
     """
     Calculate initial batch size and increment based on time range.
     
