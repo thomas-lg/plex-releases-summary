@@ -8,6 +8,7 @@ A lightweight Docker container that fetches and displays recently added media it
 - ▶️ **One-shot mode** for external cron jobs or manual runs (`RUN_ONCE=true`)
 - 📺 Fetches recently added movies, TV shows, episodes, music, and more
 - 🎯 Configurable time range (e.g., last 7 days)
+- 💬 **Optional Discord notifications** with rich embed formatting
 - 🐳 Docker-ready with minimal footprint
 - 📊 Clean, formatted output with media type detection
 - ⚡ Graceful shutdown handling for containerized environments
@@ -57,7 +58,7 @@ services:
   app:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     container_name: plex-releases-summary
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - .env
     environment:
@@ -97,7 +98,7 @@ docker run -d \
 
 **Graceful Shutdown:**
 
-The scheduler handles `SIGTERM` and `SIGINT` signals gracefully, making it safe to stop with `docker stop` or Kubernetes pod termination.
+The scheduler handles `SIGTERM` and `SIGINT` signals gracefully, making it safe to stop with `docker stop`.
 
 ### ▶️ One-Shot Mode
 
@@ -113,7 +114,8 @@ services:
     restart: "no"
     env_file:
       - .env
-    # No CRON_SCHEDULE = one-shot mode
+    environment:
+      RUN_ONCE: "true" # Run once and exit
 ```
 
 **Docker CLI:**
@@ -123,6 +125,7 @@ docker run --rm \
   -e TAUTULLI_URL=http://your-tautulli-host:8181 \
   -e TAUTULLI_API_KEY=your-api-key \
   -e DAYS_BACK=7 \
+  -e RUN_ONCE=true \
   ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
 
@@ -132,7 +135,7 @@ For external scheduling using system cron (one-shot mode):
 
 ```bash
 # Run every Monday at 9:00 AM
-0 9 * * 1 docker run --rm --env-file /path/to/.env ghcr.io/thomas-lg/plex-releases-summary:latest
+0 9 * * 1 docker run --rm -e RUN_ONCE=true --env-file /path/to/.env ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
 
 ### Using Docker CLI
@@ -142,6 +145,7 @@ docker run --rm \
   -e TAUTULLI_URL=http://your-tautulli-host:8181 \
   -e TAUTULLI_API_KEY=your-api-key \
   -e DAYS_BACK=7 \
+  -e RUN_ONCE=true \
   -e LOG_LEVEL=INFO \
   ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
@@ -150,15 +154,19 @@ docker run --rm \
 
 All configuration is done via environment variables:
 
-| Variable             | Required | Default | Description                                                                                                          |
-| -------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `TAUTULLI_URL`       | Yes      | -       | Full URL to your Tautulli instance (e.g., `http://tautulli:8181`)                                                    |
-| `TAUTULLI_API_KEY`   | Yes      | -       | Your Tautulli API key (found in Tautulli settings)                                                                   |
-| `DAYS_BACK`          | Yes      | -       | Number of days to look back for new media                                                                            |
-| `CRON_SCHEDULE`      | Yes      | -       | CRON expression for scheduled execution (e.g., `0 9 * * MON`). Required when `RUN_ONCE` is not set to `true`.        |
-| `RUN_ONCE`           | No       | `false` | When set to `true`, runs once and exits instead of running on a schedule. If `false`/unset, `CRON_SCHEDULE` is used. |
-| `LOG_LEVEL`          | No       | `INFO`  | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                   |
-| `INITIAL_BATCH_SIZE` | No       | Auto    | Override batch size for fetching items. Default: 100 (1-7 days), 200 (8-30 days), 500 (31+ days)                     |
+| Variable              | Required    | Default               | Description                                                                                                          |
+| --------------------- | ----------- | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `TAUTULLI_URL`        | Yes         | -                     | Full URL to your Tautulli instance (e.g., `http://tautulli:8181`)                                                    |
+| `TAUTULLI_API_KEY`    | Yes         | -                     | Your Tautulli API key (found in Tautulli settings)                                                                   |
+| `DAYS_BACK`           | Yes         | -                     | Number of days to look back for new media                                                                            |
+| `CRON_SCHEDULE`       | Conditional | -                     | CRON expression for scheduled execution (e.g., `0 9 * * MON`). Required when `RUN_ONCE` is not set to `true`.        |
+| `RUN_ONCE`            | No          | `false`               | When set to `true`, runs once and exits instead of running on a schedule. If `false`/unset, `CRON_SCHEDULE` is used. |
+| `LOG_LEVEL`           | No          | `INFO`                | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                   |
+| `TZ`                  | No          | `UTC`                 | Timezone for the container (e.g., `Europe/Paris`, `America/New_York`)                                                |
+| `DISCORD_WEBHOOK_URL` | No          | -                     | Discord webhook URL for sending release summaries. When unset, Discord notifications are disabled.                   |
+| `PLEX_URL`            | No          | `https://app.plex.tv` | Plex server URL for creating direct links in Discord. Use `https://app.plex.tv` or your local Plex URL.              |
+| `PLEX_SERVER_ID`      | No          | Auto-detected         | Plex server machine identifier (auto-detected from Tautulli). Only set manually if auto-detection fails.             |
+| `INITIAL_BATCH_SIZE`  | No          | Auto                  | Override batch size for fetching items. Default: 100 (1-7 days), 200 (8-30 days), 500 (31+ days)                     |
 
 ### Performance Tuning
 
@@ -208,6 +216,93 @@ environment:
 2026-02-13 10:00:16 - INFO - ➕ Succession - S04E01 - The Munsters | added: 2026-02-08 18:45
 ```
 
+## Discord Notifications
+
+Optionally send release summaries to a Discord channel using webhooks. The application will post a rich embed with all new media grouped by type.
+
+### Setting Up Discord Webhook
+
+1. Open your Discord server
+2. Go to **Server Settings** → **Integrations** → **Webhooks**
+3. Click **New Webhook** or **Create Webhook**
+4. Customize the webhook:
+   - Set a name (e.g., "Plex Releases")
+   - Choose the target channel
+   - Optionally set a custom avatar
+5. Click **Copy Webhook URL**
+6. Add the webhook URL to your `.env` file:
+
+```bash
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN
+```
+
+### Setting Up Plex Direct Links (Optional)
+
+To enable clickable links to your Plex media in Discord:
+
+1. **Get your Plex Server ID**:
+   - **In Tautulli**: Go to Settings → Plex Media Server → Click the "i" icon → Copy the "Machine Identifier"
+   - **In Plex Web**: Settings → General → Show Advanced → Copy the value from server's XML endpoint
+
+2. **Add to your `.env` file**:
+
+```bash
+# For Plex.tv (remote access) - PLEX_SERVER_ID is auto-detected
+PLEX_URL=https://app.plex.tv
+
+# OR for local Plex server - PLEX_SERVER_ID is auto-detected
+PLEX_URL=http://plex:32400
+```
+
+**Note**: `PLEX_SERVER_ID` is automatically detected from Tautulli. You only need to set it manually if auto-detection fails.
+
+### Discord Message Format
+
+Messages are sent as multiple rich embeds—one per media category (e.g., Movies, TV Shows, Albums, Tracks):
+
+- **Embed Titles**: Each embed is titled with the media type and emoji (e.g., "🎬 Movies - Last X days", "📺 TV Shows - Last X days")
+- **Field Headers**: Each field groups items by date range (e.g., "12/01 - 12/07"), not by individual item
+- **Field Content**: Lists of media items for that date range, with clickable titles linking directly to Plex Web
+- **Description**: Total count of new items in that category
+- **Color**: Green (#57F287) for successful summaries
+- **Timestamp**: When the summary was generated
+
+Each media item includes:
+
+- **Movies**: Clickable title with year (e.g., [Interstellar](https://app.plex.tv/desktop#!/server/.../details) (2014))
+- **TV Episodes**: Show name, season/episode numbers, and episode title
+- **Music**: Artist, album, and track information
+
+**Note:** The added date is shown as a range in the field header, not per individual item.
+
+### Features
+
+- **Optional**: Leaving `DISCORD_WEBHOOK_URL` unset disables Discord notifications
+- **Non-blocking**: Application continues even if Discord posting fails
+- **Emoji icons**: Visual indicators for each media type (🎬 📺 💿 🎵)
+- **Clickable links**: Direct links to Plex Web for each media item (Server ID auto-detected from Tautulli)
+- **Smart formatting**: Automatically groups media by type and truncates long lists
+- **Rate limit handling**: Built-in retry logic for Discord API rate limits
+- **Character limit handling**: Automatically truncates messages to fit Discord's 6000 character limit
+
+### Example Configuration
+
+```yaml
+# docker-compose.yml
+services:
+  app:
+    image: ghcr.io/thomas-lg/plex-releases-summary:latest
+    container_name: plex-releases-summary
+    restart: on-failure
+    env_file:
+      - .env
+    environment:
+      CRON_SCHEDULE: "0 9 * * MON"
+      DISCORD_WEBHOOK_URL: "${DISCORD_WEBHOOK_URL}" # From .env file
+```
+
+**Note**: Discord webhooks are sensitive credentials. Never commit them to version control. Keep them in your `.env` file which is gitignored.
+
 ## Development
 
 ### Local Development Setup
@@ -252,6 +347,7 @@ docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up --bu
 ├── src/
 │   ├── app.py              # Main application logic
 │   ├── tautulli_client.py  # Tautulli API client
+│   ├── discord_client.py   # Discord webhook client
 │   └── logging_config.py   # Logging configuration
 ├── Dockerfile              # Production Docker image
 ├── docker-compose.yml      # Production compose config
@@ -268,7 +364,7 @@ docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up --bu
 docker build -t plex-releases-summary:latest .
 
 # Run locally
-docker run --rm --env-file .env plex-releases-summary:latest
+docker run --rm -e RUN_ONCE=true --env-file .env plex-releases-summary:latest
 ```
 
 ## Docker Images
@@ -289,6 +385,20 @@ docker pull ghcr.io/thomas-lg/plex-releases-summary:v1.0.0
 - `vX.Y.Z` - Specific semantic version releases
 - `sha-<commit>` - Specific commit builds
 
+## Unraid Installation
+
+An Unraid template file is provided at [my-plex-releases-summary.xml](my-plex-releases-summary.xml) for easy installation via Unraid's Community Applications.
+
+**To use:**
+
+1. Copy the template to your Unraid server
+2. Edit the configuration values:
+   - Replace `YOUR_API_KEY_HERE` with your actual Tautulli API key
+   - Adjust other settings as needed (CRON schedule, days back, etc.)
+3. Install via Community Applications or Docker tab
+
+**Security Note**: The template file contains placeholder values. Always update with your actual credentials and never commit sensitive API keys to version control.
+
 ## Deployment Options
 
 ### Docker Compose (Production)
@@ -302,7 +412,7 @@ services:
   app:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     container_name: plex-releases-summary
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - .env
     environment:
@@ -319,73 +429,8 @@ services:
     restart: "no"
     env_file:
       - .env
-```
-
-### Kubernetes Deployment
-
-**Option 1: Deployment with Built-in Scheduler (Recommended)**
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: plex-summary
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: plex-summary
-  template:
-    metadata:
-      labels:
-        app: plex-summary
-    spec:
-      containers:
-        - name: plex-summary
-          image: ghcr.io/thomas-lg/plex-releases-summary:latest
-          env:
-            - name: TAUTULLI_URL
-              value: "http://tautulli:8181"
-            - name: TAUTULLI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: tautulli-secret
-                  key: api-key
-            - name: DAYS_BACK
-              value: "7"
-            - name: CRON_SCHEDULE
-              value: "0 9 * * MON" # Every Monday at 9 AM
-```
-
-**Option 2: Kubernetes CronJob (External Scheduling)**
-
-```yaml
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: plex-summary
-spec:
-  schedule: "0 9 * * 1" # Every Monday at 9 AM
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-            - name: plex-summary
-              image: ghcr.io/thomas-lg/plex-releases-summary:latest
-              env:
-                - name: TAUTULLI_URL
-                  value: "http://tautulli:8181"
-                - name: TAUTULLI_API_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: tautulli-secret
-                      key: api-key
-                - name: DAYS_BACK
-                  value: "7"
-                - name: LOG_LEVEL
-                  value: "INFO"
-          restartPolicy: OnFailure
+    environment:
+      RUN_ONCE: "true" # Run once and exit
 ```
 
 ## Troubleshooting
@@ -418,6 +463,7 @@ docker run --rm \
   -e TAUTULLI_URL=http://your-host:8181 \
   -e TAUTULLI_API_KEY=your-key \
   -e DAYS_BACK=7 \
+  -e RUN_ONCE=true \
   ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
 
