@@ -258,12 +258,12 @@ PLEX_URL=http://plex:32400
 
 ### Discord Message Format
 
-Messages are sent as rich embeds with:
+Messages are sent as multiple rich embeds—one per media category (e.g., Movies, TV Shows, Albums, Tracks):
 
-- **Title**: "📺 Plex Releases Summary - Last X days"
-- **Description**: Total count of new items
-- **Fields**: Media grouped by type with emoji icons (🎬 Movies, 📺 TV Shows, 💿 Albums, 🎵 Tracks)
-- **Clickable titles**: Each media item links directly to Plex Web for instant access
+- **Embed Titles**: Each embed is titled with the media type and emoji (e.g., "🎬 Movies - Last X days", "📺 TV Shows - Last X days")
+- **Field Headers**: Each field groups items by date range (e.g., "12/01 - 12/07"), not by individual item
+- **Field Content**: Lists of media items for that date range, with clickable titles linking directly to Plex Web
+- **Description**: Total count of new items in that category
 - **Color**: Green (#57F287) for successful summaries
 - **Timestamp**: When the summary was generated
 
@@ -272,7 +272,8 @@ Each media item includes:
 - **Movies**: Clickable title with year (e.g., [Interstellar](https://app.plex.tv/desktop#!/server/.../details) (2014))
 - **TV Episodes**: Show name, season/episode numbers, and episode title
 - **Music**: Artist, album, and track information
-- **Added date**: When the item was added to Plex
+
+**Note:** The added date is shown as a range in the field header, not per individual item.
 
 ### Features
 
