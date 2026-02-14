@@ -8,6 +8,7 @@ A lightweight Docker container that fetches and displays recently added media it
 - ▶️ **One-shot mode** for external cron jobs or manual runs (`RUN_ONCE=true`)
 - 📺 Fetches recently added movies, TV shows, episodes, music, and more
 - 🎯 Configurable time range (e.g., last 7 days)
+- � **Optional Discord notifications** with rich embed formatting
 - 🐳 Docker-ready with minimal footprint
 - 📊 Clean, formatted output with media type detection
 - ⚡ Graceful shutdown handling for containerized environments
@@ -150,15 +151,18 @@ docker run --rm \
 
 All configuration is done via environment variables:
 
-| Variable             | Required | Default | Description                                                                                                          |
-| -------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `TAUTULLI_URL`       | Yes      | -       | Full URL to your Tautulli instance (e.g., `http://tautulli:8181`)                                                    |
-| `TAUTULLI_API_KEY`   | Yes      | -       | Your Tautulli API key (found in Tautulli settings)                                                                   |
-| `DAYS_BACK`          | Yes      | -       | Number of days to look back for new media                                                                            |
-| `CRON_SCHEDULE`      | Yes      | -       | CRON expression for scheduled execution (e.g., `0 9 * * MON`). Required when `RUN_ONCE` is not set to `true`.        |
-| `RUN_ONCE`           | No       | `false` | When set to `true`, runs once and exits instead of running on a schedule. If `false`/unset, `CRON_SCHEDULE` is used. |
-| `LOG_LEVEL`          | No       | `INFO`  | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                   |
-| `INITIAL_BATCH_SIZE` | No       | Auto    | Override batch size for fetching items. Default: 100 (1-7 days), 200 (8-30 days), 500 (31+ days)                     |
+| Variable              | Required | Default               | Description                                                                                                          |
+| --------------------- | -------- | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `TAUTULLI_URL`        | Yes      | -                     | Full URL to your Tautulli instance (e.g., `http://tautulli:8181`)                                                    |
+| `TAUTULLI_API_KEY`    | Yes      | -                     | Your Tautulli API key (found in Tautulli settings)                                                                   |
+| `DAYS_BACK`           | Yes      | -                     | Number of days to look back for new media                                                                            |
+| `CRON_SCHEDULE`       | Yes      | -                     | CRON expression for scheduled execution (e.g., `0 9 * * MON`). Required when `RUN_ONCE` is not set to `true`.        |
+| `RUN_ONCE`            | No       | `false`               | When set to `true`, runs once and exits instead of running on a schedule. If `false`/unset, `CRON_SCHEDULE` is used. |
+| `LOG_LEVEL`           | No       | `INFO`                | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                   |
+| `DISCORD_WEBHOOK_URL` | No       | -                     | Discord webhook URL for sending release summaries. When unset, Discord notifications are disabled.                   |
+| `PLEX_URL`            | No       | `https://app.plex.tv` | Plex server URL for creating direct links in Discord. Use `https://app.plex.tv` or your local Plex URL.              |
+| `PLEX_SERVER_ID`      | No       | Auto-detected         | Plex server machine identifier (auto-detected from Tautulli). Only set manually if auto-detection fails.             |
+| `INITIAL_BATCH_SIZE`  | No       | Auto                  | Override batch size for fetching items. Default: 100 (1-7 days), 200 (8-30 days), 500 (31+ days)                     |
 
 ### Performance Tuning
 
@@ -208,6 +212,92 @@ environment:
 2026-02-13 10:00:16 - INFO - ➕ Succession - S04E01 - The Munsters | added: 2026-02-08 18:45
 ```
 
+## Discord Notifications
+
+Optionally send release summaries to a Discord channel using webhooks. The application will post a rich embed with all new media grouped by type.
+
+### Setting Up Discord Webhook
+
+1. Open your Discord server
+2. Go to **Server Settings** → **Integrations** → **Webhooks**
+3. Click **New Webhook** or **Create Webhook**
+4. Customize the webhook:
+   - Set a name (e.g., "Plex Releases")
+   - Choose the target channel
+   - Optionally set a custom avatar
+5. Click **Copy Webhook URL**
+6. Add the webhook URL to your `.env` file:
+
+```bash
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN
+```
+
+### Setting Up Plex Direct Links (Optional)
+
+To enable clickable links to your Plex media in Discord:
+
+1. **Get your Plex Server ID**:
+   - **In Tautulli**: Go to Settings → Plex Media Server → Click the "i" icon → Copy the "Machine Identifier"
+   - **In Plex Web**: Settings → General → Show Advanced → Copy the value from server's XML endpoint
+
+2. **Add to your `.env` file**:
+
+```bash
+# For Plex.tv (remote access) - PLEX_SERVER_ID is auto-detected
+PLEX_URL=https://app.plex.tv
+
+# OR for local Plex server - PLEX_SERVER_ID is auto-detected
+PLEX_URL=http://plex:32400
+```
+
+**Note**: `PLEX_SERVER_ID` is automatically detected from Tautulli. You only need to set it manually if auto-detection fails.
+
+### Discord Message Format
+
+Messages are sent as rich embeds with:
+
+- **Title**: "📺 Plex Releases Summary - Last X days"
+- **Description**: Total count of new items
+- **Fields**: Media grouped by type with emoji icons (🎬 Movies, 📺 TV Shows, 💿 Albums, 🎵 Tracks)
+- **Clickable titles**: Each media item links directly to Plex Web for instant access
+- **Color**: Green (#57F287) for successful summaries
+- **Timestamp**: When the summary was generated
+
+Each media item includes:
+
+- **Movies**: Clickable title with year (e.g., [Interstellar](https://app.plex.tv/desktop#!/server/.../details) (2014))
+- **TV Episodes**: Show name, season/episode numbers, and episode title
+- **Music**: Artist, album, and track information
+- **Added date**: When the item was added to Plex
+
+### Features
+
+- **Optional**: Leaving `DISCORD_WEBHOOK_URL` unset disables Discord notifications
+- **Non-blocking**: Application continues even if Discord posting fails
+- **Emoji icons**: Visual indicators for each media type (🎬 📺 💿 🎵)
+- **Clickable links**: Direct links to Plex Web for each media item (Server ID auto-detected from Tautulli)
+- **Smart formatting**: Automatically groups media by type and truncates long lists
+- **Rate limit handling**: Built-in retry logic for Discord API rate limits
+- **Character limit handling**: Automatically truncates messages to fit Discord's 6000 character limit
+
+### Example Configuration
+
+```yaml
+# docker-compose.yml
+services:
+  app:
+    image: ghcr.io/thomas-lg/plex-releases-summary:latest
+    container_name: plex-releases-summary
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CRON_SCHEDULE: "0 9 * * MON"
+      DISCORD_WEBHOOK_URL: "${DISCORD_WEBHOOK_URL}" # From .env file
+```
+
+**Note**: Discord webhooks are sensitive credentials. Never commit them to version control. Keep them in your `.env` file which is gitignored.
+
 ## Development
 
 ### Local Development Setup
@@ -252,6 +342,7 @@ docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up --bu
 ├── src/
 │   ├── app.py              # Main application logic
 │   ├── tautulli_client.py  # Tautulli API client
+│   ├── discord_client.py   # Discord webhook client
 │   └── logging_config.py   # Logging configuration
 ├── Dockerfile              # Production Docker image
 ├── docker-compose.yml      # Production compose config

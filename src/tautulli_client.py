@@ -20,7 +20,6 @@ class TautulliClient:
             **params,
         }
         logger.debug("Requesting Tautulli: %s", cmd)
-        logger.debug("Tautulli request: %s", query)
 
         last_exception = None
         for attempt in range(max_retries):
@@ -59,3 +58,13 @@ class TautulliClient:
             "get_recently_added",
             count=count,
         )
+    
+    def get_server_identity(self):
+        """
+        Get Plex server identity information including machine identifier.
+        
+        Returns:
+            Dict with server info including 'machine_identifier'
+        """
+        logger.debug("Requesting Plex server identity")
+        return self._request("get_server_identity")

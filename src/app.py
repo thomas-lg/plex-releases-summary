@@ -6,6 +6,7 @@ from typing import Optional
 
 from logging_config import setup_logging
 from tautulli_client import TautulliClient
+from discord_client import DiscordNotifier
 
 setup_logging()
 logger = logging.getLogger("plex-weekly")
@@ -31,6 +32,55 @@ def _calculate_batch_params(days: int, override: Optional[int] = None) -> tuple[
         return (200, 200)
     else:
         return (500, 500)
+
+
+def _format_display_title(item: dict) -> str:
+    """
+    Format display title based on media type.
+    
+    Args:
+        item: Media item dictionary from Tautulli
+        
+    Returns:
+        Formatted display title string
+    """
+    media_type = item.get("media_type", "unknown")
+    
+    if media_type == "episode":
+        show = item.get("grandparent_title", "Unknown Show")
+        season_num = item.get("parent_media_index", "?")
+        episode_num = item.get("media_index", "?")
+        episode_title = item.get("title", "Unknown Episode")
+        # Format episode numbers safely, handling non-integer values
+        try:
+            s_num = int(season_num) if season_num != "?" else 0
+            e_num = int(episode_num) if episode_num != "?" else 0
+            return f"{show} - S{s_num:02d}E{e_num:02d} - {episode_title}"
+        except (ValueError, TypeError):
+            return f"{show} - S{season_num}E{episode_num} - {episode_title}"
+    elif media_type == "season":
+        show = item.get("parent_title", "Unknown Show")
+        season_num = item.get("media_index", "?")
+        return f"{show} - Season {season_num}"
+    elif media_type == "show":
+        show = item.get("title", "Unknown Show")
+        year = item.get("year", "")
+        return f"{show}" + (f" ({year})" if year else " (New Series)")
+    elif media_type == "track":
+        artist = item.get("grandparent_title", "Unknown Artist")
+        album = item.get("parent_title", "Unknown Album")
+        track = item.get("title", "Unknown Track")
+        return f"{artist} - {album} - {track}"
+    elif media_type == "album":
+        artist = item.get("parent_title", "Unknown Artist")
+        album = item.get("title", "Unknown Album")
+        return f"{artist} - {album}"
+    elif media_type == "movie":
+        title = item.get("title", "Unknown Movie")
+        year = item.get("year", "")
+        return f"{title}" + (f" ({year})" if year else "")
+    else:
+        return item.get("title", "Unknown")
 
 
 def run_summary() -> int:
@@ -148,57 +198,79 @@ def run_summary() -> int:
 
     logger.info("Found %d recent items matching criteria", len(items))
 
+    # Prepare structured data for Discord
+    discord_items = []
+
     # Display items (limit to first 10 in INFO, show all in DEBUG)
     display_count = len(items) if logger.isEnabledFor(logging.DEBUG) else min(10, len(items))
     for item in items[:display_count]:
         added_at = int(item.get("added_at", 0))
         date_str = datetime.fromtimestamp(added_at, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
+        date_str_short = datetime.fromtimestamp(added_at, tz=timezone.utc).strftime("%m/%d")
         media_type = item.get("media_type", "unknown")
         
-        # Format the display based on media type
-        if media_type == "episode":
-            show = item.get("grandparent_title", "Unknown Show")
-            season_num = item.get("parent_media_index", "?")
-            episode_num = item.get("media_index", "?")
-            episode_title = item.get("title", "Unknown Episode")
-            # Format episode numbers safely, handling non-integer values
-            try:
-                s_num = int(season_num) if season_num != "?" else 0
-                e_num = int(episode_num) if episode_num != "?" else 0
-                display_title = f"{show} - S{s_num:02d}E{e_num:02d} - {episode_title}"
-            except (ValueError, TypeError):
-                display_title = f"{show} - S{season_num}E{episode_num} - {episode_title}"
-        elif media_type == "season":
-            show = item.get("parent_title", "Unknown Show")
-            season_num = item.get("media_index", "?")
-            display_title = f"{show} - Season {season_num}"
-        elif media_type == "show":
-            show = item.get("title", "Unknown Show")
-            year = item.get("year", "")
-            display_title = f"{show}" + (f" ({year})" if year else " (New Series)")
-        elif media_type == "track":
-            artist = item.get("grandparent_title", "Unknown Artist")
-            album = item.get("parent_title", "Unknown Album")
-            track = item.get("title", "Unknown Track")
-            display_title = f"{artist} - {album} - {track}"
-        elif media_type == "album":
-            artist = item.get("parent_title", "Unknown Artist")
-            album = item.get("title", "Unknown Album")
-            display_title = f"{artist} - {album}"
-        elif media_type == "movie":
-            title = item.get("title", "Unknown Movie")
-            year = item.get("year", "")
-            display_title = f"{title}" + (f" ({year})" if year else "")
-        else:
-            display_title = item.get("title", "Unknown")
+        display_title = _format_display_title(item)
         
         logger.info("➕ %s | added: %s", display_title, date_str)
+        
+        # Store structured data for Discord
+        discord_items.append({
+            'type': media_type,
+            'title': display_title,
+            'added_at': date_str_short,
+            'rating_key': item.get('rating_key')
+        })
+    
+    # Process remaining items for Discord (if not already shown)
+    for item in items[display_count:]:
+        added_at = int(item.get("added_at", 0))
+        date_str_short = datetime.fromtimestamp(added_at, tz=timezone.utc).strftime("%m/%d")
+        media_type = item.get("media_type", "unknown")
+        
+        display_title = _format_display_title(item)
+        
+        discord_items.append({
+            'type': media_type,
+            'title': display_title,
+            'added_at': date_str_short,
+            'rating_key': item.get('rating_key')
+        })
     
     if len(items) > display_count:
         logger.info("... and %d more items (set LOG_LEVEL=DEBUG to see all)", len(items) - display_count)
 
     # Summary
     logger.info("✅ Summary complete: Found %d items in the last %d days", len(items), days)
+    
+    # Send Discord notification if webhook URL is configured
+    discord_webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
+    if discord_webhook_url:
+        logger.debug("Discord webhook URL configured, sending notification...")
+        try:
+            plex_url = os.environ.get("PLEX_URL", "https://app.plex.tv")
+            plex_server_id = os.environ.get("PLEX_SERVER_ID")
+            
+            # Auto-fetch Plex Server ID from Tautulli if not provided
+            if not plex_server_id:
+                logger.debug("PLEX_SERVER_ID not set, fetching from Tautulli...")
+                try:
+                    server_info = tautulli.get_server_identity()
+                    plex_server_id = server_info.get("machine_identifier")
+                    if plex_server_id:
+                        logger.info("Auto-detected Plex Server ID: %s", plex_server_id)
+                    else:
+                        logger.warning("Could not auto-detect Plex Server ID from Tautulli")
+                except Exception as e:
+                    logger.warning("Failed to auto-fetch Plex Server ID: %s", e)
+            
+            notifier = DiscordNotifier(discord_webhook_url, plex_url, plex_server_id)
+            notifier.send_summary(discord_items, days, len(items))
+        except Exception as e:
+            logger.error("Failed to send Discord notification: %s", e, exc_info=True)
+            # Continue execution even if Discord fails
+    else:
+        logger.debug("No Discord webhook URL configured, skipping Discord notification")
+    
     return 0  # Success
 
 
