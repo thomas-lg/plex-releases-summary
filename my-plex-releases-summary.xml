@@ -23,7 +23,7 @@
   <DonateLink/>
   <Requires>Requires Tautulli to be installed and accessible. Make sure to set the correct Docker network to communicate with Tautulli.</Requires>
   <Config Name="Tautulli URL" Target="TAUTULLI_URL" Default="http://tautulli:8181" Mode="" Description="URL to your Tautulli instance. Use container name if on same network, or IP address." Type="Variable" Display="always" Required="true" Mask="false">http://tautulli:8181</Config>
-  <Config Name="Tautulli API Key" Target="TAUTULLI_API_KEY" Default="" Mode="" Description="Tautulli API key (found in Tautulli Settings &amp;gt; Web Interface &amp;gt; API)" Type="Variable" Display="always" Required="true" Mask="true">60fb7275a7ad4b5fa7b4724bb515fb9f</Config>
+  <Config Name="Tautulli API Key" Target="TAUTULLI_API_KEY" Default="" Mode="" Description="Tautulli API key (found in Tautulli Settings &amp;gt; Web Interface &amp;gt; API)" Type="Variable" Display="always" Required="true" Mask="true">YOUR_API_KEY_HERE</Config>
   <Config Name="Days Back" Target="DAYS_BACK" Default="7" Mode="" Description="Number of days to look back for recently added items" Type="Variable" Display="always" Required="false" Mask="false">7</Config>
   <Config Name="CRON Schedule" Target="CRON_SCHEDULE" Default="0 9 * * MON" Mode="" Description="CRON schedule for automatic execution (e.g., '0 9 * * MON' for every Monday at 9 AM). Leave empty or unset for one-shot mode." Type="Variable" Display="always" Required="false" Mask="false">* * * * *</Config>
   <Config Name="Run Once" Target="RUN_ONCE" Default="" Mode="" Description="Set to 'true' for one-shot execution (runs once and exits). Leave empty for scheduled mode." Type="Variable" Display="advanced" Required="false" Mask="false"/>
