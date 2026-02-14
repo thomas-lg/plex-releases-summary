@@ -150,14 +150,42 @@ docker run --rm \
 
 All configuration is done via environment variables:
 
-| Variable           | Required | Default | Description                                                                                                          |
-| ------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `TAUTULLI_URL`     | Yes      | -       | Full URL to your Tautulli instance (e.g., `http://tautulli:8181`)                                                    |
-| `TAUTULLI_API_KEY` | Yes      | -       | Your Tautulli API key (found in Tautulli settings)                                                                   |
-| `DAYS_BACK`        | Yes      | -       | Number of days to look back for new media                                                                            |
-| `CRON_SCHEDULE`    | Yes      | -       | CRON expression for scheduled execution (e.g., `0 9 * * MON`). Required when `RUN_ONCE` is not set to `true`.        |
-| `RUN_ONCE`         | No       | `false` | When set to `true`, runs once and exits instead of running on a schedule. If `false`/unset, `CRON_SCHEDULE` is used. |
-| `LOG_LEVEL`        | No       | `INFO`  | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                   |
+| Variable             | Required | Default | Description                                                                                                          |
+| -------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
+| `TAUTULLI_URL`       | Yes      | -       | Full URL to your Tautulli instance (e.g., `http://tautulli:8181`)                                                    |
+| `TAUTULLI_API_KEY`   | Yes      | -       | Your Tautulli API key (found in Tautulli settings)                                                                   |
+| `DAYS_BACK`          | Yes      | -       | Number of days to look back for new media                                                                            |
+| `CRON_SCHEDULE`      | Yes      | -       | CRON expression for scheduled execution (e.g., `0 9 * * MON`). Required when `RUN_ONCE` is not set to `true`.        |
+| `RUN_ONCE`           | No       | `false` | When set to `true`, runs once and exits instead of running on a schedule. If `false`/unset, `CRON_SCHEDULE` is used. |
+| `LOG_LEVEL`          | No       | `INFO`  | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                   |
+| `INITIAL_BATCH_SIZE` | No       | Auto    | Override batch size for fetching items. Default: 100 (1-7 days), 200 (8-30 days), 500 (31+ days)                     |
+
+### Performance Tuning
+
+The application uses **iterative fetching** to efficiently retrieve media items from Tautulli. Instead of fetching all items at once, it starts with a reasonable batch size and increases if needed.
+
+**Default batch sizes** (automatically determined by `DAYS_BACK`):
+
+- **1-7 days**: 100 items per iteration
+- **8-30 days**: 200 items per iteration
+- **31+ days**: 500 items per iteration
+
+The application will automatically fetch more items if the oldest item is still within the time range, preventing missed items while minimizing unnecessary data transfer.
+
+**Custom batch size** (`INITIAL_BATCH_SIZE`):
+
+You can override the default behavior by setting `INITIAL_BATCH_SIZE` if you:
+
+- Have a very large library with frequent additions (increase to 300-500)
+- Have a slow network connection to Tautulli (decrease to 50-100)
+- Want to optimize for your specific use case
+
+Example:
+
+```yaml
+environment:
+  - INITIAL_BATCH_SIZE=150 # Custom batch size
+```
 
 ### Getting Your Tautulli API Key
 
