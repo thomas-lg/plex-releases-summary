@@ -1,6 +1,6 @@
 # Plex Releases Summary
 
-A lightweight Docker container that fetches and displays recently added media items from your Plex server via Tautulli. Perfect for scheduled reports of new content added to your media library.
+A lightweight Docker container that fetches recently added media from your Plex server via Tautulli and sends summaries to Discord. Perfect for automated weekly notifications of new movies, TV shows, and music added to your media library.
 
 ## Features
 
@@ -15,9 +15,13 @@ A lightweight Docker container that fetches and displays recently added media it
 
 ## Prerequisites
 
-- [Tautulli](https://tautulli.com/) installed and configured with your Plex server
+- [Tautulli](https://tautulli.com/) v2.1.0 or later (v2.5.0+ recommended)
+  - Installed and configured with your Plex server
+  - API access must be enabled (enabled by default)
 - Tautulli API key (found in Tautulli → Settings → Web Interface → API)
 - Docker or Docker Compose
+
+> **📝 Tautulli Compatibility Note:** This project uses the `get_recently_added` and `get_server_identity` Tautulli API endpoints. These have been stable core API features since Tautulli v2.0.0 (December 2017). Any reasonably current Tautulli installation should be fully compatible. For best results, use Tautulli v2.5.0 or later which includes Python 3 support and improved stability.
 
 ## Quick Start
 
@@ -74,7 +78,7 @@ docker run -d \
   -e TAUTULLI_URL=http://your-tautulli-host:8181 \
   -e TAUTULLI_API_KEY=your-api-key \
   -e DAYS_BACK=7 \
-  -e CRON_SCHEDULE="0 9 * * MON" \
+  -e CRON_SCHEDULE="0 16 * * SUN" \
   ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
 
@@ -82,6 +86,7 @@ docker run -d \
 
 | Schedule                   | CRON Expression   | Description               |
 | -------------------------- | ----------------- | ------------------------- |
+| Every Sunday at 4:00 PM    | `0 16 * * SUN`    | Weekly summary on Sundays |
 | Daily at 9:00 AM           | `0 9 * * *`       | Every day at 9:00 AM      |
 | Every Monday at 9:00 AM    | `0 9 * * MON`     | Weekly summary on Mondays |
 | Every 6 hours              | `0 */6 * * *`     | Four times per day        |
@@ -152,21 +157,38 @@ docker run --rm \
 
 ## Configuration
 
-All configuration is done via environment variables:
+All configuration is done via environment variables.
 
-| Variable              | Required    | Default               | Description                                                                                                          |
-| --------------------- | ----------- | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `TAUTULLI_URL`        | Yes         | -                     | Full URL to your Tautulli instance (e.g., `http://tautulli:8181`)                                                    |
-| `TAUTULLI_API_KEY`    | Yes         | -                     | Your Tautulli API key (found in Tautulli settings)                                                                   |
-| `DAYS_BACK`           | Yes         | -                     | Number of days to look back for new media                                                                            |
-| `CRON_SCHEDULE`       | Conditional | -                     | CRON expression for scheduled execution (e.g., `0 9 * * MON`). Required when `RUN_ONCE` is not set to `true`.        |
-| `RUN_ONCE`            | No          | `false`               | When set to `true`, runs once and exits instead of running on a schedule. If `false`/unset, `CRON_SCHEDULE` is used. |
-| `LOG_LEVEL`           | No          | `INFO`                | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                   |
-| `TZ`                  | No          | `UTC`                 | Timezone for the container (e.g., `Europe/Paris`, `America/New_York`)                                                |
-| `DISCORD_WEBHOOK_URL` | No          | -                     | Discord webhook URL for sending release summaries. When unset, Discord notifications are disabled.                   |
-| `PLEX_URL`            | No          | `https://app.plex.tv` | Plex server URL for creating direct links in Discord. Use `https://app.plex.tv` or your local Plex URL.              |
-| `PLEX_SERVER_ID`      | No          | Auto-detected         | Plex server machine identifier (auto-detected from Tautulli). Only set manually if auto-detection fails.             |
-| `INITIAL_BATCH_SIZE`  | No          | Auto                  | Override batch size for fetching items. Default: 100 (1-7 days), 200 (8-30 days), 500 (31+ days)                     |
+### Core Configuration
+
+| Variable           | Required | Default                | Description                                                                                                                    |
+| ------------------ | -------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `TAUTULLI_URL`     | Yes      | `http://tautulli:8181` | Full URL to your Tautulli instance. Use container name if on same Docker network, or IP address/hostname if different network. |
+| `TAUTULLI_API_KEY` | Yes      | -                      | Your Tautulli API key (found in Tautulli → Settings → Web Interface → API)                                                     |
+| `DAYS_BACK`        | Yes      | `7`                    | Number of days to look back for recently added media.                                                                          |
+| `CRON_SCHEDULE`    | Yes\*    | -                      | CRON expression for scheduled execution (e.g., `0 16 * * SUN`). \*Not required if `RUN_ONCE=true`.                             |
+
+### Discord Notifications (Optional)
+
+| Variable              | Required | Default               | Description                                                                                                                |
+| --------------------- | -------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `DISCORD_WEBHOOK_URL` | No       | -                     | Discord webhook URL for sending release summaries. Leave unset to disable Discord notifications.                           |
+| `PLEX_URL`            | No       | `https://app.plex.tv` | Plex server URL for creating clickable links in Discord. Default works for most users. Only change for custom local links. |
+| `PLEX_SERVER_ID`      | No       | Auto-detected         | Plex server machine identifier (auto-detected from Tautulli). Only set manually if auto-detection fails.                   |
+
+### Execution Mode
+
+| Variable   | Required | Default | Description                                                                                                             |
+| ---------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `RUN_ONCE` | No       | `false` | Set to `true` for one-shot execution (runs once and exits). When `false` or unset, runs as daemon with `CRON_SCHEDULE`. |
+
+### Advanced Settings
+
+| Variable             | Required | Default | Description                                                                                                                                    |
+| -------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LOG_LEVEL`          | No       | `INFO`  | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                                         |
+| `TZ`                 | No       | `UTC`   | Container timezone (e.g., `Europe/Paris`, `America/New_York`). Affects log timestamps and CRON schedule interpretation.                        |
+| `INITIAL_BATCH_SIZE` | No       | Auto    | Override default batch size for fetching items from Tautulli. Auto-determined by `DAYS_BACK`: 100 (1-7 days), 200 (8-30 days), 500 (31+ days). |
 
 ### Performance Tuning
 
@@ -236,25 +258,26 @@ Optionally send release summaries to a Discord channel using webhooks. The appli
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN
 ```
 
-### Setting Up Plex Direct Links (Optional)
+### Plex Direct Links in Discord
 
-To enable clickable links to your Plex media in Discord:
+Clickable Plex links in Discord messages work **automatically out of the box** - no configuration needed! The application:
 
-1. **Get your Plex Server ID**:
-   - **In Tautulli**: Go to Settings → Plex Media Server → Click the "i" icon → Copy the "Machine Identifier"
-   - **In Plex Web**: Settings → General → Show Advanced → Copy the value from server's XML endpoint
+- Uses `https://app.plex.tv` by default (works for remote access)
+- Auto-detects your Plex Server ID from Tautulli on startup
 
-2. **Add to your `.env` file**:
+**You only need to customize `PLEX_URL` if:**
+
+- You want direct local links instead of Plex.tv links
+- You have a custom Plex server setup
+
+**Example - Custom local links:**
 
 ```bash
-# For Plex.tv (remote access) - PLEX_SERVER_ID is auto-detected
-PLEX_URL=https://app.plex.tv
-
-# OR for local Plex server - PLEX_SERVER_ID is auto-detected
-PLEX_URL=http://plex:32400
+# In your .env file
+PLEX_URL=http://plex:32400  # Or your local Plex server URL
 ```
 
-**Note**: `PLEX_SERVER_ID` is automatically detected from Tautulli. You only need to set it manually if auto-detection fails.
+> **📝 Note:** If you need to manually set the Plex Server ID (auto-detection failed), find your server's Machine Identifier in Tautulli (Settings → Plex Media Server → "i" icon) or Plex Web (Settings → General → Show Advanced) and add `PLEX_SERVER_ID=your-machine-id` to your `.env` file.
 
 ### Discord Message Format
 
@@ -297,7 +320,7 @@ services:
     env_file:
       - .env
     environment:
-      CRON_SCHEDULE: "0 9 * * MON"
+      CRON_SCHEDULE: "0 16 * * SUN"
       DISCORD_WEBHOOK_URL: "${DISCORD_WEBHOOK_URL}" # From .env file
 ```
 
@@ -416,7 +439,7 @@ services:
     env_file:
       - .env
     environment:
-      CRON_SCHEDULE: "0 9 * * MON" # Every Monday at 9:00 AM
+      CRON_SCHEDULE: "0 16 * * SUN" # Every Sunday at 4:00 PM (default)
 ```
 
 **One-Shot Mode (For External Cron):**
@@ -466,16 +489,6 @@ docker run --rm \
   -e RUN_ONCE=true \
   ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
