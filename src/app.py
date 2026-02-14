@@ -10,6 +10,28 @@ setup_logging()
 logger = logging.getLogger("plex-weekly")
 
 
+def _calculate_batch_params(days: int, override: int = None) -> tuple[int, int]:
+    """
+    Calculate initial batch size and increment based on time range.
+    
+    Args:
+        days: Number of days to look back
+        override: Optional override value from environment variable
+        
+    Returns:
+        Tuple of (initial_count, increment)
+    """
+    if override is not None:
+        return (override, override)
+    
+    if days <= 7:
+        return (100, 100)
+    elif days <= 30:
+        return (200, 200)
+    else:
+        return (500, 500)
+
+
 def run_summary() -> int:
     """
     Execute the Plex summary task: fetch and display recently added media.
@@ -42,31 +64,86 @@ def run_summary() -> int:
         return 1
 
     # Query items with date filter
-    # Note: Tautulli API doesn't support date filtering, we get the most recent items and filter client-side
-    logger.info("Querying recently added items...")
+    # Note: Tautulli API doesn't support date filtering, we iterate fetching until we pass the time range
+    logger.info("Querying recently added items with iterative fetching...")
     
-    try:
-        items_raw = tautulli.get_recently_added(days=days, count=500)
-    except Exception as e:
-        logger.error("Failed to fetch recently added items: %s", e)
-        return 1
-
-    # depending on API version, the data is inside 'recently_added'
-    if isinstance(items_raw, dict) and "recently_added" in items_raw:
-        items = items_raw["recently_added"]
-    elif isinstance(items_raw, list):
-        items = items_raw
-    else:
-        items = []
-
-    # Filter items client-side by date (Tautulli API doesn't support date filtering)
+    # Calculate cutoff timestamp for filtering
     cutoff_timestamp = int((datetime.now(timezone.utc) - timedelta(days=days)).timestamp())
     logger.debug("Filtering items to show only those added after timestamp: %d", cutoff_timestamp)
+    
+    # Get optional batch size override from environment
+    batch_override = None
+    if "INITIAL_BATCH_SIZE" in os.environ:
+        try:
+            batch_override = int(os.environ["INITIAL_BATCH_SIZE"])
+            if batch_override < 1:
+                logger.warning("INITIAL_BATCH_SIZE must be positive, using default")
+                batch_override = None
+            else:
+                logger.info("Using custom batch size: %d items per iteration", batch_override)
+        except ValueError:
+            logger.warning("Invalid INITIAL_BATCH_SIZE value, using default")
+            batch_override = None
+    
+    # Calculate batch parameters based on time range
+    initial_count, increment = _calculate_batch_params(days, override=batch_override)
+    current_count = initial_count
+    iteration = 0
+    items = []
+    
+    # Iteratively fetch items until we get items beyond the time range
+    while True:
+        iteration += 1
+        logger.debug("Iteration %d: Fetching batch with count=%d", iteration, current_count)
+        
+        try:
+            items_raw = tautulli.get_recently_added(days=days, count=current_count)
+        except Exception as e:
+            logger.error("Failed to fetch recently added items: %s", e)
+            return 1
+        
+        # depending on API version, the data is inside 'recently_added'
+        if isinstance(items_raw, dict) and "recently_added" in items_raw:
+            items = items_raw["recently_added"]
+        elif isinstance(items_raw, list):
+            items = items_raw
+        else:
+            items = []
+        
+        # Break if no items returned
+        if not items:
+            logger.debug("No items returned, stopping iteration")
+            break
+        
+        # If we received fewer items than requested, we've hit the API's limit
+        if len(items) < current_count:
+            logger.debug("Received %d items (less than requested %d), reached API limit", 
+                        len(items), current_count)
+            break
+        
+        # Check if oldest item is still within time range
+        oldest_timestamp = int(items[-1].get("added_at", 0))
+        
+        if oldest_timestamp >= cutoff_timestamp:
+            # Oldest item is still in range, need to fetch more
+            logger.info("Oldest item still in range (iteration %d), fetching more items (next count: %d)", 
+                       iteration, current_count + increment)
+            current_count += increment
+        else:
+            # We've fetched beyond the time range, we're done
+            logger.debug("Fetched beyond time range after %d iteration(s)", iteration)
+            break
+
+    # Filter items client-side by date
     items_before_filter = len(items)
     items = [item for item in items if int(item.get("added_at", 0)) >= cutoff_timestamp]
     
-    logger.info("Retrieved %d items, filtered to %d items from last %d days", 
-                items_before_filter, len(items), days)
+    if iteration > 1:
+        logger.info("Retrieved %d items in %d iterations, filtered to %d items from last %d days", 
+                    items_before_filter, iteration, len(items), days)
+    else:
+        logger.info("Retrieved %d items, filtered to %d items from last %d days", 
+                    items_before_filter, len(items), days)
 
     logger.info("Found %d recent items matching criteria", len(items))
 
