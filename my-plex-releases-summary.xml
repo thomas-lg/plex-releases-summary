@@ -10,7 +10,7 @@
   <Support>https://github.com/thomas-lg/plex-releases-summary</Support>
   <Project>https://github.com/thomas-lg/plex-releases-summary</Project>
   <ReadMe>https://github.com/thomas-lg/plex-releases-summary/blob/main/README.md</ReadMe>
-  <Overview>A lightweight Docker container that fetches and displays recently added media items from your Plex server via Tautulli. Perfect for scheduled reports of new content added to your media library. Supports scheduled execution with CRON-like timing or one-shot mode for external cron jobs.</Overview>
+  <Overview>A lightweight Docker container that fetches recently added media from your Plex server via Tautulli and sends weekly summaries to Discord. Perfect for automated notifications of new movies, TV shows, and music added to your media library. Supports scheduled execution with CRON timing or one-shot mode for external scheduling.</Overview>
   <Category>MediaServer:Video Tools:Utilities</Category>
   <WebUI/>
   <TemplateURL/>
