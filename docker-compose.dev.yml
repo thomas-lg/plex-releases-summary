@@ -10,9 +10,12 @@ services:
       - .env
     environment:
       - LOG_LEVEL=DEBUG # Override .env for development
+      - RUN_ONCE=true # Run once per file change instead of continuous scheduling
     command: >
-      watchmedo auto-restart
-      --directory=src
-      --pattern="*.py"
+      sh -c "echo 'Watching for file changes...' && 
+      watchmedo shell-command
+      --command='python -u src/app.py'
+      --patterns='*.py'
       --recursive
-      -- python -u src/app.py
+      --wait
+      src"

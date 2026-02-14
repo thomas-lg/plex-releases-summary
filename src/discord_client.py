@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from discord_webhook import DiscordWebhook, DiscordEmbed
 from datetime import datetime
 
@@ -18,7 +18,8 @@ class DiscordNotifier:
     MAX_FIELD_VALUE = 1024
     MAX_FIELDS = 25
     MAX_ITEMS_PER_FIELD = 20
-    MAX_ITEMS_TOTAL = 30  # Limit total items to stay under 6000 char limit with URLs
+    MAX_ITEMS_TOTAL = 25  # Conservative limit to stay under 6000 char limit with URLs
+    EMBED_SIZE_BUFFER = 5800  # Safety buffer below 6000 to account for JSON overhead
     
     # Emoji icons for media types
     MEDIA_ICONS = {
@@ -80,20 +81,22 @@ class DiscordNotifier:
                 # Sort items by date (ascending - oldest first)
                 items.sort(key=lambda x: x.get('added_at', ''))
                 
-                # Split category into chunks if needed
-                chunks = []
-                for i in range(0, len(items), self.MAX_ITEMS_TOTAL):
-                    chunks.append(items[i:i + self.MAX_ITEMS_TOTAL])
+                # Send items in chunks, handling dynamic sizing based on validation
+                items_remaining = items[:]
+                part_num = 1
                 
-                # Send each chunk as a separate message
-                for chunk_idx, chunk in enumerate(chunks, 1):
+                while items_remaining:
                     total_messages += 1
+                    
+                    # Try to send a chunk (start with MAX_ITEMS_TOTAL)
+                    chunk = items_remaining[:self.MAX_ITEMS_TOTAL]
+                    
                     webhook = DiscordWebhook(url=self.webhook_url)
                     
-                    # Create embed for this category chunk
-                    embed = self._create_category_embed(
+                    # Create and validate embed - this may trim items if too large
+                    embed, items_sent = self._validate_and_trim_embed(
                         category, chunk, days_back, total_count,
-                        chunk_idx, len(chunks), len(items)
+                        part_num, len(items), items_remaining
                     )
                     webhook.add_embed(embed)
 
@@ -102,18 +105,34 @@ class DiscordNotifier:
                     
                     if response.status_code in [200, 204]:
                         success_count += 1
-                        if len(chunks) > 1:
-                            logger.info("✅ Discord notification sent: %s (part %d/%d)", category, chunk_idx, len(chunks))
+                        
+                        # Remove sent items from remaining
+                        items_remaining = items_remaining[items_sent:]
+                        
+                        if items_remaining:
+                            logger.info("✅ Discord notification sent: %s (part %d, %d items sent, %d remaining)", 
+                                      category, part_num, items_sent, len(items_remaining))
                         else:
-                            logger.info("✅ Discord notification sent: %s (%d items)", category, len(items))
+                            logger.info("✅ Discord notification sent: %s (%d items total)", category, len(items))
+                        
+                        part_num += 1
                         
                         # Small delay between messages to avoid rate limits
-                        time.sleep(0.5)
+                        if items_remaining:
+                            time.sleep(0.5)
+                    elif response.status_code == 400:
+                        logger.error(
+                            "Discord rejected message (invalid payload): %s (%s part %d). "
+                            "Embed may be malformed or exceed limits. Skipping remaining %d items.",
+                            response.text, category, part_num, len(items_remaining)
+                        )
+                        break  # Stop trying to send this category
                     else:
                         logger.error(
-                            "Discord webhook failed with status %d: %s (%s part %d/%d)",
-                            response.status_code, response.text, category, chunk_idx, len(chunks)
+                            "Discord webhook failed with status %d: %s (%s part %d)",
+                            response.status_code, response.text, category, part_num
                         )
+                        break  # Stop trying to send this category
             
             logger.info("✅ All Discord notifications sent (%d/%d messages)", success_count, total_messages)
             return success_count == total_messages
@@ -129,7 +148,7 @@ class DiscordNotifier:
         days_back: int,
         total_count: int,
         part_num: int,
-        total_parts: int,
+        estimated_parts: int,
         category_total: int
     ) -> DiscordEmbed:
         """Create Discord embed for a specific category."""
@@ -137,8 +156,8 @@ class DiscordNotifier:
         icon = self.MEDIA_ICONS.get(category, '📁')
         
         # Build title
-        if total_parts > 1:
-            title = f"{icon} {category} - {date_range} (Part {part_num}/{total_parts})"
+        if estimated_parts > 1 or part_num > 1:
+            title = f"{icon} {category} - {date_range} (Part {part_num})"
         else:
             title = f"{icon} {category} - {date_range}"
         
@@ -162,6 +181,113 @@ class DiscordNotifier:
         embed.set_timestamp()
         
         return embed
+    
+    def _calculate_embed_size(self, embed: DiscordEmbed) -> int:
+        """
+        Calculate the approximate total character count of an embed.
+        
+        Discord counts: title + description + fields (name + value) + footer + author
+        
+        Returns:
+            Total character count of the embed
+        """
+        total = 0
+        
+        # Title
+        if embed.title:
+            total += len(embed.title)
+        
+        # Description
+        if embed.description:
+            total += len(embed.description)
+        
+        # Fields
+        for field in embed.fields:
+            if field.get('name'):
+                total += len(field['name'])
+            if field.get('value'):
+                total += len(field['value'])
+        
+        # Footer
+        if embed.footer:
+            total += len(embed.footer.get('text', ''))
+        
+        # Author
+        if embed.author:
+            total += len(embed.author.get('name', ''))
+        
+        return total
+    
+    def _validate_and_trim_embed(
+        self,
+        category: str,
+        items: List[Dict[str, Any]],
+        days_back: int,
+        total_count: int,
+        part_num: int,
+        category_total: int,
+        all_items: List[Dict[str, Any]]
+    ) -> Tuple[DiscordEmbed, int]:
+        """
+        Create embed and validate size, trimming items if necessary to stay under Discord limits.
+        
+        Args:
+            category: Media category name
+            items: List of media items to attempt to include
+            days_back: Number of days in the summary
+            total_count: Total count across all categories
+            part_num: Current part number
+            category_total: Total items in this category
+            all_items: All remaining items (for calculating parts)
+            
+        Returns:
+            Tuple of (DiscordEmbed, number of items actually included)
+        """
+        max_attempts = 5
+        current_items = items[:]
+        
+        for attempt in range(max_attempts):
+            # Calculate how many parts we might need (estimate)
+            items_per_part = len(current_items)
+            estimated_parts = (len(all_items) + items_per_part - 1) // items_per_part if items_per_part > 0 else 1
+            
+            embed = self._create_category_embed(
+                category, current_items, days_back, total_count,
+                part_num, estimated_parts, category_total
+            )
+            
+            size = self._calculate_embed_size(embed)
+            
+            # Check if within safe limits (with buffer)
+            if size <= self.EMBED_SIZE_BUFFER:
+                if len(current_items) < len(items):
+                    removed = len(items) - len(current_items)
+                    logger.warning(
+                        "⚠️  Trimmed %d items from %s part %d to fit Discord size limit (final size: %d chars). "
+                        "These items will be sent in the next message.",
+                        removed, category, part_num, size
+                    )
+                return embed, len(current_items)
+            
+            # Too large, remove 20% of items and try again
+            if len(current_items) <= 1:
+                # Can't reduce further, log error and return as-is
+                logger.error(
+                    "❌ Cannot reduce %s embed further (current size: %d chars, limit: %d). "
+                    "Discord may reject this message.",
+                    category, size, self.EMBED_SIZE_BUFFER
+                )
+                return embed, len(current_items)
+            
+            new_count = max(1, int(len(current_items) * 0.8))
+            logger.warning(
+                "⚠️  Embed too large (%d chars), reducing %s from %d to %d items (attempt %d/%d)",
+                size, category, len(current_items), new_count, attempt + 1, max_attempts
+            )
+            current_items = current_items[:new_count]
+        
+        # Return the smallest version we managed to create
+        return embed, len(current_items)
     
     def _add_items_to_embed(self, embed: DiscordEmbed, items: List[Dict[str, Any]], category: str):
         """Add items to embed, splitting into multiple fields if needed with date ranges."""
@@ -424,6 +550,11 @@ class DiscordNotifier:
         for attempt in range(max_retries):
             try:
                 response = webhook.execute()
+                
+                # If validation error (bad request), don't retry - it won't help
+                if response.status_code == 400:
+                    logger.error("Discord webhook validation failed (400 Bad Request): %s", response.text)
+                    return response
                 
                 # If rate limited, wait and retry
                 if response.status_code == 429:
