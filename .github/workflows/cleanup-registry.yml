@@ -1,0 +1,38 @@
+name: Cleanup Container Registry
+
+on:
+    schedule:
+        # Run weekly on Sundays at 2 AM UTC
+        - cron: "0 2 * * 0"
+    workflow_dispatch: # Allow manual trigger
+
+permissions:
+    packages: write
+
+jobs:
+    cleanup:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Delete old container images
+              uses: snok/container-retention-policy@v2
+              with:
+                  image-names: plex-releases-summary
+                  cut-off: 30 days ago UTC
+                  account-type: personal
+                  org-name: thomas-lg
+                  keep-at-least: 10
+                  untagged-only: false
+                  skip-tags: latest,v*
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  filter-tags: sha-*
+
+            - name: Delete untagged images
+              uses: snok/container-retention-policy@v2
+              with:
+                  image-names: plex-releases-summary
+                  cut-off: 7 days ago UTC
+                  account-type: personal
+                  org-name: thomas-lg
+                  keep-at-least: 0
+                  untagged-only: true
+                  token: ${{ secrets.GITHUB_TOKEN }}
