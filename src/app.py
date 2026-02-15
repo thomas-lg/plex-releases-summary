@@ -1,14 +1,14 @@
-import os
 import sys
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
+from config import load_config, Config
 from logging_config import setup_logging
 from tautulli_client import TautulliClient
 from discord_client import DiscordNotifier
 
-setup_logging()
+# Config will be loaded in main() after logging is ready
 logger = logging.getLogger("plex-weekly")
 
 
@@ -83,36 +83,25 @@ def _format_display_title(item: Dict[str, Any]) -> str:
         return item.get("title", "Unknown")
 
 
-def run_summary() -> int:
+def run_summary(config: Config) -> int:
     """
     Execute the Plex summary task: fetch and display recently added media.
 
+    Args:
+        config: Application configuration
+        
     Returns:
         Exit code: 0 for success, 1 for error
     """
     logger.info("🚀 Plex weekly summary starting")
 
-    # Validate required environment variables
-    if "DAYS_BACK" not in os.environ:
-        logger.error("DAYS_BACK environment variable is required but not set")
-        return 1  # Exit with error code
-
-    try:
-        days = int(os.environ["DAYS_BACK"])
-    except (KeyError, ValueError) as e:
-        logger.error("Invalid DAYS_BACK configuration: %s", e)
-        return 1
-
+    days = config.days_back
     logger.info("Configuration: Looking back %d days", days)
 
-    try:
-        tautulli = TautulliClient(
-            base_url=os.environ["TAUTULLI_URL"],
-            api_key=os.environ["TAUTULLI_API_KEY"],
-        )
-    except KeyError as e:
-        logger.error("Missing required environment variable: %s", e)
-        return 1
+    tautulli = TautulliClient(
+        base_url=config.tautulli_url,
+        api_key=config.tautulli_api_key,
+    )
 
     # Query items with date filter
     # Note: Tautulli API doesn't support date filtering, we iterate fetching until we pass the time range
@@ -122,22 +111,8 @@ def run_summary() -> int:
     cutoff_timestamp = int((datetime.now(timezone.utc) - timedelta(days=days)).timestamp())
     logger.debug("Filtering items to show only those added after timestamp: %d", cutoff_timestamp)
 
-    # Get optional batch size override from environment
-    batch_override = None
-    if "INITIAL_BATCH_SIZE" in os.environ:
-        try:
-            batch_override = int(os.environ["INITIAL_BATCH_SIZE"])
-            if batch_override < 1:
-                logger.warning("INITIAL_BATCH_SIZE must be positive, using default")
-                batch_override = None
-            else:
-                logger.info("Using custom batch size: %d items per iteration", batch_override)
-        except ValueError:
-            logger.warning("Invalid INITIAL_BATCH_SIZE value, using default")
-            batch_override = None
-
     # Calculate batch parameters based on time range
-    initial_count, increment = _calculate_batch_params(days, override=batch_override)
+    initial_count, increment = _calculate_batch_params(days, override=config.initial_batch_size)
     current_count = initial_count
     iteration = 0
     items = []
@@ -243,12 +218,10 @@ def run_summary() -> int:
     logger.info("✅ Summary complete: Found %d items in the last %d days", len(items), days)
 
     # Send Discord notification if webhook URL is configured
-    discord_webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
-    if discord_webhook_url:
+    if config.discord_webhook_url:
         logger.debug("Discord webhook URL configured, sending notification...")
         try:
-            plex_url = os.environ.get("PLEX_URL", "https://app.plex.tv")
-            plex_server_id = os.environ.get("PLEX_SERVER_ID")
+            plex_server_id = config.plex_server_id
 
             # Auto-fetch Plex Server ID from Tautulli if not provided
             if not plex_server_id:
@@ -263,7 +236,7 @@ def run_summary() -> int:
                 except Exception as e:
                     logger.warning("Failed to auto-fetch Plex Server ID: %s", e)
 
-            notifier = DiscordNotifier(discord_webhook_url, plex_url, plex_server_id)
+            notifier = DiscordNotifier(config.discord_webhook_url, config.plex_url, plex_server_id)
             notifier.send_summary(discord_items, days, len(items))
         except Exception as e:
             logger.error("Failed to send Discord notification: %s", e, exc_info=True)
@@ -281,17 +254,28 @@ def main():
     If RUN_ONCE is true, run once and exit.
     Otherwise, run as a persistent scheduler with CRON schedule.
     """
-    run_once = os.environ.get("RUN_ONCE", "false").lower() in ("true", "1", "yes")
+    # Load configuration first (with basic logging)
+    try:
+        config = load_config()
+    except Exception as e:
+        # Can't use logger yet as it's not configured
+        print(f"FATAL: Failed to load configuration: {e}", file=sys.stderr)
+        return 1
+    
+    # Now setup logging with config
+    setup_logging(config.log_level)
+    logger.info("Configuration loaded successfully")
 
-    if run_once:
+    if config.run_once:
         # One-shot mode: run once and exit
-        logger.info("▶️  Starting in ONE-SHOT mode (RUN_ONCE=true)")
-        return run_summary()
+        logger.info("▶️  Starting in ONE-SHOT mode (run_once=true)")
+        return run_summary(config)
     else:
         # Scheduled mode: run as daemon with CRON schedule
         logger.info("📅 Starting in SCHEDULED mode")
         from scheduler import run_scheduled
-        return run_scheduled(run_summary)
+        # Wrap run_summary to pass config
+        return run_scheduled(lambda: run_summary(config), config.cron_schedule)
 
 
 if __name__ == "__main__":

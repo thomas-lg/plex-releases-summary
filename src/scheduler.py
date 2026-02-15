@@ -1,4 +1,3 @@
-import os
 import sys
 import signal
 import logging
@@ -93,22 +92,17 @@ class GracefulScheduler:
                 logger.info("✅ Scheduler shutdown complete")
 
 
-def run_scheduled(task_func: Callable) -> int:
+def run_scheduled(task_func: Callable, cron_schedule: str) -> int:
     """
-    Run task function on a CRON schedule defined by CRON_SCHEDULE environment variable.
+    Run task function on a CRON schedule.
 
     Args:
         task_func: Function to execute on schedule (should return exit code)
+        cron_schedule: CRON expression (e.g., "0 9 * * MON" for Mondays at 9 AM)
 
     Returns:
         Exit code (normally doesn't return, runs until shutdown signal)
     """
-    cron_schedule = os.environ.get("CRON_SCHEDULE")
-
-    if not cron_schedule:
-        logger.error("CRON_SCHEDULE environment variable is required for scheduled mode")
-        return 1
-
     scheduler = GracefulScheduler(cron_schedule, task_func)
     scheduler.start()
 

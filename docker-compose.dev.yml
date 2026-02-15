@@ -5,12 +5,14 @@ services:
       dockerfile: Dockerfile.dev
     container_name: plex-releases-summary-dev
     volumes:
+      # Source code for hot reload
       - ./src:/app/src
-    env_file:
-      - .env
-    environment:
-      - LOG_LEVEL=DEBUG # Override .env for development
-      - RUN_ONCE=true # Run once per file change instead of continuous scheduling
+      # Configuration - read/write for live editing
+      - ./configs:/app/configs:rw
+    # Optional: Pass secrets for testing
+    # environment:
+    #   - TAUTULLI_API_KEY=${TAUTULLI_API_KEY}
+    #   - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     command: >
       sh -c "echo 'Watching for file changes...' && 
       watchmedo shell-command

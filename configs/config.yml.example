@@ -1,0 +1,150 @@
+# =============================================================================
+# Plex Releases Summary - Configuration File
+# =============================================================================
+#
+# This file defines all configuration options for the application.
+# Copy this file to config.yml and customize it for your environment.
+#
+# Three configuration patterns are supported:
+#
+# 1. Static values (direct in YAML):
+#    days_back: 7
+#
+# 2. Environment variable interpolation (Docker environment):
+#    tautulli_api_key: ${TAUTULLI_API_KEY}
+#
+# 3. Docker secrets (environment variable points to a file):
+#    docker-compose.yml:
+#      environment:
+#        - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+#    config.yml:
+#      tautulli_api_key: ${TAUTULLI_API_KEY}
+#    The file content will be automatically read.
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Tautulli Configuration (REQUIRED)
+# -----------------------------------------------------------------------------
+
+# Full URL to your Tautulli instance
+# Pattern 1 (static): tautulli_url: http://192.168.1.100:8181
+# Pattern 2 (env var): tautulli_url: ${TAUTULLI_URL}
+tautulli_url: ${TAUTULLI_URL}
+
+# Tautulli API key for authentication
+# Recommended: Use environment variable or secret file for security
+# Pattern 2 (env var): tautulli_api_key: ${TAUTULLI_API_KEY}
+# Pattern 3 (secret): 
+#   - Set: TAUTULLI_API_KEY=/run/secrets/tautulli_key in docker-compose
+#   - Use: tautulli_api_key: ${TAUTULLI_API_KEY}
+tautulli_api_key: ${TAUTULLI_API_KEY}
+
+# -----------------------------------------------------------------------------
+# Core Settings (REQUIRED)
+# -----------------------------------------------------------------------------
+
+# Number of days to look back for media releases (must be >= 1)
+# Pattern 1 (static): Recommended for this setting
+days_back: 7
+
+# -----------------------------------------------------------------------------
+# Scheduling Configuration
+# -----------------------------------------------------------------------------
+
+# CRON expression for scheduled execution
+# Required UNLESS run_once is set to true
+# Examples:
+#   "0 0 * * *"           - Daily at midnight
+#   "0 */6 * * *"         - Every 6 hours
+#   "0 0 * * 0"           - Weekly on Sunday
+#   "0 0 1 * *"           - Monthly on the 1st
+# Pattern 1 (static): Recommended for this setting
+cron_schedule: "0 0 * * *"
+
+# Run once and exit instead of scheduled execution
+# Set to true for manual/cron-triggered runs
+# Set to false for continuous scheduling (requires cron_schedule)
+run_once: false
+
+# -----------------------------------------------------------------------------
+# Discord Notifications (OPTIONAL)
+# -----------------------------------------------------------------------------
+
+# Discord webhook URL for notifications
+# Leave commented/empty to disable Discord notifications
+# Recommended: Use environment variable or secret file for security
+# Pattern 2 (env var): discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+# Pattern 3 (secret): 
+#   - Set: DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook in docker-compose
+#   - Use: discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+# discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+
+# -----------------------------------------------------------------------------
+# Plex Configuration (OPTIONAL)
+# -----------------------------------------------------------------------------
+
+# Plex server URL for generating media links
+# Default: https://app.plex.tv (Plex Web App)
+plex_url: https://app.plex.tv
+
+# Plex server machine identifier
+# Leave empty for auto-detection via Tautulli
+# Only needed if auto-detection fails
+# plex_server_id: ${PLEX_SERVER_ID}
+
+# -----------------------------------------------------------------------------
+# Advanced Settings (OPTIONAL)
+# -----------------------------------------------------------------------------
+
+# Logging verbosity level
+# Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+# Default: INFO
+log_level: INFO
+
+# Override batch size for Tautulli API fetching
+# Useful for tuning performance on large libraries
+# Valid range: 1-10000
+# Leave commented to use default adaptive batching
+# initial_batch_size: 1000
+
+# =============================================================================
+# Configuration Examples
+# =============================================================================
+#
+# Example 1: Basic static configuration (local development)
+# ----------------------------------------------------------
+# tautulli_url: http://localhost:8181
+# tautulli_api_key: abc123xyz789
+# days_back: 7
+# run_once: true
+# log_level: DEBUG
+#
+# Example 2: Production with environment variables
+# -------------------------------------------------
+# tautulli_url: ${TAUTULLI_URL}
+# tautulli_api_key: ${TAUTULLI_API_KEY}
+# days_back: 7
+# cron_schedule: "0 0 * * *"
+# run_once: false
+# discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+#
+# Example 3: Production with Docker secrets
+# ------------------------------------------
+# # docker-compose.yml:
+# #   secrets:
+# #     - tautulli_key
+# #     - discord_webhook
+# #   environment:
+# #     - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+# #     - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook
+# #
+# tautulli_url: http://tautulli:8181
+# tautulli_api_key: ${TAUTULLI_API_KEY}
+# days_back: 14
+# cron_schedule: "0 */12 * * *"
+# run_once: false
+# discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+# log_level: INFO
+#
+# =============================================================================

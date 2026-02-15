@@ -34,11 +34,11 @@ git clone https://github.com/thomas-lg/plex-releases-summary.git
 cd plex-releases-summary
 ```
 
-2. Create a `.env` file with your configuration:
+2. Create your configuration file:
 
 ```bash
-cp .env.example .env
-# Edit .env with your Tautulli URL and API key
+cp configs/config.yml.example configs/config.yml
+# Edit configs/config.yml with your settings
 ```
 
 3. Run the container:
@@ -63,10 +63,11 @@ services:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     container_name: plex-releases-summary
     restart: on-failure
-    env_file:
-      - .env
-    environment:
-      CRON_SCHEDULE: "0 9 * * MON" # Every Monday at 9:00 AM
+    volumes:
+      - ./configs:/app/configs:ro
+    # Optional: Pass secrets via environment
+    # environment:
+    #   - TAUTULLI_API_KEY=${TAUTULLI_API_KEY}
 ```
 
 **Docker CLI:**
@@ -75,12 +76,11 @@ services:
 docker run -d \
   --name plex-releases-summary \
   --restart unless-stopped \
-  -e TAUTULLI_URL=http://your-tautulli-host:8181 \
-  -e TAUTULLI_API_KEY=your-api-key \
-  -e DAYS_BACK=7 \
-  -e CRON_SCHEDULE="0 16 * * SUN" \
+  -v $(pwd)/configs:/app/configs:ro \
   ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
+
+> **Note**: Ensure your `config.yml` has `run_once: false` and `cron_schedule` set for scheduled mode.
 
 **Common CRON Schedule Examples:**
 
@@ -117,22 +117,19 @@ services:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     container_name: plex-releases-summary
     restart: "no"
-    env_file:
-      - .env
-    environment:
-      RUN_ONCE: "true" # Run once and exit
+    volumes:
+      - ./configs:/app/configs:ro
 ```
 
 **Docker CLI:**
 
 ```bash
 docker run --rm \
-  -e TAUTULLI_URL=http://your-tautulli-host:8181 \
-  -e TAUTULLI_API_KEY=your-api-key \
-  -e DAYS_BACK=7 \
-  -e RUN_ONCE=true \
+  -v $(pwd)/configs:/app/configs:ro \
   ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
+
+> **Note**: Ensure your `config.yml` has `run_once: true` for one-shot mode.
 
 ### External Scheduling with System Cron
 
@@ -140,26 +137,47 @@ For external scheduling using system cron (one-shot mode):
 
 ```bash
 # Run every Monday at 9:00 AM
-0 9 * * 1 docker run --rm -e RUN_ONCE=true --env-file /path/to/.env ghcr.io/thomas-lg/plex-releases-summary:latest
-```
-
-### Using Docker CLI
-
-```bash
-docker run --rm \
-  -e TAUTULLI_URL=http://your-tautulli-host:8181 \
-  -e TAUTULLI_API_KEY=your-api-key \
-  -e DAYS_BACK=7 \
-  -e RUN_ONCE=true \
-  -e LOG_LEVEL=INFO \
-  ghcr.io/thomas-lg/plex-releases-summary:latest
+0 9 * * 1 docker run --rm -v /path/to/configs:/app/configs:ro ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
 
 ## Configuration
 
-All configuration is done via environment variables.
+Configuration is managed via a `config.yml` file in the `configs/` directory. This file supports:
 
-### Core Configuration
+- **Static values**: Hardcoded in YAML (e.g., `days_back: 7`)
+- **Environment variables**: Interpolation with `${VAR}` syntax
+- **Docker secrets**: Environment variables pointing to secret files
+
+### Configuration File
+
+Create `configs/config.yml` from the provided example:
+
+```bash
+cp configs/config.yml.example configs/config.yml
+```
+
+**Basic example (`configs/config.yml`):**
+
+```yaml
+# Tautulli Configuration
+tautulli_url: http://tautulli:8181
+tautulli_api_key: ${TAUTULLI_API_KEY} # Read from environment
+
+# Core Settings
+days_back: 7
+cron_schedule: "0 16 * * SUN" # Every Sunday at 4 PM
+run_once: false
+
+# Discord (Optional)
+# discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+
+# Advanced
+log_level: INFO
+```
+
+See [configs/config.yml.example](configs/config.yml.example) for detailed documentation and all available options.
+
+### Configuration Reference
 
 | Variable           | Required | Default                | Description                                                                                                                    |
 | ------------------ | -------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -202,9 +220,9 @@ The application uses **iterative fetching** to efficiently retrieve media items 
 
 The application will automatically fetch more items if the oldest item is still within the time range, preventing missed items while minimizing unnecessary data transfer.
 
-**Custom batch size** (`INITIAL_BATCH_SIZE`):
+**Custom batch size** (`initial_batch_size`):
 
-You can override the default behavior by setting `INITIAL_BATCH_SIZE` if you:
+You can override the default behavior in `config.yml` if you:
 
 - Have a very large library with frequent additions (increase to 300-500)
 - Have a slow network connection to Tautulli (decrease to 50-100)
@@ -213,8 +231,8 @@ You can override the default behavior by setting `INITIAL_BATCH_SIZE` if you:
 Example:
 
 ```yaml
-environment:
-  - INITIAL_BATCH_SIZE=150 # Custom batch size
+# configs/config.yml
+initial_batch_size: 150 # Custom batch size
 ```
 
 ### Getting Your Tautulli API Key
@@ -252,10 +270,11 @@ Optionally send release summaries to a Discord channel using webhooks. The appli
    - Choose the target channel
    - Optionally set a custom avatar
 5. Click **Copy Webhook URL**
-6. Add the webhook URL to your `.env` file:
+6. Add the webhook URL to your `config.yml` file:
 
-```bash
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN
+```yaml
+# configs/config.yml
+discord_webhook_url: ${DISCORD_WEBHOOK_URL} # Or hardcode the URL
 ```
 
 ### Plex Direct Links in Discord
@@ -272,12 +291,12 @@ Clickable Plex links in Discord messages work **automatically out of the box** -
 
 **Example - Custom local links:**
 
-```bash
-# In your .env file
-PLEX_URL=http://plex:32400  # Or your local Plex server URL
+```yaml
+# In your configs/config.yml file
+plex_url: http://plex:32400 # Or your local Plex server URL
 ```
 
-> **📝 Note:** If you need to manually set the Plex Server ID (auto-detection failed), find your server's Machine Identifier in Tautulli (Settings → Plex Media Server → "i" icon) or Plex Web (Settings → General → Show Advanced) and add `PLEX_SERVER_ID=your-machine-id` to your `.env` file.
+> **📝 Note:** If you need to manually set the Plex Server ID (auto-detection failed), find your server's Machine Identifier in Tautulli (Settings → Plex Media Server → "i" icon) or Plex Web (Settings → General → Show Advanced) and add `plex_server_id: your-machine-id` to your `config.yml` file.
 
 ### Discord Message Format
 
@@ -317,14 +336,13 @@ services:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     container_name: plex-releases-summary
     restart: on-failure
-    env_file:
-      - .env
+    volumes:
+      - ./configs:/app/configs:ro
     environment:
-      CRON_SCHEDULE: "0 16 * * SUN"
-      DISCORD_WEBHOOK_URL: "${DISCORD_WEBHOOK_URL}" # From .env file
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL} # Pass from host env
 ```
 
-**Note**: Discord webhooks are sensitive credentials. Never commit them to version control. Keep them in your `.env` file which is gitignored.
+**Note**: Discord webhooks are sensitive credentials. Never commit them to version control. Either use environment variables or Docker secrets.
 
 ## Development
 
@@ -337,11 +355,11 @@ git clone https://github.com/thomas-lg/plex-releases-summary.git
 cd plex-releases-summary
 ```
 
-2. Create `.env` file:
+2. Create configuration file:
 
 ```bash
-cp .env.example .env
-# Edit with your settings
+cp configs/config.yml.example configs/config.yml
+# Edit with your settings (set run_once: true and log_level: DEBUG for dev)
 ```
 
 3. (Optional) Create local overrides for custom network or other settings:
@@ -387,7 +405,9 @@ docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up --bu
 docker build -t plex-releases-summary:latest .
 
 # Run locally
-docker run --rm -e RUN_ONCE=true --env-file .env plex-releases-summary:latest
+docker run --rm \
+  -v $(pwd)/configs:/app/configs:ro \
+  plex-releases-summary:latest
 ```
 
 ## Docker Images
@@ -410,17 +430,58 @@ docker pull ghcr.io/thomas-lg/plex-releases-summary:v1.0.0
 
 ## Unraid Installation
 
-An Unraid template file is provided at [my-plex-releases-summary.xml](my-plex-releases-summary.xml) for easy installation via Unraid's Community Applications.
+Unraid users can easily install and configure this application with volume mapping for easy config editing.
 
-**To use:**
+### Setup Instructions
 
-1. Copy the template to your Unraid server
-2. Edit the configuration values:
-   - Replace `YOUR_API_KEY_HERE` with your actual Tautulli API key
-   - Adjust other settings as needed (CRON schedule, days back, etc.)
-3. Install via Community Applications or Docker tab
+1. **Create appdata directory** on your Unraid server:
 
-**Security Note**: The template file contains placeholder values. Always update with your actual credentials and never commit sensitive API keys to version control.
+   ```bash
+   mkdir -p /mnt/user/appdata/plex-releases-summary
+   ```
+
+2. **Copy configuration file** to appdata:
+
+   ```bash
+   cd /mnt/user/appdata/plex-releases-summary
+   # Download config.yml.example from the repository
+   wget https://raw.githubusercontent.com/thomas-lg/plex-releases-summary/main/configs/config.yml.example -O config.yml
+   # Edit with your settings
+   nano config.yml
+   ```
+
+3. **Install via Docker** (or Community Applications):
+   - **Repository**: `ghcr.io/thomas-lg/plex-releases-summary:latest`
+   - **Volume mapping**: `/mnt/user/appdata/plex-releases-summary:/app/configs`
+   - **Restart policy**: `on-failure`
+   - **Network**: `bridge` or your custom network (e.g., `br0` for static IP)
+
+4. **Optional - Pass secrets via environment variables** instead of hardcoding in config.yml:
+   - Add environment variable: `TAUTULLI_API_KEY` = `your-api-key`
+   - In config.yml use: `tautulli_api_key: ${TAUTULLI_API_KEY}`
+
+### Editing Configuration on Unraid
+
+Your configuration file is accessible via the Unraid webUI:
+
+1. Go to **Shares** → **appdata** → **plex-releases-summary**
+2. Edit `config.yml` with the built-in editor or via SMB share
+3. Restart the container for changes to take effect
+
+**Example appdata structure:**
+
+```
+/mnt/user/appdata/plex-releases-summary/
+└── config.yml  (your configuration file)
+```
+
+### Unraid Template (Community Applications)
+
+An Unraid template file is provided at [my-plex-releases-summary.xml](my-plex-releases-summary.xml).
+
+**Note**: The template will need to be updated to use volume mapping instead of individual environment variables. Check the repository for the latest template version.
+
+**Security**: Store sensitive values (API keys, webhooks) as Unraid environment variables in the Docker template, then reference them in `config.yml` using `${VARIABLE_NAME}` syntax.
 
 ## Deployment Options
 
@@ -436,10 +497,8 @@ services:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     container_name: plex-releases-summary
     restart: on-failure
-    env_file:
-      - .env
-    environment:
-      CRON_SCHEDULE: "0 16 * * SUN" # Every Sunday at 4:00 PM (default)
+    volumes:
+      - ./configs:/app/configs:ro
 ```
 
 **One-Shot Mode (For External Cron):**
@@ -450,11 +509,11 @@ services:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     container_name: plex-releases-summary
     restart: "no"
-    env_file:
-      - .env
-    environment:
-      RUN_ONCE: "true" # Run once and exit
+    volumes:
+      - ./configs:/app/configs:ro
 ```
+
+**Note**: Set `run_once: true` or `run_once: false` in your `config.yml` file to control the execution mode.
 
 ## Troubleshooting
 
@@ -478,16 +537,17 @@ If the summary shows 0 items:
 
 ### Debug Mode
 
-Enable detailed logging:
+Enable detailed logging by setting `log_level: DEBUG` in your `config.yml`:
+
+```yaml
+# configs/config.yml
+log_level: DEBUG
+```
+
+Then run normally:
 
 ```bash
-docker run --rm \
-  -e LOG_LEVEL=DEBUG \
-  -e TAUTULLI_URL=http://your-host:8181 \
-  -e TAUTULLI_API_KEY=your-key \
-  -e DAYS_BACK=7 \
-  -e RUN_ONCE=true \
-  ghcr.io/thomas-lg/plex-releases-summary:latest
+docker run --rm -v $(pwd)/configs:/app/configs:ro ghcr.io/thomas-lg/plex-releases-summary:latest
 ```
 
 ## License
@@ -501,7 +561,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Security
 
-**Important**: Never commit your `.env` file or expose your Tautulli API key. The `.env` file is gitignored by default. If you accidentally commit secrets, rotate your Tautulli API key immediately.
+**Important**: Never commit your `config.yml` file with real credentials or expose your Tautulli API key. The `configs/config.yml` file is gitignored by default. If you accidentally commit secrets, rotate your Tautulli API key immediately.
+
+**Recommended**: Use environment variables or Docker secrets for sensitive values like API keys and webhook URLs, then reference them in `config.yml` using `${VARIABLE_NAME}` syntax.
 
 ---
 
