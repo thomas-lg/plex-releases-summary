@@ -10,7 +10,7 @@
   <Support>https://github.com/thomas-lg/plex-releases-summary</Support>
   <Project>https://github.com/thomas-lg/plex-releases-summary</Project>
   <ReadMe>https://github.com/thomas-lg/plex-releases-summary/blob/main/README.md</ReadMe>
-  <Overview>Fetches recently added media from Plex via Tautulli and sends summaries to Discord. Minimal configuration: 2 required fields (Tautulli URL and API key). Smart defaults: checks last 7 days, runs weekly on Sundays at 4pm. Optional settings available via config.yml.</Overview>
+  <Overview>A lightweight container that fetches recently added media from your Plex server via Tautulli and sends summaries to Discord. Minimal configuration required - just 2 fields (Tautulli URL and API key). Smart defaults: checks last 7 days, runs weekly on Sundays at 4 PM. Supports scheduled (daemon) or one-shot mode. Discord notifications optional. For complete documentation, see https://github.com/thomas-lg/plex-releases-summary/blob/main/README.md - For configuration guide, see https://github.com/thomas-lg/plex-releases-summary/blob/main/docs/CONFIGURATION.md</Overview>
   <Category>MediaServer:Video Tools:Utilities</Category>
   <WebUI/>
   <TemplateURL/>
@@ -21,15 +21,16 @@
   <DateInstalled>1771059298</DateInstalled>
   <DonateText/>
   <DonateLink/>
-  <Requires>Minimal setup: Tautulli running and accessible. Config file is auto-created on first run - just set environment variables below (Tautulli URL and API key). Edit config.yml in appdata for advanced options.</Requires>
+  <Requires>Minimal setup: Tautulli v2.1.0+ running and accessible with API enabled. Config file is auto-created on first run - just set environment variables below (Tautulli URL and API key). For advanced configuration options, editing examples, and troubleshooting, see https://github.com/thomas-lg/plex-releases-summary/blob/main/docs/CONFIGURATION.md</Requires>
   <Config Name="AppData Config Path" Target="/app/configs" Default="/mnt/user/appdata/plex-releases-summary" Mode="rw" Description="Container config path. config.yml is automatically created on first run. Edit this file to customize settings beyond environment variables." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/plex-releases-summary</Config>
   <Config Name="Tautulli URL" Target="TAUTULLI_URL" Default="http://tautulli:8181" Mode="" Description="Tautulli server URL (required). Must be referenced in config.yml as 'tautulli_url: ${TAUTULLI_URL}'." Type="Variable" Display="always" Required="true" Mask="false">http://tautulli:8181</Config>
   <Config Name="Tautulli API Key" Target="TAUTULLI_API_KEY" Default="/app/secrets/tautulli_key" Mode="" Description="Tautulli API key (required). Can be file path or direct value. Find in Tautulli: Settings → Web Interface → API. Must be referenced in config.yml." Type="Variable" Display="always" Required="true" Mask="true"></Config>
-  <Config Name="Discord Webhook URL" Target="DISCORD_WEBHOOK_URL" Default="" Mode="" Description="Optional: Discord webhook URL or path to file containing URL. Leave empty to disable notifications (default). Uncomment in config.yml to enable." Type="Variable" Display="advanced" Required="false" Mask="false"/>
-  <Config Name="Days Back" Target="DAYS_BACK" Default="" Mode="" Description="Optional: Days to look back for releases (default: 7). Uncomment in config.yml to override default." Type="Variable" Display="advanced" Required="false" Mask="false"/>
-  <Config Name="CRON Schedule" Target="CRON_SCHEDULE" Default="" Mode="" Description="Optional: CRON schedule (default: '0 16 * * SUN' = Sunday 4 PM). Uncomment in config.yml to override default." Type="Variable" Display="advanced" Required="false" Mask="false"/>
-  <Config Name="Run Once" Target="RUN_ONCE" Default="" Mode="" Description="Optional: One-shot mode ('true') or scheduled ('false', default). Uncomment in config.yml to override default." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Discord Webhook URL" Target="DISCORD_WEBHOOK_URL" Default="" Mode="" Description="Optional: Discord webhook URL or path to file containing URL. Leave empty to disable notifications (default). Uncomment in config.yml to enable." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Days Back" Target="DAYS_BACK" Default="" Mode="" Description="Optional: Days to look back for releases (default: 7). Uncomment in config.yml to override default." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="CRON Schedule" Target="CRON_SCHEDULE" Default="" Mode="" Description="Optional: CRON schedule (default: '0 16 * * SUN' = Sunday 4 PM). Uncomment in config.yml to override default." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Run Once" Target="RUN_ONCE" Default="" Mode="" Description="Optional: One-shot mode ('true') or scheduled ('false', default). Uncomment in config.yml to override default." Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Plex URL" Target="PLEX_URL" Default="" Mode="" Description="Optional: Plex server URL for links (default: https://app.plex.tv). Uncomment in config.yml to override default." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="Log Level" Target="LOG_LEVEL" Default="" Mode="" Description="Optional: Logging level (DEBUG, INFO, WARNING, ERROR). Default: INFO. Uncomment in config.yml to override default." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Initial Batch Size" Target="INITIAL_BATCH_SIZE" Default="" Mode="" Description="Optional: Override batch size for Tautulli API fetching (1-10000). Leave empty for automatic sizing based on days_back. Uncomment in config.yml to override." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <TailscaleStateDir/>
 </Container>
