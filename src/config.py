@@ -60,10 +60,10 @@ def _expand_env_vars(data: Dict[str, Any]) -> Dict[str, Any]:
     Supports ${VAR} syntax for environment variable substitution.
     After expansion, also resolves any file paths (for secret files).
     
-    For optional fields: If env var is undefined, logs a warning and sets to None
-    (which allows Pydantic default to be used).
-    For required fields: Undefined env vars are left as-is and will be caught
-    by validation later.
+    For optional fields: If an env var is undefined, logs a warning and omits the
+    key from the expanded dict so that Pydantic defaults apply.
+    For required fields: Undefined env vars are left as-is (with their placeholders)
+    and will be caught by validation later.
     
     Args:
         data: Dictionary with potential ${VAR} references
