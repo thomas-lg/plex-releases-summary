@@ -8,6 +8,9 @@ LABEL org.opencontainers.image.url="https://github.com/thomas-lg/plex-releases-s
 LABEL org.opencontainers.image.source="https://github.com/thomas-lg/plex-releases-summary"
 LABEL org.opencontainers.image.licenses="MIT"
 
+# Prevent Python from writing bytecode files
+ENV PYTHONDONTWRITEBYTECODE=1
+
 WORKDIR /app
 
 # Install gosu for privilege dropping
@@ -23,8 +26,9 @@ COPY src/ src/
 COPY configs/config.yml config.yml.default
 COPY entrypoint.sh .
 
-# Make entrypoint executable
-RUN chmod +x entrypoint.sh
+# Make entrypoint executable and ensure all app files are readable by any user
+RUN chmod +x entrypoint.sh && \
+    chmod -R a+rX /app
 
 # Create default user (will be modified by entrypoint based on PUID/PGID)
 RUN useradd -m -u 1000 appuser

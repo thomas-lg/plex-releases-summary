@@ -41,8 +41,14 @@ echo "==> Running with PUID=$PUID, PGID=$PGID"
 
 # Adjust appuser to match PUID/PGID
 echo "==> Adjusting appuser to UID=$PUID, GID=$PGID"
-groupmod -o -g "$PGID" appuser 2>/dev/null || true
-usermod -o -u "$PUID" appuser 2>/dev/null || true
+
+if ! groupmod -o -g "$PGID" appuser 2>&1; then
+    echo "WARNING: Failed to modify group for appuser (may already be set)" >&2
+fi
+
+if ! usermod -o -u "$PUID" appuser 2>&1; then
+    echo "WARNING: Failed to modify user for appuser (may already be set)" >&2
+fi
 
 # Ensure config directory exists and fix permissions
 echo "==> Ensuring correct permissions on $CONFIG_DIR"
