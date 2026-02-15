@@ -108,14 +108,14 @@ For more execution mode examples, see [docs/CONFIGURATION.md](docs/CONFIGURATION
 ## Example Output
 
 ```
-2025-03-17 10:00:15 - INFO - 🚀 Plex weekly summary starting
-2025-03-17 10:00:15 - INFO - Configuration: Looking back 7 days
-2025-03-17 10:00:15 - INFO - Querying recently added items...
-2025-03-17 10:00:16 - INFO - Retrieved 45 items, filtered to 23 items from last 7 days
-2025-03-17 10:00:16 - INFO - Found 23 recent items matching criteria
-2025-03-17 10:00:16 - INFO - ➕ The Last of Us - S01E03 - Long, Long Time | added: 2025-03-13 14:23
-2025-03-17 10:00:16 - INFO - ➕ Everything Everywhere All at Once (2022) | added: 2025-03-15 20:15
-2025-03-17 10:00:16 - INFO - ➕ Succession - S04E01 - The Munsters | added: 2025-03-14 18:45
+2026-02-15 10:00:15 - INFO - 🚀 Plex weekly summary starting
+2026-02-15 10:00:15 - INFO - Configuration: Looking back 7 days
+2026-02-15 10:00:15 - INFO - Querying recently added items...
+2026-02-15 10:00:16 - INFO - Retrieved 45 items, filtered to 23 items from last 7 days
+2026-02-15 10:00:16 - INFO - Found 23 recent items matching criteria
+2026-02-15 10:00:16 - INFO - ➕ The Last of Us - S01E03 - Long, Long Time | added: 2026-02-12 14:23
+2026-02-15 10:00:16 - INFO - ➕ Everything Everywhere All at Once (2022) | added: 2026-02-13 20:15
+2026-02-15 10:00:16 - INFO - ➕ Succession - S04E01 - The Munsters | added: 2026-02-14 18:45
 ```
 
 > **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal - the application uses client-side filtering to work around Tautulli API date filtering limitations, fetching items in batches until all matches are found.
