@@ -251,7 +251,10 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
         logger.info(f"Loading configuration from {config_path}")
         with open(config_file, "r") as f:
             raw_config = yaml.safe_load(f)
-        # Check for unresolved environment variables in required fields
+        # Pre-validation: Check for unresolved environment variables in required fields
+        # This provides better error messages before Pydantic validation runs
+        # (Pydantic's validation at line 187-201 also checks this, but user experience
+        # is improved by failing fast with a clear message about missing env vars)
         env_var_pattern = re.compile(r'\$\{[^}]+\}')
         required_fields = ["tautulli_url", "tautulli_api_key"]
         missing_vars = []

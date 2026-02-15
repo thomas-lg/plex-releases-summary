@@ -103,7 +103,7 @@ def run_summary(config: Config) -> int:
     )
 
     # Query items with date filter
-    # Note: Tautulli API doesn't support date filtering, we iterate fetching until we pass the time range
+    # Fetch items iteratively since Tautulli API lacks date filtering (see TautulliClient.get_recently_added)
     logger.info("Querying recently added items with iterative fetching...")
 
     # Calculate cutoff timestamp for filtering

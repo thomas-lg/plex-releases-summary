@@ -1,3 +1,5 @@
+"""Tautulli API client for fetching Plex media library data."""
+
 import requests
 import logging
 import time
@@ -21,7 +23,21 @@ class TautulliClient:
         self.api_key = api_key
 
     def _request(self, cmd: str, max_retries: int = 3, **params) -> Dict[str, Any]:
-        """Make a request to Tautulli API with exponential backoff retry logic."""
+        """
+        Make a request to Tautulli API with exponential backoff retry logic.
+        
+        Args:
+            cmd: Tautulli API command to execute
+            max_retries: Maximum number of retry attempts (default: 3)
+            **params: Additional query parameters for the API request
+            
+        Returns:
+            Dict containing the API response data
+            
+        Raises:
+            requests.RequestException: If request fails after all retries
+            RuntimeError: If Tautulli returns unsuccessful response
+        """
         url = f"{self.base_url}/api/v2"
         query = {
             "apikey": self.api_key,
@@ -58,8 +74,16 @@ class TautulliClient:
     def get_recently_added(self, days: int = 7, count: int = 100) -> Dict[str, Any]:
         """
         Get recently added items from Tautulli.
-        Note: Tautulli API doesn't support date filtering, so we retrieve
-        a large number of items and filter client-side.
+        
+        Note: The Tautulli API doesn't support date filtering natively, so this method
+        retrieves a batch of items and the caller must filter them client-side by timestamp.
+        
+        Args:
+            days: Number of days to look back (used for logging; actual filtering happens in caller)
+            count: Maximum number of items to retrieve from API
+            
+        Returns:
+            Dict containing Tautulli API response with 'recently_added' list of media items
         """
         logger.debug("Requesting %d recently added items (will filter to last %d days client-side)", count, days)
 
