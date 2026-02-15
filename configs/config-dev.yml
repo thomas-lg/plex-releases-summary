@@ -5,9 +5,9 @@
 # This configuration is used in development environments.
 # It is mounted over config.yml via docker-compose.dev.yml
 #
-# Development-specific settings:
-#   - run_once: true (run immediately, no scheduling)
-#   - log_level: DEBUG (verbose logging for debugging)
+# Recommended environment variable values for development (set in docker-compose.dev.local.yml):
+#   - RUN_ONCE=true (run immediately, no scheduling)
+#   - LOG_LEVEL=DEBUG (verbose logging for debugging)
 #
 # IMPORTANT: Fields using ${VAR} syntax require corresponding environment variables
 #            to be set in docker-compose.dev.local.yml. For example:
