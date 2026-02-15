@@ -60,6 +60,11 @@ def _expand_env_vars(data: Dict[str, Any]) -> Dict[str, Any]:
     Supports ${VAR} syntax for environment variable substitution.
     After expansion, also resolves any file paths (for secret files).
     
+    For optional fields: If env var is undefined, logs a warning and sets to None
+    (which allows Pydantic default to be used).
+    For required fields: Undefined env vars are left as-is and will be caught
+    by validation later.
+    
     Args:
         data: Dictionary with potential ${VAR} references
         
@@ -71,13 +76,30 @@ def _expand_env_vars(data: Dict[str, Any]) -> Dict[str, Any]:
         {"key": "${SECRET_FILE}"} where SECRET_FILE=/run/secrets/key
             -> {"key": "contents_of_secret_file"}
     """
+    env_var_pattern = re.compile(r'\$\{[^}]+\}')
+    required_fields = {"tautulli_url", "tautulli_api_key"}
+    
     expanded = {}
     for key, value in data.items():
         if isinstance(value, str):
             # Expand environment variables
             expanded_value = os.path.expandvars(value)
-            # Then try to resolve as file path
-            expanded[key] = _resolve_value(expanded_value)
+            
+            # Check if there are still unresolved env vars after expansion
+            if env_var_pattern.search(expanded_value):
+                if key in required_fields:
+                    # Keep as-is for required fields - will fail validation later
+                    expanded[key] = expanded_value
+                else:
+                    # For optional fields, log and omit from dict (Pydantic uses default)
+                    unresolved = env_var_pattern.findall(expanded_value)
+                    logger.warning(
+                        f"Environment variable(s) {unresolved} not defined for field '{key}'. "
+                        f"Using default value instead."
+                    )
+            else:
+                # Then try to resolve as file path
+                expanded[key] = _resolve_value(expanded_value)
         elif isinstance(value, dict):
             expanded[key] = _expand_env_vars(value)
         elif isinstance(value, list):
@@ -184,29 +206,24 @@ class Config(BaseModel):
     
     @model_validator(mode="after")
     def validate_no_unresolved_env_vars(self) -> "Config":
-        """Detect unresolved environment variable references like ${UNDEFINED_VAR}."""
+        """Detect unresolved environment variable references in REQUIRED fields only."""
         import re
         env_var_pattern = re.compile(r'\$\{[^}]+\}')
         
-        # Check all string fields for unresolved ${VAR} patterns
-        string_fields = [
+        # Only check required fields (optional fields already handled by _expand_env_vars)
+        required_fields = [
             ('tautulli_url', self.tautulli_url),
             ('tautulli_api_key', self.tautulli_api_key),
-            ('cron_schedule', self.cron_schedule),
-            ('discord_webhook_url', self.discord_webhook_url),
-            ('plex_url', self.plex_url),
-            ('plex_server_id', self.plex_server_id),
-            ('log_level', self.log_level),
         ]
         
-        for field_name, field_value in string_fields:
+        for field_name, field_value in required_fields:
             if field_value and isinstance(field_value, str):
                 match = env_var_pattern.search(field_value)
                 if match:
                     unresolved_var = match.group(0)
                     raise ValueError(
-                        f"Unresolved environment variable: {unresolved_var} in field '{field_name}'. "
-                        f"Ensure the environment variable is set or remove the reference from config.yml."
+                        f"Unresolved environment variable: {unresolved_var} in REQUIRED field '{field_name}'. "
+                        f"Ensure the environment variable is set or provide a value in config.yml."
                     )
         
         return self

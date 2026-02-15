@@ -28,32 +28,43 @@ tautulli_api_key: ${TAUTULLI_API_KEY}
 # -----------------------------------------------------------------------------
 # DEVELOPMENT OVERRIDES
 # -----------------------------------------------------------------------------
+#
+# NOTE: All optional fields below use environment variable references.
+#       If an environment variable is not defined, the application will log a
+#       warning and use the default value.
 
 # Run once and exit (no scheduling in dev mode)
-run_once: true
+# Default: false
+run_once: ${RUN_ONCE}
 
-# Debug logging
-log_level: DEBUG
+# Logging level
+# Default: INFO
+log_level: ${LOG_LEVEL}
 
 # Discord webhook (optional for testing notifications)
-# discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+# Default: None (disabled)
+discord_webhook_url: ${DISCORD_WEBHOOK_URL}
 
 # -----------------------------------------------------------------------------
-# OPTIONAL FIELDS (uncomment to customize)
+# OPTIONAL FIELDS
 # -----------------------------------------------------------------------------
 
 # Number of days to look back for new media releases
-# Default: 7 days
-# days_back: 7
+# Default: 7
+days_back: ${DAYS_BACK}
+
+# CRON schedule for automatic execution
+# Default: "0 16 * * SUN" (Sundays at 4 PM)
+cron_schedule: ${CRON_SCHEDULE}
 
 # Plex server URL for generating clickable media links
 # Default: https://app.plex.tv
-# plex_url: http://plex:32400
+plex_url: ${PLEX_URL}
 
 # Plex server machine identifier
 # Default: Auto-detected via Tautulli
-# plex_server_id: your-server-machine-id
+plex_server_id: ${PLEX_SERVER_ID}
 
 # Tautulli API batch size (advanced performance tuning)
 # Default: Adaptive batching
-# initial_batch_size: 1000
+initial_batch_size: ${INITIAL_BATCH_SIZE}

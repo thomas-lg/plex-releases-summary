@@ -123,9 +123,8 @@ Optionally send release summaries to Discord with rich embeds showing all new me
 **Quick Setup:**
 
 1. Create webhook in Discord: Server Settings → Integrations → Webhooks → New Webhook
-2. Add to docker-compose.yml: `DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook`
-3. Create secret file: `echo "your-webhook-url" > secrets/discord_webhook`
-4. Add to config.yml: `discord_webhook_url: ${DISCORD_WEBHOOK_URL}`
+2. Create secret file: `echo "your-webhook-url" > secrets/discord_webhook`
+3. Set in docker-compose.yml: `DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook`
 
 **Features:**
 
@@ -240,9 +239,9 @@ The Unraid template already handles auto-creating config.yml on first run. See [
    cd /mnt/user/appdata/plex-releases-summary
    # Download config.yml from the repository
    wget https://raw.githubusercontent.com/thomas-lg/plex-releases-summary/main/configs/config.yml -O config.yml
-   # Edit with your settings
-   nano config.yml
    ```
+
+   The default `config.yml` comes pre-configured with environment variable references. You don't need to edit it for typical use.
 
 3. **Install via Docker** (or Community Applications):
    - **Repository**: `ghcr.io/thomas-lg/plex-releases-summary:latest`
@@ -253,13 +252,11 @@ The Unraid template already handles auto-creating config.yml on first run. See [
 4. **Configure required environment variables:**
    - `TAUTULLI_URL` = `http://tautulli:8181` (required)
    - `TAUTULLI_API_KEY` = `your-api-key` (required)
-   - Optional: See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#optional-field-overrides) for additional settings
-
-   > Environment variables must be referenced in `config.yml` - see configuration guide for details.
+   - Optional: See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#optional-field-overrides) for additional environment variables
 
 ### Editing Configuration on Unraid
 
-Your configuration file is accessible via the Unraid webUI:
+Your configuration file is accessible via the Unraid webUI if you need to customize it:
 
 1. Go to **Shares** → **appdata** → **plex-releases-summary**
 2. Edit `config.yml` with the built-in editor or via SMB share
@@ -286,13 +283,15 @@ See [docker-compose.yml](docker-compose.yml) for the minimal production configur
 
 - **Connection errors**: Verify Tautulli URL/API key, ensure Tautulli is running and accessible
 - **No items found**: Check media was added in time range, increase `days_back` to test
-- **Configuration not working**: Ensure environment variables are referenced in config.yml with `${VAR}` syntax
+- **Configuration not working**: Set the environment variable in docker-compose.yml
+- **Undefined env var warnings**: Optional fields use default values when env vars are undefined - only required fields cause errors
 
 **Enable debug logging:**
 
 ```yaml
-# configs/config.yml
-log_level: DEBUG
+# docker-compose.yml
+environment:
+  - LOG_LEVEL=DEBUG
 ```
 
 For comprehensive troubleshooting and solutions, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#troubleshooting).

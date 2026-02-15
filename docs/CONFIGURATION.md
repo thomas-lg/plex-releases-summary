@@ -58,19 +58,13 @@ All other fields have sensible defaults and work out of the box:
 **Example minimal setup:**
 
 ```yaml
-# configs/config.yml
-tautulli_url: ${TAUTULLI_URL}
-tautulli_api_key: ${TAUTULLI_API_KEY}
-```
-
-```yaml
 # docker-compose.yml
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/app/secrets/tautulli_key
 ```
 
-That's it! Everything else "just works" with defaults.
+The default `config.yml` is already configured with all fields - you only set environment variables for what you want to customize.
 
 ---
 
@@ -160,10 +154,12 @@ For production deployments, use file-based secrets for sensitive values:
 
 Use environment variables for:
 
-- **Required fields** (tautulli_url, tautulli_api_key)
+- **Required fields** (tautulli_url, tautulli_api_key) - **Must be defined**
 - **Optional fields you want to override** (e.g., days_back, discord_webhook_url)
 
 You do **NOT** need environment variables for optional fields you want to keep at their defaults.
+
+> **✨ Lenient Behavior:** If an optional field references an undefined environment variable (e.g., `run_once: ${UNDEFINED_VAR}`), the application will log a warning and use the field's default value instead of failing. Only required fields will cause startup errors if undefined.
 
 ### Environment Variable to Field Mapping
 
@@ -184,10 +180,9 @@ You do **NOT** need environment variables for optional fields you want to keep a
 
 ## Optional Field Overrides
 
-To override any optional field from its default:
+**All optional fields are pre-configured in `config.yml` with environment variable references.**
 
-1. **Add environment variable** to `docker-compose.yml`
-2. **Uncomment and reference** in `config.yml`
+To override any optional field: **Set the environment variable** in `docker-compose.yml`
 
 **Example: Change to daily execution at midnight:**
 
@@ -199,13 +194,6 @@ environment:
   - CRON_SCHEDULE=0 0 * * *
 ```
 
-```yaml
-# configs/config.yml
-tautulli_url: ${TAUTULLI_URL}
-tautulli_api_key: ${TAUTULLI_API_KEY}
-cron_schedule: ${CRON_SCHEDULE} # Uncomment and add this line
-```
-
 **Example: Enable Discord notifications:**
 
 ```yaml
@@ -214,13 +202,6 @@ environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/app/secrets/tautulli_key
   - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
-```
-
-```yaml
-# configs/config.yml
-tautulli_url: ${TAUTULLI_URL}
-tautulli_api_key: ${TAUTULLI_API_KEY}
-discord_webhook_url: ${DISCORD_WEBHOOK_URL} # Uncomment and add this line
 ```
 
 ---
@@ -291,11 +272,7 @@ services:
     restart: unless-stopped
 ```
 
-```yaml
-# configs/config.yml
-tautulli_url: ${TAUTULLI_URL}
-tautulli_api_key: ${TAUTULLI_API_KEY}
-```
+Use the default `config.yml` as-is. All optional fields use their defaults when environment variables are undefined.
 
 ---
 
@@ -317,14 +294,6 @@ services:
       - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
       - CRON_SCHEDULE=0 9 * * *
     restart: unless-stopped
-```
-
-```yaml
-# configs/config.yml
-tautulli_url: ${TAUTULLI_URL}
-tautulli_api_key: ${TAUTULLI_API_KEY}
-discord_webhook_url: ${DISCORD_WEBHOOK_URL}
-cron_schedule: ${CRON_SCHEDULE}
 ```
 
 **Discord Message Format:**
@@ -363,13 +332,6 @@ services:
       - RUN_ONCE=true
 ```
 
-```yaml
-# configs/config.yml
-tautulli_url: ${TAUTULLI_URL}
-tautulli_api_key: ${TAUTULLI_API_KEY}
-run_once: ${RUN_ONCE}
-```
-
 Or run directly with Docker CLI:
 
 ```bash
@@ -404,15 +366,6 @@ services:
     restart: unless-stopped
 ```
 
-```yaml
-# configs/config.yml
-tautulli_url: ${TAUTULLI_URL}
-tautulli_api_key: ${TAUTULLI_API_KEY}
-days_back: ${DAYS_BACK}
-plex_url: ${PLEX_URL}
-log_level: ${LOG_LEVEL}
-```
-
 ---
 
 ## Troubleshooting
@@ -424,31 +377,19 @@ log_level: ${LOG_LEVEL}
 **Solution:** Ensure both steps are complete:
 
 1. ✅ Environment variable set in docker-compose.yml
-2. ✅ Variable referenced in config.yml with `${VAR}` syntax
-
-Example:
-
-```yaml
-# docker-compose.yml
-environment:
-  - DAYS_BACK=14
-
-# configs/config.yml
-days_back: ${DAYS_BACK} # This line is required!
-```
+2. ✅ Variable referenced in config.yml with `${VAR}` syntax (default config.yml has all fields configured)
 
 ---
 
 ### Unresolved Environment Variable Error
 
-**Symptom:** Error message about unresolved environment variable like `${UNDEFINED_VAR}`
+**Symptom:** Error message about unresolved environment variable in a **required field** like `${UNDEFINED_VAR}`
 
-**Cause:** config.yml references an environment variable that is not set
+**Cause:** A **required field** (`tautulli_url` or `tautulli_api_key`) references an environment variable that is not set
 
-**Solution:** Either:
+**Solution:** Set the required environment variable in docker-compose.yml
 
-1. Set the environment variable in docker-compose.yml, OR
-2. Remove or comment out the field in config.yml to use the default
+**Note:** Optional fields with undefined environment variables will log a **warning** (not an error) and use their default values. Only required fields cause startup errors.
 
 ---
 
@@ -459,9 +400,9 @@ days_back: ${DAYS_BACK} # This line is required!
 **Checklist:**
 
 1. ✅ `DISCORD_WEBHOOK_URL` set in docker-compose.yml
-2. ✅ `discord_webhook_url: ${DISCORD_WEBHOOK_URL}` uncommented in config.yml
-3. ✅ Webhook URL is valid (test with `curl -X POST -H "Content-Type: application/json" -d '{"content":"test"}' YOUR_WEBHOOK_URL`)
-4. ✅ If using file-based secret, verify file exists and is readable
+2. ✅ Webhook URL is valid (test with `curl -X POST -H "Content-Type: application/json" -d '{"content":"test"}' YOUR_WEBHOOK_URL`)
+3. ✅ If using file-based secret, verify file exists and is readable
+4. ✅ Check logs for warnings about undefined environment variables
 
 ---
 
@@ -502,15 +443,12 @@ days_back: ${DAYS_BACK} # This line is required!
 
 **Symptom:** Need to debug issues
 
-**Solution:** Enable debug logging:
+**Solution:** Enable debug logging by setting the environment variable:
 
 ```yaml
 # docker-compose.yml
 environment:
   - LOG_LEVEL=DEBUG
-
-# configs/config.yml
-log_level: ${LOG_LEVEL}
 ```
 
 Then check logs:
