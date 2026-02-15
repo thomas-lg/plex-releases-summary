@@ -11,9 +11,31 @@ CONFIG_DIR="/app/configs"
 CONFIG_FILE="${CONFIG_DIR}/config.yml"
 DEFAULT_CONFIG="/app/config.yml.default"
 
+# Validate that a given ID is a numeric value within the range 0–65535.
+validate_id() {
+    value="$1"
+    name="$2"
+
+    # Must be composed only of digits.
+    case "$value" in
+        ''|*[!0-9]*)
+            echo "ERROR: $name must be a positive integer, got '$value'." >&2
+            exit 1
+            ;;
+    esac
+
+    # Must be within the typical UID/GID range.
+    if [ "$value" -lt 0 ] || [ "$value" -gt 65535 ]; then
+        echo "ERROR: $name must be between 0 and 65535, got '$value'." >&2
+        exit 1
+    fi
+}
+
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
 
+validate_id "$PUID" "PUID"
+validate_id "$PGID" "PGID"
 echo "==> Plex Releases Summary - Starting..."
 echo "==> Running with PUID=$PUID, PGID=$PGID"
 
