@@ -112,17 +112,17 @@ class Config(BaseModel):
         description="Tautulli API key for authentication"
     )
     
-    # Core Settings (Required)
+    # Core Settings (Optional with defaults)
     days_back: int = Field(
-        ...,
-        description="Number of days to look back for media releases",
+        default=7,
+        description="Number of days to look back for media releases (default: 7)",
         ge=1
     )
     
-    # Scheduling (Conditionally Required)
+    # Scheduling (Optional with defaults)
     cron_schedule: Optional[str] = Field(
-        None,
-        description="CRON expression for scheduled execution (required unless run_once=true)"
+        default="0 16 * * SUN",
+        description="CRON expression for scheduled execution (default: '0 16 * * SUN' - weekly Sunday 4pm)"
     )
     
     # Discord Configuration (Optional)
@@ -179,6 +179,35 @@ class Config(BaseModel):
                 "cron_schedule is required when run_once is False. "
                 "Either set run_once: true or provide a cron_schedule."
             )
+        return self
+    
+    @model_validator(mode="after")
+    def validate_no_unresolved_env_vars(self) -> "Config":
+        """Detect unresolved environment variable references like ${UNDEFINED_VAR}."""
+        import re
+        env_var_pattern = re.compile(r'\$\{[^}]+\}')
+        
+        # Check all string fields for unresolved ${VAR} patterns
+        string_fields = [
+            ('tautulli_url', self.tautulli_url),
+            ('tautulli_api_key', self.tautulli_api_key),
+            ('cron_schedule', self.cron_schedule),
+            ('discord_webhook_url', self.discord_webhook_url),
+            ('plex_url', self.plex_url),
+            ('plex_server_id', self.plex_server_id),
+            ('log_level', self.log_level),
+        ]
+        
+        for field_name, field_value in string_fields:
+            if field_value and isinstance(field_value, str):
+                match = env_var_pattern.search(field_value)
+                if match:
+                    unresolved_var = match.group(0)
+                    raise ValueError(
+                        f"Unresolved environment variable: {unresolved_var} in field '{field_name}'. "
+                        f"Ensure the environment variable is set or remove the reference from config.yml."
+                    )
+        
         return self
 
 

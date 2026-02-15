@@ -1,0 +1,59 @@
+# =============================================================================
+# Plex Releases Summary - Development Configuration
+# =============================================================================
+#
+# This configuration is used in development environments.
+# It is mounted over config.yml via docker-compose.dev.yml
+#
+# Development-specific settings:
+#   - run_once: true (run immediately, no scheduling)
+#   - log_level: DEBUG (verbose logging for debugging)
+#
+# IMPORTANT: Fields using ${VAR} syntax require corresponding environment variables
+#            to be set in docker-compose.dev.local.yml. For example:
+#            - tautulli_url: ${TAUTULLI_URL} requires TAUTULLI_URL env var
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REQUIRED FIELDS
+# -----------------------------------------------------------------------------
+
+# Tautulli instance URL
+tautulli_url: ${TAUTULLI_URL}
+
+# Tautulli API key
+tautulli_api_key: ${TAUTULLI_API_KEY}
+
+# -----------------------------------------------------------------------------
+# DEVELOPMENT OVERRIDES
+# -----------------------------------------------------------------------------
+
+# Run once and exit (no scheduling in dev mode)
+run_once: true
+
+# Debug logging
+log_level: DEBUG
+
+# Discord webhook (optional for testing notifications)
+# discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+
+# -----------------------------------------------------------------------------
+# OPTIONAL FIELDS (uncomment to customize)
+# -----------------------------------------------------------------------------
+
+# Number of days to look back for new media releases
+# Default: 7 days
+# days_back: 7
+
+# Plex server URL for generating clickable media links
+# Default: https://app.plex.tv
+# plex_url: http://plex:32400
+
+# Plex server machine identifier
+# Default: Auto-detected via Tautulli
+# plex_server_id: your-server-machine-id
+
+# Tautulli API batch size (advanced performance tuning)
+# Default: Adaptive batching
+# initial_batch_size: 1000

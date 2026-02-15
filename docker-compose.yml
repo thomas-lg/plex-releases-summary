@@ -4,19 +4,21 @@ services:
     container_name: plex-releases-summary
     volumes:
       - ./configs:/app/configs:ro
-      # Optional: for file-based secrets
-      # - ./secrets:/app/secrets:ro
-    
-    # Optional: environment variables for secrets
-    # Method 1 - Direct:  TAUTULLI_API_KEY=${TAUTULLI_API_KEY}
-    # Method 2 - File:    TAUTULLI_API_KEY=/app/secrets/tautulli_key
-    # Method 3 - Secrets: TAUTULLI_API_KEY=/run/secrets/tautulli_key (requires secrets: section)
-    # environment:
-    #   - TAUTULLI_API_KEY=${TAUTULLI_API_KEY}
+      - ./secrets:/app/secrets:ro # For file-based secrets
+
+    # Environment variables for configuration
+    # Only 2 required: TAUTULLI_URL and TAUTULLI_API_KEY
+    # For full configuration options, see: docs/CONFIGURATION.md#environment-variables-and-docker
+    environment:
+      # ========== REQUIRED ==========
+      - TAUTULLI_URL=http://tautulli:8181
+      - TAUTULLI_API_KEY=/app/secrets/tautulli_key
 
     restart: on-failure
-
-# Uncomment for Method 3 (Docker Compose secrets syntax)
+# Optional: Docker Compose secrets (alternative to volume-mounted secrets)
+# Uncomment to use Docker secrets instead of volume-mounted files
 # secrets:
 #   tautulli_key:
 #     file: ./secrets/tautulli_key
+#   discord_webhook:
+#     file: ./secrets/discord_webhook

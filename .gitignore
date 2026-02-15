@@ -219,5 +219,4 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Project-specific
-configs/config.yml
 secrets/

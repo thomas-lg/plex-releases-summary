@@ -9,10 +9,11 @@ services:
       - ./src:/app/src
       # Configuration - read/write for live editing
       - ./configs:/app/configs:rw
-    # Optional: Pass secrets for testing
-    # environment:
-    #   - TAUTULLI_API_KEY=${TAUTULLI_API_KEY}
-    #   - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      # Override with development config
+      - ./configs/config-dev.yml:/app/configs/config.yml:ro
+
+    # Set environment variables in docker-compose.dev.local.yml
+    # See docker-compose.dev.local.yml.example for reference
     command: >
       sh -c "echo 'Watching for file changes...' && 
       watchmedo shell-command

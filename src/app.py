@@ -212,7 +212,7 @@ def run_summary(config: Config) -> int:
         })
 
     if len(items) > display_count:
-        logger.info("... and %d more items (set LOG_LEVEL=DEBUG to see all)", len(items) - display_count)
+        logger.info("... and %d more items (set log_level: DEBUG in config.yml to see all)", len(items) - display_count)
 
     # Summary
     logger.info("✅ Summary complete: Found %d items in the last %d days", len(items), days)
@@ -225,7 +225,7 @@ def run_summary(config: Config) -> int:
 
             # Auto-fetch Plex Server ID from Tautulli if not provided
             if not plex_server_id:
-                logger.debug("PLEX_SERVER_ID not set, fetching from Tautulli...")
+                logger.debug("plex_server_id not configured, fetching from Tautulli...")
                 try:
                     server_info = tautulli.get_server_identity()
                     plex_server_id = server_info.get("machine_identifier")

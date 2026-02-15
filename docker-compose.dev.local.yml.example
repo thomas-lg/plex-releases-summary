@@ -1,10 +1,25 @@
-# Example local development overrides
-# Copy this file to docker-compose.dev.local.yml and customize for your environment
-# Usage: docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up
+# Local development overrides - Copy to docker-compose.dev.local.yml and customize
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.dev.local.yml up
+#
+# Minimal setup: Set TAUTULLI_URL and TAUTULLI_API_KEY only.
+# All other fields have defaults - see docs/CONFIGURATION.md#configuration-fields for full options.
 
-# Example: Add custom network
 services:
   app:
+    volumes:
+      # Mount secrets directory for file-based secrets (read-only)
+      - ./secrets:/app/secrets:ro
+    environment:
+      # ========== REQUIRED ==========
+      - TAUTULLI_URL=http://tautulli:8181
+      - TAUTULLI_API_KEY=/app/secrets/tautulli_key
+      
+      # ========== OPTIONAL (uncomment to override defaults) ==========
+      # - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
+      # - DAYS_BACK=14
+      # - LOG_LEVEL=DEBUG
+      
+      # For full options, see: docs/CONFIGURATION.md#optional-field-overrides
     networks:
       - your-network-name
 
