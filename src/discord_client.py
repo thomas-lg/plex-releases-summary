@@ -416,7 +416,7 @@ class DiscordNotifier:
         # Format based on type (year already included in title from app.py)
         return f"• {display_title}"
 
-    def _send_with_retry(self, webhook: DiscordWebhook, max_retries: int = None) -> Any:
+    def _send_with_retry(self, webhook: DiscordWebhook, max_retries: Optional[int] = None) -> Any:
         """
         Send webhook with retry logic for rate limits and transient failures.
 
