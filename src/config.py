@@ -241,7 +241,7 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
     if not config_file.exists():
         error_msg = (
             f"Configuration file not found: {config_path}\n"
-            f"Please create a config.yml file based on config.yml.example"
+            "Please create a config.yml file based on configs/config.yml in the repository."
         )
         logger.error(error_msg)
         raise FileNotFoundError(error_msg)
@@ -259,6 +259,11 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
         required_fields = ["tautulli_url", "tautulli_api_key"]
         missing_vars = []
 
+        if raw_config is None:
+            raise ValueError("Configuration file is empty")
+        if not isinstance(raw_config, dict):
+            raise ValueError("config.yml must contain a mapping/object at the root (not a list, string, or other type)")
+
         for field in required_fields:
             value = raw_config.get(field)
             if isinstance(value, str):
@@ -274,10 +279,6 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
             )
             logger.error(error_msg)
             raise ValueError(error_msg)
-        if raw_config is None:
-            raise ValueError("Configuration file is empty")
-        if not isinstance(raw_config, dict):
-            raise ValueError("config.yml must contain a mapping/object at the root (not a list, string, or other type)")
         
         # Expand environment variables and resolve file paths
         expanded_config = _expand_env_vars(raw_config)

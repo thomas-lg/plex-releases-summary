@@ -147,11 +147,10 @@ git clone https://github.com/thomas-lg/plex-releases-summary.git
 cd plex-releases-summary
 ```
 
-2. Create configuration file:
+2. Update configuration file:
 
 ```bash
-cp configs/config.yml.example configs/config.yml
-# Edit with your settings
+nano configs/config.yml
 # For development, set RUN_ONCE=true and log_level: DEBUG in docker-compose.dev.local.yml
 ```
 
@@ -225,6 +224,8 @@ docker pull ghcr.io/thomas-lg/plex-releases-summary:v1.0.0
 
 Unraid users can easily install and configure this application with volume mapping for easy config editing.
 
+The Unraid template already handles auto-creating config.yml on first run. See [my-plex-releases-summary.xml](my-plex-releases-summary.xml) for the template details.
+
 ### Setup Instructions
 
 1. **Create appdata directory** on your Unraid server:
@@ -237,8 +238,8 @@ Unraid users can easily install and configure this application with volume mappi
 
    ```bash
    cd /mnt/user/appdata/plex-releases-summary
-   # Download config.yml.example from the repository
-   wget https://raw.githubusercontent.com/thomas-lg/plex-releases-summary/main/configs/config.yml.example -O config.yml
+   # Download config.yml from the repository
+   wget https://raw.githubusercontent.com/thomas-lg/plex-releases-summary/main/configs/config.yml -O config.yml
    # Edit with your settings
    nano config.yml
    ```
@@ -307,7 +308,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Security
 
-**Important**: Never commit your `config.yml` file with real credentials or expose your Tautulli API key. The `configs/config.yml` file is gitignored by default. If you accidentally commit secrets, rotate your Tautulli API key immediately.
+**Important**: Never commit your `config.yml` file with real credentials or expose your Tautulli API key. If you accidentally commit secrets, rotate your Tautulli API key immediately.
 
 **Recommended**: Use file-based secrets for sensitive values. Mount a secrets directory and point environment variables to files (e.g., `TAUTULLI_API_KEY=/app/secrets/tautulli_key`). The application automatically reads file contents for any path starting with `/`. For development, you can hardcode values directly in docker-compose.yml.
 
