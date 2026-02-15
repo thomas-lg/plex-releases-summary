@@ -175,73 +175,9 @@ run_once: false
 log_level: INFO
 ```
 
-See [configs/config.yml.example](configs/config.yml.example) for detailed documentation and all available options.
+See [configs/config.yml.example](configs/config.yml.example) for all available options and examples.
 
-### Configuration Reference
-
-| Variable           | Required | Default                | Description                                                                                                                    |
-| ------------------ | -------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `TAUTULLI_URL`     | Yes      | `http://tautulli:8181` | Full URL to your Tautulli instance. Use container name if on same Docker network, or IP address/hostname if different network. |
-| `TAUTULLI_API_KEY` | Yes      | -                      | Your Tautulli API key (found in Tautulli → Settings → Web Interface → API)                                                     |
-| `DAYS_BACK`        | Yes      | `7`                    | Number of days to look back for recently added media.                                                                          |
-| `CRON_SCHEDULE`    | Yes\*    | -                      | CRON expression for scheduled execution (e.g., `0 16 * * SUN`). \*Not required if `RUN_ONCE=true`.                             |
-
-### Discord Notifications (Optional)
-
-| Variable              | Required | Default               | Description                                                                                                                |
-| --------------------- | -------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `DISCORD_WEBHOOK_URL` | No       | -                     | Discord webhook URL for sending release summaries. Leave unset to disable Discord notifications.                           |
-| `PLEX_URL`            | No       | `https://app.plex.tv` | Plex server URL for creating clickable links in Discord. Default works for most users. Only change for custom local links. |
-| `PLEX_SERVER_ID`      | No       | Auto-detected         | Plex server machine identifier (auto-detected from Tautulli). Only set manually if auto-detection fails.                   |
-
-### Execution Mode
-
-| Variable   | Required | Default | Description                                                                                                             |
-| ---------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `RUN_ONCE` | No       | `false` | Set to `true` for one-shot execution (runs once and exits). When `false` or unset, runs as daemon with `CRON_SCHEDULE`. |
-
-### Advanced Settings
-
-| Variable             | Required | Default | Description                                                                                                                                    |
-| -------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LOG_LEVEL`          | No       | `INFO`  | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                                         |
-| `TZ`                 | No       | `UTC`   | Container timezone (e.g., `Europe/Paris`, `America/New_York`). Affects log timestamps and CRON schedule interpretation.                        |
-| `INITIAL_BATCH_SIZE` | No       | Auto    | Override default batch size for fetching items from Tautulli. Auto-determined by `DAYS_BACK`: 100 (1-7 days), 200 (8-30 days), 500 (31+ days). |
-
-### Performance Tuning
-
-The application uses **iterative fetching** to efficiently retrieve media items from Tautulli. Instead of fetching all items at once, it starts with a reasonable batch size and increases if needed.
-
-**Default batch sizes** (automatically determined by `DAYS_BACK`):
-
-- **1-7 days**: 100 items per iteration
-- **8-30 days**: 200 items per iteration
-- **31+ days**: 500 items per iteration
-
-The application will automatically fetch more items if the oldest item is still within the time range, preventing missed items while minimizing unnecessary data transfer.
-
-**Custom batch size** (`initial_batch_size`):
-
-You can override the default behavior in `config.yml` if you:
-
-- Have a very large library with frequent additions (increase to 300-500)
-- Have a slow network connection to Tautulli (decrease to 50-100)
-- Want to optimize for your specific use case
-
-Example:
-
-```yaml
-# configs/config.yml
-initial_batch_size: 150 # Custom batch size
-```
-
-### Getting Your Tautulli API Key
-
-1. Open Tautulli web interface
-2. Go to Settings (⚙️) → Web Interface
-3. Scroll down to "API" section
-4. Copy your API key
-5. **Important**: Keep this key secret! Never commit it to version control.
+**Performance Tuning:** Set `initial_batch_size` in config.yml to override default Tautulli fetch batch size (useful for very large libraries or slow connections).
 
 ## Example Output
 
@@ -262,41 +198,16 @@ Optionally send release summaries to a Discord channel using webhooks. The appli
 
 ### Setting Up Discord Webhook
 
-1. Open your Discord server
-2. Go to **Server Settings** → **Integrations** → **Webhooks**
-3. Click **New Webhook** or **Create Webhook**
-4. Customize the webhook:
-   - Set a name (e.g., "Plex Releases")
-   - Choose the target channel
-   - Optionally set a custom avatar
-5. Click **Copy Webhook URL**
-6. Add the webhook URL to your `config.yml` file:
-
-```yaml
-# configs/config.yml
-discord_webhook_url: ${DISCORD_WEBHOOK_URL} # Or hardcode the URL
-```
+1. **Discord**: Server Settings → Integrations → Webhooks → New Webhook
+2. **Copy** the webhook URL
+3. **Add to config.yml**:
+   ```yaml
+   discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+   ```
 
 ### Plex Direct Links in Discord
 
-Clickable Plex links in Discord messages work **automatically out of the box** - no configuration needed! The application:
-
-- Uses `https://app.plex.tv` by default (works for remote access)
-- Auto-detects your Plex Server ID from Tautulli on startup
-
-**You only need to customize `PLEX_URL` if:**
-
-- You want direct local links instead of Plex.tv links
-- You have a custom Plex server setup
-
-**Example - Custom local links:**
-
-```yaml
-# In your configs/config.yml file
-plex_url: http://plex:32400 # Or your local Plex server URL
-```
-
-> **📝 Note:** If you need to manually set the Plex Server ID (auto-detection failed), find your server's Machine Identifier in Tautulli (Settings → Plex Media Server → "i" icon) or Plex Web (Settings → General → Show Advanced) and add `plex_server_id: your-machine-id` to your `config.yml` file.
+Plex links work automatically using `https://app.plex.tv` and auto-detected Server ID from Tautulli. Set `plex_url` in config.yml only for custom local links.
 
 ### Discord Message Format
 
@@ -478,10 +389,6 @@ Your configuration file is accessible via the Unraid webUI:
 ### Unraid Template (Community Applications)
 
 An Unraid template file is provided at [my-plex-releases-summary.xml](my-plex-releases-summary.xml).
-
-**Note**: The template will need to be updated to use volume mapping instead of individual environment variables. Check the repository for the latest template version.
-
-**Security**: Store sensitive values (API keys, webhooks) as Unraid environment variables in the Docker template, then reference them in `config.yml` using `${VARIABLE_NAME}` syntax.
 
 ## Deployment Options
 

@@ -3,31 +3,20 @@ services:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     container_name: plex-releases-summary
     volumes:
-      # Configuration file - edit config.yml on host
       - ./configs:/app/configs:ro
-      # Optional: Mount secrets directory for file-based secrets (simpler approach)
+      # Optional: for file-based secrets
       # - ./secrets:/app/secrets:ro
-    # Optional: Pass secrets via environment variables (3 methods available)
-    # See config.yml.example for interpolation syntax
-
-    # Method 1: Direct value from host environment
+    
+    # Optional: environment variables for secrets
+    # Method 1 - Direct:  TAUTULLI_API_KEY=${TAUTULLI_API_KEY}
+    # Method 2 - File:    TAUTULLI_API_KEY=/app/secrets/tautulli_key
+    # Method 3 - Secrets: TAUTULLI_API_KEY=/run/secrets/tautulli_key (requires secrets: section)
     # environment:
     #   - TAUTULLI_API_KEY=${TAUTULLI_API_KEY}
 
-    # Method 2: File path with volume mount (simple, recommended)
-    # Requires volume mount above: - ./secrets:/app/secrets:ro
-    # environment:
-    #   - TAUTULLI_API_KEY=/app/secrets/tautulli_key
-
-    # Method 3: Docker Compose secrets (requires secrets section below)
-    # environment:
-    #   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-    # secrets:
-    #   - tautulli_key
-
     restart: on-failure
-# Only needed for Method 3 (Docker Compose secrets syntax)
-# Method 2 works without this section using simple volume mounts
+
+# Uncomment for Method 3 (Docker Compose secrets syntax)
 # secrets:
 #   tautulli_key:
 #     file: ./secrets/tautulli_key

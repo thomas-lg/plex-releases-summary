@@ -4,27 +4,15 @@ This directory contains the application configuration file.
 
 ## Quick Start
 
-1. Copy the example configuration:
-
-   ```bash
-   cp config.yml.example config.yml
-   ```
-
-2. Edit `config.yml` with your settings:
-   - Set your Tautulli URL and API key
-   - Configure schedule or one-shot mode
-   - Optionally add Discord webhook
-
-3. Run with Docker Compose:
-   ```bash
-   docker compose up
-   ```
+1. Copy example: `cp config.yml.example config.yml`
+2. Edit `config.yml` with your Tautulli URL, API key, and schedule
+3. Run: `docker compose up`
 
 ## Configuration Methods
 
-### Method 1: Static Values (Simple)
+### Method 1: Static Values
 
-Hardcode values directly in the YAML file:
+Hardcode values directly in YAML:
 
 ```yaml
 tautulli_url: http://tautulli:8181
@@ -32,26 +20,22 @@ tautulli_api_key: your_api_key_here
 days_back: 7
 ```
 
-### Method 2: Environment Variables (Flexible)
+### Method 2: Environment Variables
 
-Reference environment variables using `${VAR}` syntax:
+Use `${VAR}` syntax in config.yml:
 
 ```yaml
 tautulli_api_key: ${TAUTULLI_API_KEY}
 ```
 
-Then set in docker-compose.yml:
+Set in docker-compose.yml:
 
 ```yaml
 environment:
   - TAUTULLI_API_KEY=your_api_key
 ```
 
-### Method 3: File-Based Secrets (Production)
-
-Use file-based secrets for sensitive data. Two approaches available:
-
-**Approach A: Simple Volume Mount (Recommended)**
+### Method 3: File-Based Secrets (Recommended for Production)
 
 1. Create secret file:
 
@@ -60,7 +44,7 @@ Use file-based secrets for sensitive data. Two approaches available:
    echo "your_api_key" > secrets/tautulli_key
    ```
 
-2. Mount secrets folder in docker-compose.yml:
+2. Mount in docker-compose.yml:
 
    ```yaml
    volumes:
@@ -70,44 +54,19 @@ Use file-based secrets for sensitive data. Two approaches available:
    ```
 
 3. Reference in config.yml:
-
    ```yaml
    tautulli_api_key: ${TAUTULLI_API_KEY}
    ```
 
-The application automatically detects paths starting with `/` and reads the file content.
+The app automatically reads file content for paths starting with `/`.
 
-**Approach B: Docker Compose Secrets Syntax**
-
-1. Create secret file (same as above)
-
-2. Use Docker Compose secrets feature:
-
-   ```yaml
-   services:
-     app:
-       environment:
-         - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-       secrets:
-         - tautulli_key
-
-   secrets:
-     tautulli_key:
-       file: ./secrets/tautulli_key
-   ```
-
-3. Reference in config.yml (same as Approach A)
-
-Both approaches work identically. Approach A is simpler and more flexible.
+_Advanced: Docker Compose secrets: syntax also supported (see docker-compose.yml)_
 
 ## Files
 
-- `config.yml.example` - Example configuration with all options documented
-- `config.yml` - Your actual configuration (gitignored, not committed to repo)
-- `README.md` - This file
+- `config.yml.example` - Example configuration with all options
+- `config.yml` - Your configuration (gitignored)
 
 ## Security
 
-⚠️ **Important**: The `config.yml` file is gitignored. Never commit real credentials to version control.
-
-For maximum security, use Method 3 (File-Based Secrets) to keep sensitive values separate from the config file. Approach A (simple volume mount) is recommended for its simplicity and flexibility.
+⚠️ Never commit `config.yml` with real credentials. Use Method 3 for production.
