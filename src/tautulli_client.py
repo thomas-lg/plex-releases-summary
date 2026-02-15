@@ -3,7 +3,7 @@
 import requests
 import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger("plex-weekly.tautulli")
 
@@ -27,7 +27,7 @@ class TautulliClient:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
 
-    def _request(self, cmd: str, max_retries: int = None, **params) -> Dict[str, Any]:
+    def _request(self, cmd: str, max_retries: Optional[int] = None, **params) -> Dict[str, Any]:
         """
         Make a request to Tautulli API with exponential backoff retry logic.
         
