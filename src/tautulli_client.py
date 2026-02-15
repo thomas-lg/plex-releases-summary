@@ -11,6 +11,11 @@ logger = logging.getLogger("plex-weekly.tautulli")
 class TautulliClient:
     """Client for interacting with Tautulli API."""
 
+    # Request configuration
+    DEFAULT_TIMEOUT = 10  # seconds
+    DEFAULT_MAX_RETRIES = 3
+    RETRY_BACKOFF_BASE = 2  # Exponential backoff base (1s, 2s, 4s, ...)
+
     def __init__(self, base_url: str, api_key: str):
         """
         Initialize Tautulli client.
@@ -22,13 +27,13 @@ class TautulliClient:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
 
-    def _request(self, cmd: str, max_retries: int = 3, **params) -> Dict[str, Any]:
+    def _request(self, cmd: str, max_retries: int = None, **params) -> Dict[str, Any]:
         """
         Make a request to Tautulli API with exponential backoff retry logic.
         
         Args:
             cmd: Tautulli API command to execute
-            max_retries: Maximum number of retry attempts (default: 3)
+            max_retries: Maximum number of retry attempts (default: DEFAULT_MAX_RETRIES)
             **params: Additional query parameters for the API request
             
         Returns:
@@ -38,6 +43,9 @@ class TautulliClient:
             requests.RequestException: If request fails after all retries
             RuntimeError: If Tautulli returns unsuccessful response
         """
+        if max_retries is None:
+            max_retries = self.DEFAULT_MAX_RETRIES
+            
         url = f"{self.base_url}/api/v2"
         query = {
             "apikey": self.api_key,
@@ -49,7 +57,7 @@ class TautulliClient:
         last_exception = None
         for attempt in range(max_retries):
             try:
-                resp = requests.get(url, params=query, timeout=10)
+                resp = requests.get(url, params=query, timeout=self.DEFAULT_TIMEOUT)
                 resp.raise_for_status()
 
                 data = resp.json()
@@ -60,7 +68,7 @@ class TautulliClient:
             except (requests.RequestException, RuntimeError) as e:
                 last_exception = e
                 if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    wait_time = self.RETRY_BACKOFF_BASE ** attempt  # Exponential backoff: 1s, 2s, 4s
                     logger.warning(
                         "Request failed (attempt %d/%d): %s. Retrying in %ds...",
                         attempt + 1, max_retries, e, wait_time

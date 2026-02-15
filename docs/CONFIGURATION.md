@@ -23,20 +23,28 @@ Complete configuration guide for Plex Releases Summary. This document covers all
 
 All configuration fields are defined in `src/config.py`. The table below shows all available options:
 
-| Field                  | Type    | Required         | Default                 | Validation                            | Description                                                         |
-| ---------------------- | ------- | ---------------- | ----------------------- | ------------------------------------- | ------------------------------------------------------------------- |
-| **`tautulli_url`**     | string  | ✅ **Yes**       | -                       | -                                     | Full URL to Tautulli instance (e.g., `http://tautulli:8181`)        |
-| **`tautulli_api_key`** | string  | ✅ **Yes**       | -                       | -                                     | Tautulli API key (find in Tautulli: Settings → Web Interface → API) |
-| `days_back`            | integer | No               | `7`                     | ≥ 1                                   | Number of days to look back for new media releases                  |
-| `cron_schedule`        | string  | ⚠️ Conditional\* | `"0 16 * * SUN"`        | Valid CRON                            | CRON expression for scheduled execution (Sundays at 4 PM)           |
-| `discord_webhook_url`  | string  | No               | `None`                  | -                                     | Discord webhook URL for notifications (optional)                    |
-| `plex_url`             | string  | No               | `"https://app.plex.tv"` | -                                     | Plex server URL for generating clickable media links                |
-| `plex_server_id`       | string  | No               | Auto-detected           | -                                     | Plex server machine identifier (auto-detected via Tautulli)         |
-| `run_once`             | boolean | No               | `false`                 | -                                     | `true` = one-shot execution, `false` = scheduled mode               |
-| `log_level`            | string  | No               | `"INFO"`                | DEBUG, INFO, WARNING, ERROR, CRITICAL | Logging verbosity level                                             |
-| `initial_batch_size`   | integer | No               | Adaptive                | 1-10000                               | Tautulli API batch size for large libraries (advanced)              |
+| Field                  | Type    | Required         | Default                 | Validation                            | Description                                                                        |
+| ---------------------- | ------- | ---------------- | ----------------------- | ------------------------------------- | ---------------------------------------------------------------------------------- |
+| **`tautulli_url`**     | string  | ✅ **Yes**       | -                       | -                                     | Full URL to Tautulli instance (e.g., `http://tautulli:8181`)                       |
+| **`tautulli_api_key`** | string  | ✅ **Yes**       | -                       | -                                     | Tautulli API key (find in Tautulli: Settings → Web Interface → API)                |
+| `days_back`            | integer | No               | `7`                     | ≥ 1                                   | Number of days to look back for new media releases                                 |
+| `cron_schedule`        | string  | ⚠️ Conditional\* | `"0 16 * * SUN"`        | Valid CRON                            | CRON expression for scheduled execution (Sundays at 4 PM)                          |
+| `discord_webhook_url`  | string  | No               | `None`                  | -                                     | Discord webhook URL for notifications (optional)                                   |
+| `plex_url`             | string  | No               | `"https://app.plex.tv"` | -                                     | Plex server URL for generating clickable media links                               |
+| `plex_server_id`       | string  | No               | Auto-detected           | -                                     | Plex server machine identifier (auto-detected via Tautulli when Discord enabled)   |
+| `run_once`             | boolean | No               | `false`                 | -                                     | `true` = one-shot execution, `false` = scheduled mode                              |
+| `log_level`            | string  | No               | `"INFO"`                | DEBUG, INFO, WARNING, ERROR, CRITICAL | Logging verbosity level                                                            |
+| `initial_batch_size`   | integer | No               | Adaptive\*              | 1-10000                               | Tautulli API batch size (adaptive: 100 for ≤7 days, 200 for ≤30 days, 500 for >30) |
 
 **\* Conditional:** `cron_schedule` is required when `run_once` is `false` (scheduled mode).
+
+**\* Adaptive Batch Size:** Automatically calculated based on `days_back` value:
+
+- **≤7 days:** 100 items per batch (typical weekly use)
+- **≤30 days:** 200 items per batch (monthly summaries)
+- **>30 days:** 500 items per batch (large historical queries)
+
+This optimizes API calls for different time ranges. Override with `INITIAL_BATCH_SIZE` environment variable only for large libraries with specific performance needs.
 
 ---
 
@@ -66,6 +74,10 @@ environment:
 
 The default `config.yml` is already configured with all fields - you only set environment variables for what you want to customize.
 
+> **Timezone:** Container defaults to UTC. To use your local timezone, set `TZ` environment variable (e.g., `TZ=America/New_York`, `TZ=Europe/Paris`). CRON schedules will run in the configured timezone. Use [crontab.guru](https://crontab.guru) to validate CRON expressions.
+
+> **Iteration Logs:** You may see logs like "iteration 1, 2, 3...". This is normal - Tautulli API lacks date filtering, so the application fetches items in batches and filters client-side until all matches are found.
+
 ---
 
 ## Configuration Methods
@@ -87,6 +99,17 @@ environment:
 
 ```yaml
 tautulli_url: ${TAUTULLI_URL}
+```
+
+**For optional fields:** They already have `${VAR}` placeholders. Just set the environment variable - no config editing needed!
+
+```yaml
+# docker-compose.yml - set this
+environment:
+  - DAYS_BACK=14
+
+# config.yml - already has this, no editing needed
+days_back: ${DAYS_BACK}
 ```
 
 **Why two steps?** The application reads from `config.yml`, not directly from environment variables. Using `${VAR}` syntax in the YAML file tells the application to substitute the environment variable's value.
@@ -159,7 +182,13 @@ Use environment variables for:
 
 You do **NOT** need environment variables for optional fields you want to keep at their defaults.
 
-> **✨ Lenient Behavior:** If an optional field references an undefined environment variable (e.g., `run_once: ${UNDEFINED_VAR}`), the application will log a warning and use the field's default value instead of failing. Only required fields will cause startup errors if undefined.
+> **✨ Lenient Behavior:** Optional fields use `${VAR}` placeholders by default:
+>
+> - **Undefined env var** (not set): Silently uses default value (clean logs)
+> - **Empty env var** (set to `""`): Logs WARNING, uses default (possible mistake)
+> - **Valid env var**: Uses your custom value
+>
+> Only required fields will cause startup errors if undefined or empty.
 
 ### Environment Variable to Field Mapping
 
@@ -180,29 +209,49 @@ You do **NOT** need environment variables for optional fields you want to keep a
 
 ## Optional Field Overrides
 
-**All optional fields are pre-configured in `config.yml` with environment variable references.**
+**All optional fields are pre-configured with `${VAR}` placeholders** in `config.yml`.
 
-To override any optional field: **Set the environment variable** in `docker-compose.yml`
+To override: **Just set the environment variable** in `docker-compose.yml`. No config file editing needed!
 
 **Example: Change to daily execution at midnight:**
 
 ```yaml
-# docker-compose.yml
+# docker-compose.yml - just add this env var
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/app/secrets/tautulli_key
   - CRON_SCHEDULE=0 0 * * *
 ```
 
+The config.yml already has `cron_schedule: ${CRON_SCHEDULE}`, so it will automatically use your value.
+
 **Example: Enable Discord notifications:**
 
 ```yaml
-# docker-compose.yml
+# docker-compose.yml - just add this env var
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/app/secrets/tautulli_key
   - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
 ```
+
+The config.yml already has `discord_webhook_url: ${DISCORD_WEBHOOK_URL}`, so it will automatically use your value.
+
+### Discord Embed Limits
+
+Discord enforces the following limits on embeds:
+
+- **6000 characters** per embed (total)
+- **1024 characters** per field (enforced, no splitting)
+- **25 fields** maximum per embed
+
+The application automatically handles these limits:
+
+- **Long fields:** Split across multiple fields at 1024 chars (preserves readability)
+- **Too many fields:** Trims oldest entries when exceeding 25 fields (keeps most recent items)
+- **Oversized embeds:** Unlikely to cause issues due to field-level trimming, but if total exceeds 6000 chars, Discord may reject (rare)
+
+**Retry Logic:** Both Tautulli and Discord clients use exponential backoff with 3 retry attempts and increasing delays to handle transient network failures gracefully.
 
 ---
 
@@ -272,7 +321,7 @@ services:
     restart: unless-stopped
 ```
 
-Use the default `config.yml` as-is. All optional fields use their defaults when environment variables are undefined.
+Use the default `config.yml` as-is. All optional fields use their defaults silently when environment variables are not set (clean logs).
 
 ---
 
@@ -385,11 +434,11 @@ services:
 
 **Symptom:** Error message about unresolved environment variable in a **required field** like `${UNDEFINED_VAR}`
 
-**Cause:** A **required field** (`tautulli_url` or `tautulli_api_key`) references an environment variable that is not set
+**Cause:** A **required field** (`tautulli_url` or `tautulli_api_key`) references an environment variable that is not set or is empty
 
-**Solution:** Set the required environment variable in docker-compose.yml
+**Solution:** Set the required environment variable in docker-compose.yml to a non-empty value
 
-**Note:** Optional fields with undefined environment variables will log a **warning** (not an error) and use their default values. Only required fields cause startup errors.
+**Note:** Optional fields with undefined environment variables silently use their default values (no log messages). Empty strings log a WARNING (possible configuration mistake). Only required fields cause startup errors.
 
 ---
 
@@ -402,7 +451,7 @@ services:
 1. ✅ `DISCORD_WEBHOOK_URL` set in docker-compose.yml
 2. ✅ Webhook URL is valid (test with `curl -X POST -H "Content-Type: application/json" -d '{"content":"test"}' YOUR_WEBHOOK_URL`)
 3. ✅ If using file-based secret, verify file exists and is readable
-4. ✅ Check logs for warnings about undefined environment variables
+4. ✅ Check logs for warnings about undefined or empty environment variables
 
 ---
 
@@ -415,14 +464,23 @@ services:
 1. ✅ `run_once` is `false` (or not set)
 2. ✅ `cron_schedule` is valid CRON expression
 3. ✅ Check container logs: `docker logs plex-releases-summary`
-4. ✅ Verify timezone if needed (container uses UTC by default)
+4. ✅ Verify timezone - container defaults to UTC unless `TZ` environment variable is set
 
 **CRON Expression Help:**
 
-- `0 16 * * SUN` = Sundays at 4:00 PM
-- `0 0 * * *` = Daily at midnight
+- `0 16 * * SUN` = Sundays at 4:00 PM in container timezone
+- `0 0 * * *` = Daily at midnight in container timezone
 - `0 */6 * * *` = Every 6 hours
 - Use [crontab.guru](https://crontab.guru) to validate expressions
+
+**Setting Timezone:**
+
+```yaml
+# docker-compose.yml
+environment:
+  - TZ=America/New_York # Use your timezone
+  - CRON_SCHEDULE=0 16 * * SUN # Now runs 4 PM Eastern
+```
 
 ---
 
@@ -436,6 +494,34 @@ services:
 2. Check volume mount in docker-compose.yml: `- ./secrets:/app/secrets:ro`
 3. Ensure file path in env var matches: `TAUTULLI_API_KEY=/app/secrets/tautulli_key`
 4. Check file permissions: `chmod 600 secrets/tautulli_key`
+
+---
+
+### Validation Errors
+
+**Symptom:** Pydantic validation error on startup
+
+**Common causes:**
+
+- `days_back` must be integer ≥1
+- `log_level` must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL
+- `initial_batch_size` must be between 1-10000
+- `cron_schedule` must be valid CRON expression
+
+**Solution:** Check environment variable values match expected types and constraints.
+
+---
+
+### Docker Networking Issues
+
+**Symptom:** Connection refused to Tautulli from container
+
+**Solution:**
+
+- If Tautulli is in separate container, ensure both use same Docker network
+- Use container name (e.g., `http://tautulli:8181`) if on same network
+- Use host IP (e.g., `http://192.168.1.100:8181`) for external Tautulli
+- On Docker Desktop: use `host.docker.internal` instead of `localhost`
 
 ---
 

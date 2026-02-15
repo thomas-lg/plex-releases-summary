@@ -29,9 +29,10 @@ tautulli_api_key: ${TAUTULLI_API_KEY}
 # DEVELOPMENT OVERRIDES
 # -----------------------------------------------------------------------------
 #
-# NOTE: All optional fields below use environment variable references.
-#       If an environment variable is not defined, the application will log a
-#       warning and use the default value.
+# NOTE: Development config has fields with ${VAR} placeholders.
+#       - Undefined env vars: silently uses defaults (clean logs)
+#       - Empty env vars: logs WARNING, uses defaults (possible mistake)
+#       Set these in docker-compose.dev.local.yml to override defaults.
 
 # Run once and exit (no scheduling in dev mode)
 # Default: false

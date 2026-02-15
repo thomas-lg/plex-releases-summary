@@ -26,6 +26,7 @@
 #    Reference in config.yml: tautulli_api_key: ${TAUTULLI_API_KEY}
 #    The file content is automatically read.
 #
+#
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -46,17 +47,21 @@ tautulli_api_key: ${TAUTULLI_API_KEY}
 # -----------------------------------------------------------------------------
 # For full descriptions and examples, see: docs/CONFIGURATION.md#optional-field-overrides
 #
-# NOTE: All optional fields below use environment variable references.
-#       If an environment variable is not defined, the application will log a
-#       warning and use the default value. Only required fields (above) will
-#       cause startup errors if environment variables are undefined.
+# NOTE: Optional fields below use environment variable references.
+#       If you don't set an environment variable:
+#       - Undefined: silently uses default value (clean logs)
+#       - Empty string (e.g., DAYS_BACK=""): logs WARNING, uses default (possible mistake)
+#
+#       To override: Just set the environment variable in docker-compose.yml.
+#       No need to edit this file for typical use.
 
 # Number of days to look back for new media releases
 # Default: 7
 days_back: ${DAYS_BACK}
 
 # CRON schedule for automatic execution
-# Default: "0 16 * * SUN" (Sundays at 4 PM)
+# Default: "0 16 * * SUN" (Sundays at 4 PM in container timezone)
+# Timezone: Defaults to UTC. Set TZ environment variable to use local timezone (e.g., TZ=America/New_York)
 cron_schedule: ${CRON_SCHEDULE}
 
 # Run mode: true = run once and exit, false = continuous scheduled execution
@@ -80,5 +85,5 @@ plex_server_id: ${PLEX_SERVER_ID}
 log_level: ${LOG_LEVEL}
 
 # Tautulli API batch size (advanced performance tuning)
-# Default: Adaptive (recommended)
+# Default: Adaptive (100 for ≤7 days, 200 for ≤30 days, 500 for >30 days)
 initial_batch_size: ${INITIAL_BATCH_SIZE}
