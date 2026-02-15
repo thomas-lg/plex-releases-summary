@@ -17,7 +17,8 @@ services:
       # ========== OPTIONAL (uncomment to override defaults) ==========
       # - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
       # - DAYS_BACK=14
-      # - LOG_LEVEL=DEBUG
+      - RUN_ONCE=true
+      - LOG_LEVEL=DEBUG
       
       # For full options, see: docs/CONFIGURATION.md#optional-field-overrides
     networks:
