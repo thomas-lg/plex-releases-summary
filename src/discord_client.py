@@ -335,7 +335,7 @@ class DiscordNotifier:
         first_date = items[0].get('added_at', '')
         last_date = items[-1].get('added_at', '')
 
-        # Convert MM/DD to DD/MM format
+        # Convert from MM/DD (internal format) to DD/MM (display format)
         try:
             # Parse MM/DD format
             if '/' in first_date and '/' in last_date:

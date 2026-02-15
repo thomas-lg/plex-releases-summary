@@ -5,12 +5,17 @@ services:
       dockerfile: Dockerfile.dev
     container_name: plex-releases-summary-dev
     volumes:
+      # Source code for hot reload
       - ./src:/app/src
-    env_file:
-      - .env
-    environment:
-      - LOG_LEVEL=DEBUG # Override .env for development
-      - RUN_ONCE=true # Run once per file change instead of continuous scheduling
+      # Configuration - read/write for live editing
+      - ./configs:/app/configs:rw
+      # Override with development config
+      - ./configs/config-dev.yml:/app/configs/config.yml:ro
+      # Secrets - read-only
+      - ./secrets:/app/secrets:ro
+
+    # Set environment variables in docker-compose.dev.local.yml
+    # See docker-compose.dev.local.yml.example for reference
     command: >
       sh -c "echo 'Watching for file changes...' && 
       watchmedo shell-command

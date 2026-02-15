@@ -1,0 +1,80 @@
+# =============================================================================
+# Plex Releases Summary - Configuration File
+# =============================================================================
+#
+# MINIMAL CONFIGURATION: Only 2 fields are required!
+#   - tautulli_url
+#   - tautulli_api_key
+#
+# All other fields have smart defaults and work out of the box.
+# Uncomment optional fields ONLY if you want to override defaults.
+#
+# For full configuration reference, see: docs/CONFIGURATION.md#configuration-fields
+#
+# =============================================================================
+# CONFIGURATION METHODS:
+#
+# 1. Environment Variables (Recommended for Docker):
+#    Set in docker-compose.yml: TAUTULLI_URL=http://tautulli:8181
+#    Reference in config.yml: tautulli_url: ${TAUTULLI_URL}
+#
+# 2. Hardcoded Values (Simple for testing):
+#    tautulli_url: http://192.168.1.100:8181
+#
+# 3. Docker Secrets (Best for production):
+#    Set in docker-compose.yml: TAUTULLI_API_KEY=/app/secrets/tautulli_key
+#    Reference in config.yml: tautulli_api_key: ${TAUTULLI_API_KEY}
+#    The file content is automatically read.
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REQUIRED FIELDS
+# -----------------------------------------------------------------------------
+
+# Tautulli instance URL
+# Examples: http://localhost:8181, http://tautulli:8181, https://tautulli.example.com
+tautulli_url: ${TAUTULLI_URL}
+
+# Tautulli API key
+# Find it in Tautulli: Settings → Web Interface → API Key
+# Recommended: Use environment variable or secret for security
+tautulli_api_key: ${TAUTULLI_API_KEY}
+
+# -----------------------------------------------------------------------------
+# OPTIONAL FIELDS (uncomment and set to override defaults)
+# -----------------------------------------------------------------------------
+# For full descriptions and examples, see: docs/CONFIGURATION.md#optional-field-overrides
+
+# Number of days to look back for new media releases
+# Default: 7
+# days_back: 14
+
+# CRON schedule for automatic execution
+# Default: "0 16 * * SUN" (Sundays at 4 PM)
+# cron_schedule: "0 0 * * *"
+
+# Run mode: true = run once and exit, false = continuous scheduled execution
+# Default: false
+# run_once: true
+
+# Discord webhook URL for notifications
+# Default: None (disabled)
+# discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+
+# Plex server URL for generating clickable media links
+# Default: https://app.plex.tv
+# plex_url: http://plex:32400
+
+# Plex server machine identifier
+# Default: Auto-detected via Tautulli
+# plex_server_id: your-server-machine-id
+
+# Logging level
+# Default: INFO
+# log_level: DEBUG
+
+# Tautulli API batch size (advanced performance tuning)
+# Default: Adaptive (recommended)
+# initial_batch_size: 1000
+

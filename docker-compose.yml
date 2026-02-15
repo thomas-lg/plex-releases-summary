@@ -2,6 +2,23 @@ services:
   app:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     container_name: plex-releases-summary
-    env_file:
-      - .env
+    volumes:
+      - ./configs:/app/configs:rw
+      - ./secrets:/app/secrets:ro
+
+    # Environment variables for configuration
+    # Only 2 required: TAUTULLI_URL and TAUTULLI_API_KEY
+    # For full configuration options, see: docs/CONFIGURATION.md#environment-variables-and-docker
+    environment:
+      # ========== REQUIRED ==========
+      - TAUTULLI_URL=http://tautulli:8181
+      - TAUTULLI_API_KEY=/app/secrets/tautulli_key
+
     restart: on-failure
+# Optional: Docker Compose secrets (alternative to volume-mounted secrets)
+# Uncomment to use Docker secrets instead of volume-mounted files
+# secrets:
+#   tautulli_key:
+#     file: ./secrets/tautulli_key
+#   discord_webhook:
+#     file: ./secrets/discord_webhook
