@@ -31,8 +31,8 @@ validate_id() {
     fi
 }
 
-PUID=${PUID:-1000}
-PGID=${PGID:-1000}
+PUID=${PUID:-99}
+PGID=${PGID:-100}
 
 validate_id "$PUID" "PUID"
 validate_id "$PGID" "PGID"
