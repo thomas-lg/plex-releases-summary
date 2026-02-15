@@ -2,14 +2,31 @@
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import yaml
-import re
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
+
+# Constants
+ENV_VAR_PATTERN = re.compile(r'\$\{[^}]+\}')
+REQUIRED_FIELDS = {"tautulli_url", "tautulli_api_key"}
+
+
+def _is_env_var_reference(value: str) -> bool:
+    """
+    Check if a string value is an environment variable reference.
+    
+    Args:
+        value: String to check
+        
+    Returns:
+        True if value matches ${VAR} pattern, False otherwise
+    """
+    return isinstance(value, str) and bool(ENV_VAR_PATTERN.search(value))
 
 
 def _resolve_value(value: Any) -> Any:
@@ -39,10 +56,8 @@ def _resolve_value(value: Any) -> Any:
                 return content
             except Exception as e:
                 logger.warning(f"Failed to read file {value}: {e}")
-                # Return original value if read fails
                 return value
         else:
-            # Path doesn't exist - might be a regular value, not a file path
             logger.info(f"Path {value} does not exist, treating as literal value")
             return value
     elif isinstance(value, dict):
@@ -60,24 +75,39 @@ def _expand_env_vars(data: Dict[str, Any]) -> Dict[str, Any]:
     Supports ${VAR} syntax for environment variable substitution.
     After expansion, also resolves any file paths (for secret files).
     
+    For optional fields: 
+    - Undefined env vars: Silently omitted (Pydantic defaults apply)
+    - Empty env vars: Logs WARNING and omitted (possible config mistake)
+    For required fields: Undefined/empty env vars are kept and caught by validation.
+    
     Args:
         data: Dictionary with potential ${VAR} references
         
     Returns:
         Dictionary with all environment variables expanded and files resolved
-        
-    Examples:
-        {"key": "${API_KEY}"} -> {"key": "actual_api_key_value"}
-        {"key": "${SECRET_FILE}"} where SECRET_FILE=/run/secrets/key
-            -> {"key": "contents_of_secret_file"}
     """
     expanded = {}
     for key, value in data.items():
         if isinstance(value, str):
-            # Expand environment variables
+            is_env_var_ref = _is_env_var_reference(value)
             expanded_value = os.path.expandvars(value)
-            # Then try to resolve as file path
-            expanded[key] = _resolve_value(expanded_value)
+            
+            # Check if there are still unresolved env vars after expansion (undefined)
+            if ENV_VAR_PATTERN.search(expanded_value):
+                if key in REQUIRED_FIELDS:
+                    expanded[key] = expanded_value
+                # For optional fields, silently omit (expected behavior)
+            # Check if env var expanded to empty string (defined but empty)
+            elif is_env_var_ref and expanded_value == "":
+                if key in REQUIRED_FIELDS:
+                    expanded[key] = expanded_value
+                else:
+                    logger.warning(
+                        f"Environment variable for field '{key}' is defined but empty. "
+                        f"Using default value instead."
+                    )
+            else:
+                expanded[key] = _resolve_value(expanded_value)
         elif isinstance(value, dict):
             expanded[key] = _expand_env_vars(value)
         elif isinstance(value, list):
@@ -85,7 +115,6 @@ def _expand_env_vars(data: Dict[str, Any]) -> Dict[str, Any]:
                 os.path.expandvars(item) if isinstance(item, str) else item
                 for item in value
             ]
-            # Resolve file paths in list items
             expanded[key] = [_resolve_value(item) for item in expanded[key]]
         else:
             expanded[key] = value
@@ -184,29 +213,19 @@ class Config(BaseModel):
     
     @model_validator(mode="after")
     def validate_no_unresolved_env_vars(self) -> "Config":
-        """Detect unresolved environment variable references like ${UNDEFINED_VAR}."""
-        import re
-        env_var_pattern = re.compile(r'\$\{[^}]+\}')
-        
-        # Check all string fields for unresolved ${VAR} patterns
-        string_fields = [
+        """Detect unresolved environment variable references in required fields."""
+        required_fields = [
             ('tautulli_url', self.tautulli_url),
             ('tautulli_api_key', self.tautulli_api_key),
-            ('cron_schedule', self.cron_schedule),
-            ('discord_webhook_url', self.discord_webhook_url),
-            ('plex_url', self.plex_url),
-            ('plex_server_id', self.plex_server_id),
-            ('log_level', self.log_level),
         ]
         
-        for field_name, field_value in string_fields:
+        for field_name, field_value in required_fields:
             if field_value and isinstance(field_value, str):
-                match = env_var_pattern.search(field_value)
+                match = ENV_VAR_PATTERN.search(field_value)
                 if match:
-                    unresolved_var = match.group(0)
                     raise ValueError(
-                        f"Unresolved environment variable: {unresolved_var} in field '{field_name}'. "
-                        f"Ensure the environment variable is set or remove the reference from config.yml."
+                        f"Unresolved environment variable: {match.group(0)} in required field '{field_name}'. "
+                        f"Ensure the environment variable is set or provide a value in config.yml."
                     )
         
         return self
@@ -247,27 +266,24 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
         raise FileNotFoundError(error_msg)
     
     try:
-        # Load YAML file
         logger.info(f"Loading configuration from {config_path}")
         with open(config_file, "r") as f:
             raw_config = yaml.safe_load(f)
-        # Pre-validation: Check for unresolved environment variables in required fields
-        # This provides better error messages before Pydantic validation runs
-        # (Pydantic's validation at line 187-201 also checks this, but user experience
-        # is improved by failing fast with a clear message about missing env vars)
-        env_var_pattern = re.compile(r'\$\{[^}]+\}')
-        required_fields = ["tautulli_url", "tautulli_api_key"]
-        missing_vars = []
-
+        
+        # Pre-validation: Check for unresolved env vars in required fields
         if raw_config is None:
             raise ValueError("Configuration file is empty")
         if not isinstance(raw_config, dict):
-            raise ValueError("config.yml must contain a mapping/object at the root (not a list, string, or other type)")
-
-        for field in required_fields:
+            raise ValueError(
+                "config.yml must contain a mapping/object at the root "
+                "(not a list, string, or other type)"
+            )
+        
+        missing_vars = []
+        for field in ["tautulli_url", "tautulli_api_key"]:
             value = raw_config.get(field)
             if isinstance(value, str):
-                matches = env_var_pattern.findall(os.path.expandvars(value))
+                matches = ENV_VAR_PATTERN.findall(os.path.expandvars(value))
                 if matches:
                     missing_vars.extend([f"{field}: {match}" for match in matches])
 
@@ -279,7 +295,6 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
             )
             logger.error(error_msg)
             raise ValueError(error_msg)
-        
         # Expand environment variables and resolve file paths
         expanded_config = _expand_env_vars(raw_config)
         

@@ -10,6 +10,9 @@ from discord_client import DiscordNotifier
 
 logger = logging.getLogger("plex-weekly")
 
+# Constants
+DEFAULT_INFO_DISPLAY_LIMIT = 10  # Number of items to display in INFO log level
+
 
 def _calculate_batch_params(days: int, override: Optional[int] = None) -> tuple[int, int]:
     """
@@ -176,7 +179,7 @@ def run_summary(config: Config) -> int:
     discord_items = []
 
     # Display items (limit to first 10 in INFO, show all in DEBUG)
-    display_count = len(items) if logger.isEnabledFor(logging.DEBUG) else min(10, len(items))
+    display_count = len(items) if logger.isEnabledFor(logging.DEBUG) else min(DEFAULT_INFO_DISPLAY_LIMIT, len(items))
     for item in items[:display_count]:
         added_at = int(item.get("added_at", 0))
         date_str = datetime.fromtimestamp(added_at, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")

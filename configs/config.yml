@@ -26,6 +26,7 @@
 #    Reference in config.yml: tautulli_api_key: ${TAUTULLI_API_KEY}
 #    The file content is automatically read.
 #
+#
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -42,39 +43,47 @@ tautulli_url: ${TAUTULLI_URL}
 tautulli_api_key: ${TAUTULLI_API_KEY}
 
 # -----------------------------------------------------------------------------
-# OPTIONAL FIELDS (uncomment and set to override defaults)
+# OPTIONAL FIELDS
 # -----------------------------------------------------------------------------
 # For full descriptions and examples, see: docs/CONFIGURATION.md#optional-field-overrides
+#
+# NOTE: Optional fields below use environment variable references.
+#       If you don't set an environment variable:
+#       - Undefined: silently uses default value (clean logs)
+#       - Empty string (e.g., DAYS_BACK=""): logs WARNING, uses default (possible mistake)
+#
+#       To override: Just set the environment variable in docker-compose.yml.
+#       No need to edit this file for typical use.
 
 # Number of days to look back for new media releases
 # Default: 7
-# days_back: 14
+days_back: ${DAYS_BACK}
 
 # CRON schedule for automatic execution
-# Default: "0 16 * * SUN" (Sundays at 4 PM)
-# cron_schedule: "0 0 * * *"
+# Default: "0 16 * * SUN" (Sundays at 4 PM in container timezone)
+# Timezone: Defaults to UTC. Set TZ environment variable to use local timezone (e.g., TZ=America/New_York)
+cron_schedule: ${CRON_SCHEDULE}
 
 # Run mode: true = run once and exit, false = continuous scheduled execution
 # Default: false
-# run_once: true
+run_once: ${RUN_ONCE}
 
 # Discord webhook URL for notifications
 # Default: None (disabled)
-# discord_webhook_url: ${DISCORD_WEBHOOK_URL}
+discord_webhook_url: ${DISCORD_WEBHOOK_URL}
 
 # Plex server URL for generating clickable media links
 # Default: https://app.plex.tv
-# plex_url: http://plex:32400
+plex_url: ${PLEX_URL}
 
 # Plex server machine identifier
 # Default: Auto-detected via Tautulli
-# plex_server_id: your-server-machine-id
+plex_server_id: ${PLEX_SERVER_ID}
 
 # Logging level
 # Default: INFO
-# log_level: DEBUG
+log_level: ${LOG_LEVEL}
 
 # Tautulli API batch size (advanced performance tuning)
-# Default: Adaptive (recommended)
-# initial_batch_size: 1000
-
+# Default: Adaptive (100 for ≤7 days, 200 for ≤30 days, 500 for >30 days)
+initial_batch_size: ${INITIAL_BATCH_SIZE}

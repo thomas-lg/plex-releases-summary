@@ -17,6 +17,14 @@ class DiscordNotifier:
     MAX_ITEMS_TOTAL = 25  # Conservative limit to stay under 6000 char limit with URLs
     EMBED_SIZE_BUFFER = 5800  # Safety buffer below 6000 to account for JSON overhead
 
+    # Retry configuration
+    MAX_SEND_RETRIES = 3
+    RETRY_BACKOFF_BASE = 2  # Exponential backoff base (1s, 2s, 4s, ...)
+    
+    # Embed trimming configuration
+    MAX_TRIM_ATTEMPTS = 5
+    TRIM_REDUCTION_FACTOR = 0.8  # Reduce by 20% on each attempt
+
     # Emoji icons for media types
     MEDIA_ICONS = {
         'Movies': '🎬',
@@ -239,10 +247,9 @@ class DiscordNotifier:
         Returns:
             Tuple of (DiscordEmbed, number of items actually included)
         """
-        max_attempts = 5
         current_items = items[:]
 
-        for attempt in range(max_attempts):
+        for attempt in range(self.MAX_TRIM_ATTEMPTS):
             # Calculate how many parts we might need (estimate)
             items_per_part = len(current_items)
             estimated_parts = (len(all_items) + items_per_part - 1) // items_per_part if items_per_part > 0 else 1
@@ -275,10 +282,10 @@ class DiscordNotifier:
                 )
                 return embed, len(current_items)
 
-            new_count = max(1, int(len(current_items) * 0.8))
+            new_count = max(1, int(len(current_items) * self.TRIM_REDUCTION_FACTOR))
             logger.warning(
                 "⚠️  Embed too large (%d chars), reducing %s from %d to %d items (attempt %d/%d)",
-                size, category, len(current_items), new_count, attempt + 1, max_attempts
+                size, category, len(current_items), new_count, attempt + 1, self.MAX_TRIM_ATTEMPTS
             )
             current_items = current_items[:new_count]
 
@@ -409,17 +416,21 @@ class DiscordNotifier:
         # Format based on type (year already included in title from app.py)
         return f"• {display_title}"
 
-    def _send_with_retry(self, webhook: DiscordWebhook, max_retries: int = 3) -> Any:
+    def _send_with_retry(self, webhook: DiscordWebhook, max_retries: Optional[int] = None) -> Any:
         """
         Send webhook with retry logic for rate limits and transient failures.
 
         Args:
             webhook: The Discord webhook to send
-            max_retries: Maximum number of retry attempts
+            max_retries: Maximum number of retry attempts (default: MAX_SEND_RETRIES)
 
         Returns:
             Response object from the webhook execution
         """
+        if max_retries is None:
+            max_retries = self.MAX_SEND_RETRIES
+            
+        response = None
         for attempt in range(max_retries):
             try:
                 response = webhook.execute()
@@ -443,7 +454,7 @@ class DiscordNotifier:
 
             except Exception as e:
                 if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt  # Exponential backoff
+                    wait_time = self.RETRY_BACKOFF_BASE ** attempt  # Exponential backoff
                     logger.warning(
                         "Discord webhook attempt %d failed: %s. Retrying in %ds...",
                         attempt + 1, e, wait_time
@@ -452,5 +463,4 @@ class DiscordNotifier:
                 else:
                     raise
 
-        # Should not reach here, but return last response if we do
         return response
