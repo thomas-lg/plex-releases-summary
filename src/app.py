@@ -251,8 +251,9 @@ def main():
     """
     Main entry point: Choose between scheduled or one-shot execution mode.
 
-    If RUN_ONCE is true, run once and exit.
-    Otherwise, run as a persistent scheduler with CRON schedule.
+    Execution mode is configured via config.yml:
+      - set run_once: true to run once and exit
+      - or provide cron_schedule to run as a persistent scheduled task
     """
     # Load configuration first (with basic logging)
     try:
