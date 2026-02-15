@@ -3,8 +3,8 @@ services:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     container_name: plex-releases-summary
     volumes:
-      - ./configs:/app/configs:ro
-      - ./secrets:/app/secrets:ro # For file-based secrets
+      - ./configs:/app/configs:rw
+      - ./secrets:/app/secrets:ro
 
     # Environment variables for configuration
     # Only 2 required: TAUTULLI_URL and TAUTULLI_API_KEY

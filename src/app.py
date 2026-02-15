@@ -8,7 +8,6 @@ from logging_config import setup_logging
 from tautulli_client import TautulliClient
 from discord_client import DiscordNotifier
 
-# Config will be loaded in main() after logging is ready
 logger = logging.getLogger("plex-weekly")
 
 
@@ -256,6 +255,7 @@ def main():
       - or provide cron_schedule to run as a persistent scheduled task
     """
     # Load configuration first (with basic logging)
+    setup_logging("INFO")
     try:
         config = load_config()
     except Exception as e:

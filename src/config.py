@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import yaml
+import re
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ def _resolve_value(value: Any) -> Any:
         if file_path.exists() and file_path.is_file():
             try:
                 content = file_path.read_text().strip()
-                logger.debug(f"Successfully read secret from file: {value}")
+                logger.info(f"Successfully read secret from file: {value}")
                 return content
             except Exception as e:
                 logger.warning(f"Failed to read file {value}: {e}")
@@ -42,7 +43,7 @@ def _resolve_value(value: Any) -> Any:
                 return value
         else:
             # Path doesn't exist - might be a regular value, not a file path
-            logger.debug(f"Path {value} does not exist, treating as literal value")
+            logger.info(f"Path {value} does not exist, treating as literal value")
             return value
     elif isinstance(value, dict):
         return {k: _resolve_value(v) for k, v in value.items()}
@@ -250,9 +251,30 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
         logger.info(f"Loading configuration from {config_path}")
         with open(config_file, "r") as f:
             raw_config = yaml.safe_load(f)
-        
+        # Check for unresolved environment variables in required fields
+        env_var_pattern = re.compile(r'\$\{[^}]+\}')
+        required_fields = ["tautulli_url", "tautulli_api_key"]
+        missing_vars = []
+
+        for field in required_fields:
+            value = raw_config.get(field)
+            if isinstance(value, str):
+                matches = env_var_pattern.findall(os.path.expandvars(value))
+                if matches:
+                    missing_vars.extend([f"{field}: {match}" for match in matches])
+
+        if missing_vars:
+            error_msg = (
+                "Unresolved environment variable placeholders found in required fields:\n"
+                + "\n".join(missing_vars)
+                + "\nPlease set the missing environment variables or update config.yml."
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
         if raw_config is None:
             raise ValueError("Configuration file is empty")
+        if not isinstance(raw_config, dict):
+            raise ValueError("config.yml must contain a mapping/object at the root (not a list, string, or other type)")
         
         # Expand environment variables and resolve file paths
         expanded_config = _expand_env_vars(raw_config)
@@ -261,7 +283,7 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
         config = Config(**expanded_config)
         
         logger.info("Configuration loaded and validated successfully")
-        logger.debug(f"Config: run_once={config.run_once}, log_level={config.log_level}")
+        logger.info(f"Config: run_once={config.run_once}, log_level={config.log_level}")
         
         return config
         
