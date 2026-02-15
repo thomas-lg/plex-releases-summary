@@ -4,42 +4,40 @@ set -e
 # =============================================================================
 # Docker Entrypoint Script for Plex Releases Summary
 # =============================================================================
-# This script ensures a config file exists before starting the application.
-# If no config.yml is found in /app/configs/, it copies the default template.
-# This is especially useful for Unraid and other Docker deployments where
-# the config directory is volume-mapped but initially empty.
+# Handles PUID/PGID permissions and auto-creates config.yml from template.
 # =============================================================================
 
 CONFIG_DIR="/app/configs"
 CONFIG_FILE="${CONFIG_DIR}/config.yml"
-DEFAULT_CONFIG="/app/config.yml.default" 
+DEFAULT_CONFIG="/app/config.yml.default"
+
+PUID=${PUID:-1000}
+PGID=${PGID:-1000}
 
 echo "==> Plex Releases Summary - Starting..."
+echo "==> Running with PUID=$PUID, PGID=$PGID"
 
-# Create config directory if it doesn't exist (shouldn't happen with volume mounts, but be safe)
-if [ ! -d "$CONFIG_DIR" ]; then
-    echo "==> Creating config directory: $CONFIG_DIR"
-    mkdir -p "$CONFIG_DIR"
-fi
+# Adjust appuser to match PUID/PGID
+echo "==> Adjusting appuser to UID=$PUID, GID=$PGID"
+groupmod -o -g "$PGID" appuser 2>/dev/null || true
+usermod -o -u "$PUID" appuser 2>/dev/null || true
 
-# Check if config.yml exists
+# Ensure config directory exists and fix permissions
+echo "==> Ensuring correct permissions on $CONFIG_DIR"
+mkdir -p "$CONFIG_DIR"
+chown -R "$PUID:$PGID" "$CONFIG_DIR"
+
+# Copy default config if not exists
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "==> Config file not found at $CONFIG_FILE"
-    echo "==> Copying default configuration template..."
-    
-    # Copy default config
+    echo "==> Creating default configuration template..."
     cp "$DEFAULT_CONFIG" "$CONFIG_FILE"
-    
-    echo "==> Default config created at $CONFIG_FILE"
-    echo "==> IMPORTANT: You MUST edit this file and set:"
-    echo "    - TAUTULLI_URL environment variable"
-    echo "    - TAUTULLI_API_KEY environment variable"
-    echo "==> Or edit config.yml directly with your values."
-    echo ""
+    chown "$PUID:$PGID" "$CONFIG_FILE"
+    echo "==> IMPORTANT: Set TAUTULLI_URL and TAUTULLI_API_KEY environment variables"
 else
     echo "==> Config file found at $CONFIG_FILE"
 fi
 
-# Execute the main application
-echo "==> Starting Plex Releases Summary application..."
-exec "$@"
+# Run application as appuser
+echo "==> Starting application as appuser..."
+exec gosu appuser "$@"

@@ -10,6 +10,12 @@ LABEL org.opencontainers.image.licenses="MIT"
 
 WORKDIR /app
 
+# Install gosu for privilege dropping
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gosu && \
+    rm -rf /var/lib/apt/lists/* && \
+    gosu nobody true
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -17,12 +23,12 @@ COPY src/ src/
 COPY configs/config.yml config.yml.default
 COPY entrypoint.sh .
 
-# Make entrypoint executable and run as non-root user for security
-RUN chmod +x entrypoint.sh && \
-    useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
 
-USER appuser
+# Create default user (will be modified by entrypoint based on PUID/PGID)
+RUN useradd -m -u 1000 appuser
 
+# Entrypoint runs as root to handle permissions, then drops privileges
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["python", "src/app.py"]

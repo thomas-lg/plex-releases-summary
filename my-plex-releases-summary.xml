@@ -33,5 +33,7 @@
   <Config Name="Plex URL" Target="PLEX_URL" Default="" Mode="" Description="Optional: Plex server URL for generating media links (default: https://app.plex.tv)." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="Timezone" Target="TZ" Default="UTC" Mode="" Description="Optional: Timezone for CRON schedule (default: UTC). Examples: America/New_York, Europe/Paris, Asia/Tokyo. See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" Type="Variable" Display="always" Required="false" Mask="false">UTC</Config>
   <Config Name="Log Level" Target="LOG_LEVEL" Default="" Mode="" Description="Optional: Logging level - DEBUG, INFO, WARNING, ERROR (default: INFO)." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID for file permissions (default: 99 for Unraid 'nobody' user). Match this to your host user ID." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID for file permissions (default: 100 for Unraid 'users' group). Match this to your host group ID." Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
   <TailscaleStateDir/>
 </Container>
