@@ -110,7 +110,7 @@ Both Tautulli and Discord API clients implement retry logic with exponential bac
 - **Triggers:** Network errors, HTTP 5xx, timeouts
 
 **Discord API Retries:**
-- **Attempts:** 3 retries with exponential backoff  (1s, 2s, 4s)
+- **Attempts:** 3 retries with exponential backoff (1s, 2s, 4s)
 - **Timeout:** 10s per request
 - **Rate limits:** Respects HTTP 429 with `retry_after` header
 - **No retry:** HTTP 400 errors (validation failures) fail immediately
