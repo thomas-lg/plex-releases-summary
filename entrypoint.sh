@@ -33,7 +33,7 @@ validate_id() {
     fi
 
     # Must be within the typical UID/GID range.
-    if [ "$value" -lt 1 ] || [ "$value" -gt 65535 ]; then
+    if [ "$value" -gt 65535 ]; then
         echo "ERROR: $name must be between 1 and 65535, got '$value'." >&2
         exit 1
     fi
