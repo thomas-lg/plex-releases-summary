@@ -124,10 +124,20 @@ def run_summary(config: Config) -> int:
         iteration += 1
         logger.debug("Iteration %d: Fetching batch with count=%d", iteration, current_count)
 
+        # Add small delay between iterations to avoid hammering the API
+        if iteration > 1:
+            time.sleep(0.2)
+
         try:
             items_raw = tautulli.get_recently_added(days=days, count=current_count)
+        except (ConnectionError, TimeoutError) as e:
+            logger.error("Network error while fetching recently added items: %s", e)
+            return 1
+        except ValueError as e:
+            logger.error("Invalid response from Tautulli API: %s", e)
+            return 1
         except Exception as e:
-            logger.error("Failed to fetch recently added items: %s", e)
+            logger.exception("Unexpected error while fetching recently added items: %s", e)
             return 1
 
         # depending on API version, the data is inside 'recently_added'
@@ -235,13 +245,21 @@ def run_summary(config: Config) -> int:
                         logger.info("Auto-detected Plex Server ID: %s", plex_server_id)
                     else:
                         logger.warning("Could not auto-detect Plex Server ID from Tautulli")
-                except Exception as e:
-                    logger.warning("Failed to auto-fetch Plex Server ID: %s", e)
+                except (ConnectionError, TimeoutError) as e:
+                    logger.warning("Network error while fetching Plex Server ID: %s", e)
+                except ValueError as e:
+                    logger.warning("Invalid response from Tautulli: %s", e)
 
             notifier = DiscordNotifier(config.discord_webhook_url, config.plex_url, plex_server_id)
             notifier.send_summary(discord_items, days, len(items))
+        except (ConnectionError, TimeoutError) as e:
+            logger.error("Network error while sending Discord notification: %s", e)
+            # Continue execution even if Discord fails
+        except ValueError as e:
+            logger.error("Invalid Discord webhook configuration: %s", e)
+            # Continue execution even if Discord fails
         except Exception as e:
-            logger.error("Failed to send Discord notification: %s", e, exc_info=True)
+            logger.exception("Unexpected error while sending Discord notification: %s", e)
             # Continue execution even if Discord fails
     else:
         logger.debug("No Discord webhook URL configured, skipping Discord notification")

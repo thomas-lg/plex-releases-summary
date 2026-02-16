@@ -172,11 +172,47 @@ Send release summaries to Discord with rich embeds.
 
 ## Development
 
-1. Clone repo: `git clone https://github.com/thomas-lg/plex-releases-summary.git`
-2. Configure: Edit [configs/config-dev.yml](configs/config-dev.yml) or use [docker-compose.dev.local.yml.example](docker-compose.dev.local.yml.example) for overrides
-3. Run: `docker compose -f docker-compose.dev.yml up --build` (see [docker-compose.dev.yml](docker-compose.dev.yml))
+### For Contributors
 
-**Features:** Hot-reload on `.py` changes, DEBUG logging, source mounted for live editing.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development setup, code style guidelines, testing, and contribution process.
+
+**Quick Development Setup:**
+
+```bash
+# Clone repository
+git clone https://github.com/thomas-lg/plex-releases-summary.git
+cd plex-releases-summary
+
+# Option 1: Docker development with hot-reload
+cp docker-compose.dev.local.yml.example docker-compose.dev.local.yml
+# Edit docker-compose.dev.local.yml with your settings
+docker-compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up
+
+# Option 2: Local Python development
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt -r requirements-dev.txt -r requirements-test.txt
+cp configs/config.yml configs/config-dev.yml
+# Edit configs/config-dev.yml with your settings
+cd src && python app.py
+```
+
+**Running Tests:**
+
+```bash
+# Install dependencies
+pip install -r requirements-test.txt
+
+# Run tests
+pytest                          # All tests
+pytest --cov=src               # With coverage
+pytest -m unit                 # Unit tests only
+
+# Code quality
+black src/ tests/              # Format code
+ruff check src/ tests/ --fix  # Lint
+mypy src/                      # Type check
+```
 
 ### Project Structure
 
@@ -189,11 +225,18 @@ Send release summaries to Discord with rich embeds.
 │   ├── tautulli_client.py  # Tautulli API client
 │   ├── discord_client.py   # Discord webhook client
 │   └── logging_config.py   # Logging configuration
+├── tests/                  # Test suite
+│   ├── test_config.py     # Configuration tests
+│   ├── test_app.py        # App logic tests
+│   ├── test_discord_client.py  # Discord tests
+│   └── test_discord_markdown.py  # Markdown escaping tests
 ├── configs/
 │   ├── [config.yml](configs/config.yml)          # User configuration file
 │   └── [config-dev.yml](configs/config-dev.yml)      # Development configuration
 ├── docs/
 │   └── [CONFIGURATION.md](docs/CONFIGURATION.md)    # Complete configuration reference
+├── .github/
+│   └── workflows/          # CI/CD pipelines
 ├── assets/                 # Project assets (screenshots, etc.)
 ├── [Dockerfile](Dockerfile)              # Production Docker image
 ├── [Dockerfile.dev](Dockerfile.dev)          # Development Docker image
@@ -202,8 +245,13 @@ Send release summaries to Discord with rich embeds.
 ├── [docker-compose.dev.local.yml.example](docker-compose.dev.local.yml.example)  # Example local overrides
 ├── entrypoint.sh           # Container entrypoint script
 ├── requirements.txt        # Python dependencies
-├── requirements-dev.txt    # Development dependencies
+├── requirements-dev.txt    # Development dependencies  
+├── requirements-test.txt   # Testing dependencies
+├── pyproject.toml          # Python project configuration
+├── pytest.ini              # Pytest configuration
+├── .pre-commit-config.yaml # Pre-commit hooks
 ├── my-plex-releases-summary.xml  # Unraid template
+├── [CONTRIBUTING.md](CONTRIBUTING.md)        # Contribution guidelines
 └── README.md
 ```
 

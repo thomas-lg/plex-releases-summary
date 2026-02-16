@@ -1,12 +1,28 @@
 """Discord webhook client for sending Plex release summaries."""
 
 import logging
+import re
 import time
 from typing import List, Dict, Any, Optional, Tuple
 from discord_webhook import DiscordWebhook, DiscordEmbed
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+
+def _escape_markdown(text: str) -> str:
+    """
+    Escape Discord markdown characters to prevent formatting issues.
+    
+    Args:
+        text: Text that may contain markdown characters
+        
+    Returns:
+        Text with markdown characters escaped
+    """
+    # Escape special markdown characters: * _ ~ ` | [ ] ( ) \
+    markdown_chars = r'([\*_~`\|\[\]\(\)\\])'
+    return re.sub(markdown_chars, r'\\\1', text)
 
 
 class DiscordNotifier:
@@ -141,8 +157,14 @@ class DiscordNotifier:
             logger.info("✅ All Discord notifications sent (%d/%d messages)", success_count, total_messages)
             return success_count == total_messages
 
+        except (ConnectionError, TimeoutError) as e:
+            logger.error("Network error sending Discord notification: %s", e)
+            return False
+        except ValueError as e:
+            logger.error("Invalid data for Discord notification: %s", e)
+            return False
         except Exception as e:
-            logger.error("Failed to send Discord notification: %s", e, exc_info=True)
+            logger.exception("Unexpected error sending Discord notification: %s", e)
             return False
 
     def _create_category_embed(
@@ -396,6 +418,9 @@ class DiscordNotifier:
         title = item.get('title', 'Unknown')
         rating_key = item.get('rating_key')
 
+        # Escape markdown characters in title to prevent formatting issues
+        safe_title = _escape_markdown(title)
+
         # Create clickable link to Plex if URL and server ID are available
         if self.plex_url and self.plex_server_id and rating_key:
             # URL encode the library path
@@ -409,9 +434,9 @@ class DiscordNotifier:
                 # Local Plex server format
                 link_url = f"{self.plex_url}/web/index.html#!/server/{self.plex_server_id}/details?key={encoded_key}"
 
-            display_title = f"[{title}]({link_url})"
+            display_title = f"[{safe_title}]({link_url})"
         else:
-            display_title = f"**{title}**"
+            display_title = f"**{safe_title}**"
 
         # Format based on type (year already included in title from app.py)
         return f"• {display_title}"

@@ -42,21 +42,44 @@ def _resolve_value(value: Any) -> Any:
     Returns:
         The resolved value - file contents if applicable, otherwise original value
         
+    Raises:
+        ValueError: If secret file exceeds size limit or contains invalid data
+        
     Examples:
         "/run/secrets/api_key" -> reads and returns file content
         "my-api-key" -> returns "my-api-key" as-is
         123 -> returns 123 as-is
     """
+    MAX_SECRET_SIZE = 10 * 1024  # 10KB max for secret files
+    
     if isinstance(value, str) and value.startswith("/"):
         file_path = Path(value)
         if file_path.exists() and file_path.is_file():
             try:
+                # Check file size before reading
+                file_size = file_path.stat().st_size
+                if file_size > MAX_SECRET_SIZE:
+                    logger.error(
+                        f"Secret file {value} exceeds maximum size ({file_size} bytes > {MAX_SECRET_SIZE} bytes). "
+                        f"This may not be a valid secret file."
+                    )
+                    raise ValueError(f"Secret file {value} too large: {file_size} bytes")
+                
                 content = file_path.read_text().strip()
+                
+                # Validate content is reasonable (printable ASCII or UTF-8)
+                if not content:
+                    logger.warning(f"Secret file {value} is empty")
+                    return value
+                
                 logger.info(f"Successfully read secret from file: {value}")
                 return content
-            except Exception as e:
-                logger.warning(f"Failed to read file {value}: {e}")
+            except (OSError, IOError) as e:
+                logger.warning(f"I/O error reading file {value}: {e}")
                 return value
+            except UnicodeDecodeError as e:
+                logger.error(f"Secret file {value} contains invalid UTF-8 data: {e}")
+                raise ValueError(f"Secret file {value} is not valid text")
         else:
             logger.info(f"Path {value} does not exist, treating as literal value")
             return value
