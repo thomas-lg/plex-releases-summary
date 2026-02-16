@@ -35,12 +35,12 @@ jobs:
 
     - name: Run type checking with mypy
       run: |
-        mypy src/
+        PYTHONPATH=src mypy src/
       continue-on-error: true  # Don't fail on type errors initially
 
     - name: Run tests with pytest
       run: |
-        pytest --cov=src --cov-report=xml --cov-report=term
+        PYTHONPATH=src pytest --cov=src --cov-report=xml --cov-report=term
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
