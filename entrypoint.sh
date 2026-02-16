@@ -60,7 +60,7 @@ if [ "$current_gid" = "$PGID" ] && [ -n "$current_gid" ]; then
 else
     existing_group="$(getent group "$PGID" 2>/dev/null | cut -d: -f1 || true)"
     if [ -n "$existing_group" ] && [ "$existing_group" != "appuser" ]; then
-        echo "WARNING: Requested PGID $PGID is already used by group '$existing_group'; appuser will share this GID." >&2
+        echo "WARNING: Requested PGID $PGID is already used by group '$existing_group'; appuser will share this GID and therefore have the same group permissions as '$existing_group'." >&2
     fi
     if groupmod -o -g "$PGID" appuser 2>/dev/null; then
         echo "==> Updated appuser group to GID $PGID"
