@@ -1,7 +1,6 @@
 """Unit tests for app module formatting logic."""
 
 import pytest
-from freezegun import freeze_time
 
 from src.app import _calculate_batch_params, _format_display_title
 
@@ -65,7 +64,7 @@ class TestFormatDisplayTitle:
             "grandparent_title": "Breaking Bad",
             "parent_media_index": "5",
             "media_index": "14",
-            "title": "Ozymandias"
+            "title": "Ozymandias",
         }
         result = _format_display_title(item)
         assert result == "Breaking Bad - S05E14 - Ozymandias"
@@ -78,7 +77,7 @@ class TestFormatDisplayTitle:
             "grandparent_title": "The Wire",
             "parent_media_index": 1,
             "media_index": 1,
-            "title": "The Target"
+            "title": "The Target",
         }
         result = _format_display_title(item)
         assert result == "The Wire - S01E01 - The Target"
@@ -91,7 +90,7 @@ class TestFormatDisplayTitle:
             "grandparent_title": "Unknown Show",
             "parent_media_index": "?",
             "media_index": "?",
-            "title": "Episode Title"
+            "title": "Episode Title",
         }
         result = _format_display_title(item)
         assert result == "Unknown Show - S00E00 - Episode Title"
@@ -104,7 +103,7 @@ class TestFormatDisplayTitle:
             "grandparent_title": "Show Name",
             "parent_media_index": "invalid",
             "media_index": "abc",
-            "title": "Episode"
+            "title": "Episode",
         }
         result = _format_display_title(item)
         assert result == "Show Name - SinvalidEabc - Episode"
@@ -123,21 +122,14 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_season(self):
         """Test formatting season."""
-        item = {
-            "media_type": "season",
-            "parent_title": "The Sopranos",
-            "media_index": "3"
-        }
+        item = {"media_type": "season", "parent_title": "The Sopranos", "media_index": "3"}
         result = _format_display_title(item)
         assert result == "The Sopranos - Season 3"
 
     @pytest.mark.unit
     def test_format_season_missing_fields(self):
         """Test formatting season with missing fields."""
-        item = {
-            "media_type": "season",
-            "media_index": "1"
-        }
+        item = {"media_type": "season", "media_index": "1"}
         result = _format_display_title(item)
         assert "Unknown Show" in result
         assert "Season 1" in result
@@ -145,21 +137,14 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_show_with_year(self):
         """Test formatting show with year."""
-        item = {
-            "media_type": "show",
-            "title": "Stranger Things",
-            "year": "2016"
-        }
+        item = {"media_type": "show", "title": "Stranger Things", "year": "2016"}
         result = _format_display_title(item)
         assert result == "Stranger Things (2016)"
 
     @pytest.mark.unit
     def test_format_show_without_year(self):
         """Test formatting show without year."""
-        item = {
-            "media_type": "show",
-            "title": "New Show"
-        }
+        item = {"media_type": "show", "title": "New Show"}
         result = _format_display_title(item)
         assert result == "New Show (New Series)"
 
@@ -170,7 +155,7 @@ class TestFormatDisplayTitle:
             "media_type": "track",
             "grandparent_title": "The Beatles",
             "parent_title": "Abbey Road",
-            "title": "Come Together"
+            "title": "Come Together",
         }
         result = _format_display_title(item)
         assert result == "The Beatles - Abbey Road - Come Together"
@@ -178,10 +163,7 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_track_missing_fields(self):
         """Test formatting track with missing fields."""
-        item = {
-            "media_type": "track",
-            "title": "Song Name"
-        }
+        item = {"media_type": "track", "title": "Song Name"}
         result = _format_display_title(item)
         assert "Unknown Artist" in result
         assert "Unknown Album" in result
@@ -190,21 +172,14 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_album(self):
         """Test formatting music album."""
-        item = {
-            "media_type": "album",
-            "parent_title": "Pink Floyd",
-            "title": "Dark Side of the Moon"
-        }
+        item = {"media_type": "album", "parent_title": "Pink Floyd", "title": "Dark Side of the Moon"}
         result = _format_display_title(item)
         assert result == "Pink Floyd - Dark Side of the Moon"
 
     @pytest.mark.unit
     def test_format_album_missing_fields(self):
         """Test formatting album with missing fields."""
-        item = {
-            "media_type": "album",
-            "title": "Album Name"
-        }
+        item = {"media_type": "album", "title": "Album Name"}
         result = _format_display_title(item)
         assert "Unknown Artist" in result
         assert "Album Name" in result
@@ -212,63 +187,45 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_movie_with_year(self):
         """Test formatting movie with year."""
-        item = {
-            "media_type": "movie",
-            "title": "The Shawshank Redemption",
-            "year": "1994"
-        }
+        item = {"media_type": "movie", "title": "The Shawshank Redemption", "year": "1994"}
         result = _format_display_title(item)
         assert result == "The Shawshank Redemption (1994)"
 
     @pytest.mark.unit
     def test_format_movie_without_year(self):
         """Test formatting movie without year."""
-        item = {
-            "media_type": "movie",
-            "title": "New Movie"
-        }
+        item = {"media_type": "movie", "title": "New Movie"}
         result = _format_display_title(item)
         assert result == "New Movie"
 
     @pytest.mark.unit
     def test_format_movie_missing_fields(self):
         """Test formatting movie with missing fields."""
-        item = {
-            "media_type": "movie"
-        }
+        item = {"media_type": "movie"}
         result = _format_display_title(item)
         assert result == "Unknown Movie"
 
     @pytest.mark.unit
     def test_format_unknown_media_type(self):
         """Test formatting unknown media type."""
-        item = {
-            "media_type": "unknown_type",
-            "title": "Some Media"
-        }
+        item = {"media_type": "unknown_type", "title": "Some Media"}
         result = _format_display_title(item)
         assert result == "Some Media"
 
     @pytest.mark.unit
     def test_format_no_media_type(self):
         """Test formatting when media_type is missing."""
-        item = {
-            "title": "Some Title"
-        }
+        item = {"title": "Some Title"}
         result = _format_display_title(item)
         assert result == "Some Title"
 
     @pytest.mark.unit
     def test_format_no_title_at_all(self):
         """Test formatting when title is completely missing."""
-        item = {
-            "media_type": "movie"
-        }
+        item = {"media_type": "movie"}
         result = _format_display_title(item)
         assert result == "Unknown Movie"
 
-        item = {
-            "media_type": "unknown"
-        }
+        item = {"media_type": "unknown"}
         result = _format_display_title(item)
         assert result == "Unknown"

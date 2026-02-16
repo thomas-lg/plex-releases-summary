@@ -1,9 +1,10 @@
 """Tautulli API client for fetching Plex media library data."""
 
-import requests
 import logging
 import time
-from typing import Dict, Any, Optional
+from typing import Any, cast
+
+import requests
 
 logger = logging.getLogger("plex-weekly.tautulli")
 
@@ -27,25 +28,25 @@ class TautulliClient:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
 
-    def _request(self, cmd: str, max_retries: Optional[int] = None, **params) -> Dict[str, Any]:
+    def _request(self, cmd: str, max_retries: int | None = None, **params) -> dict[str, Any]:
         """
         Make a request to Tautulli API with exponential backoff retry logic.
-        
+
         Args:
             cmd: Tautulli API command to execute
             max_retries: Maximum number of retry attempts (default: DEFAULT_MAX_RETRIES)
             **params: Additional query parameters for the API request
-            
+
         Returns:
             Dict containing the API response data
-            
+
         Raises:
             requests.RequestException: If request fails after all retries
             RuntimeError: If Tautulli returns unsuccessful response
         """
         if max_retries is None:
             max_retries = self.DEFAULT_MAX_RETRIES
-            
+
         url = f"{self.base_url}/api/v2"
         query = {
             "apikey": self.api_key,
@@ -54,7 +55,7 @@ class TautulliClient:
         }
         logger.debug("Requesting Tautulli: %s", cmd)
 
-        last_exception = None
+        last_exception: Exception = RuntimeError("No attempts made")
         for attempt in range(max_retries):
             try:
                 resp = requests.get(url, params=query, timeout=self.DEFAULT_TIMEOUT)
@@ -63,15 +64,14 @@ class TautulliClient:
                 data = resp.json()
                 if data.get("response", {}).get("result") != "success":
                     raise RuntimeError(f"Tautulli error: {data}")
-                return data["response"]["data"]
+                return cast(dict[str, Any], data["response"]["data"])
 
             except (requests.RequestException, RuntimeError) as e:
                 last_exception = e
                 if attempt < max_retries - 1:
-                    wait_time = self.RETRY_BACKOFF_BASE ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    wait_time = self.RETRY_BACKOFF_BASE**attempt  # Exponential backoff: 1s, 2s, 4s
                     logger.warning(
-                        "Request failed (attempt %d/%d): %s. Retrying in %ds...",
-                        attempt + 1, max_retries, e, wait_time
+                        "Request failed (attempt %d/%d): %s. Retrying in %ds...", attempt + 1, max_retries, e, wait_time
                     )
                     time.sleep(wait_time)
                 else:
@@ -79,17 +79,17 @@ class TautulliClient:
 
         raise last_exception
 
-    def get_recently_added(self, days: int = 7, count: int = 100) -> Dict[str, Any]:
+    def get_recently_added(self, days: int = 7, count: int = 100) -> dict[str, Any]:
         """
         Get recently added items from Tautulli.
-        
+
         Note: The Tautulli API doesn't support date filtering natively, so this method
         retrieves a batch of items and the caller must filter them client-side by timestamp.
-        
+
         Args:
             days: Number of days to look back (used for logging; actual filtering happens in caller)
             count: Maximum number of items to retrieve from API
-            
+
         Returns:
             Dict containing Tautulli API response with 'recently_added' list of media items
         """
@@ -100,7 +100,7 @@ class TautulliClient:
             count=count,
         )
 
-    def get_server_identity(self) -> Dict[str, Any]:
+    def get_server_identity(self) -> dict[str, Any]:
         """
         Get Plex server identity information including machine identifier.
 

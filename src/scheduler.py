@@ -1,7 +1,7 @@
-import sys
-import signal
 import logging
-from typing import Callable
+import signal
+import sys
+from collections.abc import Callable
 from datetime import datetime
 
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -74,7 +74,7 @@ class GracefulScheduler:
                 id="plex_summary_task",
                 name="Plex Summary Task",
                 coalesce=True,  # Skip missed runs if previous run is still executing
-                max_instances=1  # Only one instance at a time
+                max_instances=1,  # Only one instance at a time
             )
 
             logger.info("🕐 Scheduler started - waiting for scheduled executions")
