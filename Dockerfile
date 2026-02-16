@@ -33,6 +33,11 @@ RUN chmod +x entrypoint.sh && \
 # Create default user (will be modified by entrypoint based on PUID/PGID)
 RUN useradd -m -u 1000 appuser
 
-# Entrypoint runs as root to handle permissions, then drops privileges
+# SECURITY NOTE:
+# The entrypoint is invoked as root so it can adjust file ownership/permissions
+# according to the requested PUID/PGID before the main process starts. This
+# briefly increases the attack surface during initialization, so the logic in
+# entrypoint.sh must remain minimal, well-audited, and should drop privileges
+# with gosu to the unprivileged user (appuser) as early as possible.
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["python", "src/app.py"]
