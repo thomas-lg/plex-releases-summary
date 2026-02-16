@@ -75,7 +75,7 @@ if [ "$current_uid" = "$PUID" ] && [ -n "$current_uid" ]; then
 else
     existing_user="$(getent passwd "$PUID" 2>/dev/null | cut -d: -f1 || true)"
     if [ -n "$existing_user" ] && [ "$existing_user" != "appuser" ]; then
-        echo "WARNING: Requested PUID $PUID is already used by user '$existing_user'; appuser will share this UID." >&2
+        echo "WARNING: Requested PUID $PUID is already used by user '$existing_user'; appuser will share this UID, file ownership, and permissions, which may be a security risk if that user has elevated privileges." >&2
     fi
     if usermod -o -u "$PUID" appuser 2>/dev/null; then
         echo "==> Updated appuser user to UID $PUID"
