@@ -8,14 +8,14 @@ services:
   app:
     volumes:
       # Mount secrets directory for file-based secrets (read-only)
-      - ./secrets:/app/secrets:ro
+      - ./secrets:/run/secrets:ro
     environment:
       # ========== REQUIRED ==========
       - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/app/secrets/tautulli_key
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
       
       # ========== OPTIONAL (uncomment to override defaults) ==========
-      # - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook_url
+      # - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook_url
       # - DAYS_BACK=14
       - RUN_ONCE=true
       - LOG_LEVEL=DEBUG

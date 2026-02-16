@@ -12,7 +12,7 @@ services:
       # Override with development config
       - ./configs/config-dev.yml:/app/configs/config.yml:ro
       # Secrets - read-only
-      - ./secrets:/app/secrets:ro
+      - ./secrets:/run/secrets:ro
 
     # Set environment variables in docker-compose.dev.local.yml
     # See docker-compose.dev.local.yml.example for reference

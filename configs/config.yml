@@ -22,7 +22,7 @@
 #    tautulli_url: http://192.168.1.100:8181
 #
 # 3. Docker Secrets (Best for production):
-#    Set in docker-compose.yml: TAUTULLI_API_KEY=/app/secrets/tautulli_key
+#    Set in docker-compose.yml: TAUTULLI_API_KEY=/run/secrets/tautulli_key
 #    Reference in config.yml: tautulli_api_key: ${TAUTULLI_API_KEY}
 #    The file content is automatically read.
 #

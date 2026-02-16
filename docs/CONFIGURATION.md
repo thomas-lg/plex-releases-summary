@@ -11,11 +11,40 @@ Complete configuration guide for Plex Releases Summary. This document covers all
 - [Configuration Fields](#configuration-fields)
 - [Minimal Configuration](#minimal-configuration)
 - [Configuration Methods](#configuration-methods)
+  - [Method 1: Environment Variables](#method-1-environment-variables-recommended)
+  - [Method 2: Hardcoded Values](#method-2-hardcoded-values)
+  - [Method 3: Docker Secrets](#method-3-docker-secrets-production)
 - [Environment Variables and Docker](#environment-variables-and-docker)
+  - [When to Use Environment Variables](#when-to-use-environment-variables)
+  - [Environment Variable to Field Mapping](#environment-variable-to-field-mapping)
 - [Optional Field Overrides](#optional-field-overrides)
+  - [Discord Embed Limits](#discord-embed-limits)
 - [Docker Secrets](#docker-secrets)
+  - [Volume-Mounted Secrets](#volume-mounted-secrets-recommended-for-sensitive-values)
+  - [Direct Values](#direct-values-alternative)
+  - [How Values Are Processed](#how-values-are-processed)
 - [Examples](#examples)
+  - [Example 1: Minimal Production](#example-1-minimal-production)
+  - [Example 2: Discord + One-Shot](#example-2-discord--one-shot)
+- [Operational Guide](#operational-guide)
+  - [Configuration Auto-Creation](#configuration-auto-creation)
+  - [Exit Codes](#exit-codes)
+  - [Logging](#logging)
+  - [Scheduler Behavior](#scheduler-behavior)
+  - [Performance and Scaling](#performance-and-scaling)
+  - [Backup and Restoration](#backup-and-restoration)
+  - [Migration and Updates](#migration-and-updates)
+  - [Tautulli API Version Compatibility](#tautulli-api-version-compatibility)
+  - [Docker Networking](#docker-networking)
 - [Troubleshooting](#troubleshooting)
+  - [Configuration Not Working](#configuration-not-working)
+  - [Unresolved Environment Variable Error](#unresolved-environment-variable-error)
+  - [Discord Notifications Not Sending](#discord-notifications-not-sending)
+  - [CRON Schedule Not Running](#cron-schedule-not-running)
+  - [Secret File Not Found](#secret-file-not-found)
+  - [Validation Errors](#validation-errors)
+  - [Docker Networking Issues](#docker-networking-issues)
+  - [Need More Logging](#need-more-logging)
 
 ---
 
@@ -38,134 +67,99 @@ All configuration fields are defined in `src/config.py`. The table below shows a
 
 **\* Conditional:** `cron_schedule` is required when `run_once` is `false` (scheduled mode).
 
-**\* Adaptive Batch Size:** Automatically calculated based on `days_back` value:
-
-- **≤7 days:** 100 items per batch (typical weekly use)
-- **≤30 days:** 200 items per batch (monthly summaries)
-- **>30 days:** 500 items per batch (large historical queries)
-
-This optimizes API calls for different time ranges. Override with `INITIAL_BATCH_SIZE` environment variable only for large libraries with specific performance needs.
+**\* Adaptive Batch Size:** Auto-calculated: 100 (≤7 days), 200 (≤30 days), 500 (>30 days). Override with `INITIAL_BATCH_SIZE` for specific performance needs.
 
 ---
 
 ## Minimal Configuration
 
-**You only need to configure 2 fields to get started:**
+**Only 2 fields are required:**
+1. **`tautulli_url`** - Tautulli server URL
+2. **`tautulli_api_key`** - Tautulli API key
 
-1. **`tautulli_url`** - Your Tautulli server URL
-2. **`tautulli_api_key`** - Your Tautulli API key
+**All other fields are optional** and have sensible defaults:
+- `days_back`: 7 days
+- `cron_schedule`: Weekly Sundays at 4 PM UTC (`0 16 * * SUN`)
+- `plex_url`: Plex web app (`https://app.plex.tv`)
+- `discord_webhook_url`: Disabled (no Discord notifications)
+- `run_once`: `false` (scheduled mode)
+- `log_level`: `INFO`
+- `initial_batch_size`: Adaptive (100-500 based on `days_back`)
 
-All other fields have sensible defaults and work out of the box:
-
-- ✅ Checks last **7 days** of new media
-- ✅ Runs **weekly on Sundays at 4 PM**
-- ✅ Uses **Plex web app** for media links
-- ✅ **No Discord** notifications (optional)
-- ✅ **INFO** level logging
-
-**Example minimal setup:**
+**You don't need to set optional fields unless you want to change the defaults.**
 
 ```yaml
-# docker-compose.yml
+# docker-compose.yml - Minimal setup
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+  # That's it! All other fields use defaults
 ```
 
-The default `config.yml` is already configured with all fields - you only set environment variables for what you want to customize.
+> **Timezone:** Container defaults to UTC. Set `TZ` environment variable for local timezone (e.g., `TZ=America/New_York`). CRON schedules run in configured timezone. Use [crontab.guru](https://crontab.guru) to validate expressions.
 
-> **Timezone:** Container defaults to UTC. To use your local timezone, set `TZ` environment variable (e.g., `TZ=America/New_York`, `TZ=Europe/Paris`). CRON schedules will run in the configured timezone. Use [crontab.guru](https://crontab.guru) to validate CRON expressions.
+> **Iteration Logs:** "iteration 1, 2, 3..." is normal. Tautulli API lacks date filtering, so app fetches batches until finding all matches within `days_back`.
 
-> **Iteration Logs:** You may see logs like "iteration 1, 2, 3...". This is normal - Tautulli API lacks date filtering, so the application fetches items in batches and filters client-side until all matches are found.
+### Understanding Retry Logic
+
+Both Tautulli and Discord API clients implement retry logic with exponential backoff:
+
+**Tautulli API Retries:**
+- **Attempts:** 3 retries with exponential backoff (1s, 2s, 4s)
+- **Timeout:** 10s per request
+- **Triggers:** Network errors, HTTP 5xx, timeouts
+
+**Discord API Retries:**
+- **Attempts:** 3 retries with exponential backoff (1s, 2s, 4s)
+- **Timeout:** 10s per request
+- **Rate limits:** Respects HTTP 429 with `retry_after` header
+- **No retry:** HTTP 400 errors (validation failures) fail immediately
 
 ---
 
 ## Configuration Methods
 
-There are three ways to set configuration values:
+### Method 1: Environment Variables (Recommended)
 
-### Method 1: Environment Variables (Recommended for Docker)
-
-This is the recommended approach for Docker deployments. It requires **two steps**:
-
-**Step 1:** Set environment variable in `docker-compose.yml`:
+Set in docker-compose.yml, reference in config.yml:
 
 ```yaml
+# docker-compose.yml
 environment:
   - TAUTULLI_URL=http://tautulli:8181
-```
 
-**Step 2:** Reference it in `configs/config.yml`:
-
-```yaml
+# config.yml (already configured)
 tautulli_url: ${TAUTULLI_URL}
 ```
 
-**For optional fields:** They already have `${VAR}` placeholders. Just set the environment variable - no config editing needed!
+Optional fields already have `${VAR}` placeholders - just set the environment variable.
 
-```yaml
-# docker-compose.yml - set this
-environment:
-  - DAYS_BACK=14
-
-# config.yml - already has this, no editing needed
-days_back: ${DAYS_BACK}
-```
-
-**Why two steps?** The application reads from `config.yml`, not directly from environment variables. Using `${VAR}` syntax in the YAML file tells the application to substitute the environment variable's value.
-
-**Visual flow:**
-
-```
-docker-compose.yml          config.yml                 Application
-TAUTULLI_URL=...      →     tautulli_url: ${...}  →    Reads value
-```
-
-> ⚠️ **Important:** Setting only the environment variable is NOT sufficient. Both steps are required.
+> ⚠️ Both steps required: env var + `${VAR}` reference in config.yml.
 
 ---
 
-### Method 2: Hardcoded Values (Simple for Testing)
-
-For quick testing or simple setups, you can hardcode values directly in `config.yml`:
+### Method 2: Hardcoded Values
 
 ```yaml
 # configs/config.yml
 tautulli_url: http://192.168.1.100:8181
-tautulli_api_key: your_actual_api_key_here
+tautulli_api_key: your_api_key
 ```
 
-> **⚠️ Security Warning:** Do not commit real credentials to version control with this method.
+⚠️ Don't commit credentials.
 
 ---
 
-### Method 3: Docker Secrets (Best for Production)
+### Method 3: Docker Secrets (Production)
 
-For production deployments, use file-based secrets for sensitive values:
+```yaml
+# docker-compose.yml
+environment:
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
 
-1. Create secret files:
-
-   ```bash
-   mkdir -p secrets
-   echo "your_api_key" > secrets/tautulli_key
-   echo "https://discord.com/api/webhooks/..." > secrets/discord_webhook
-   ```
-
-2. Set environment variables to file paths:
-
-   ```yaml
-   # docker-compose.yml
-   environment:
-     - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-       - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
-   ```
-
-3. Reference in config.yml:
-   ```yaml
-   # configs/config.yml
-   tautulli_api_key: ${TAUTULLI_API_KEY}
-   discord_webhook_url: ${DISCORD_WEBHOOK_URL}
-   ```
+# config.yml (already configured)
+tautulli_api_key: ${TAUTULLI_API_KEY}
+```
 
 **How it works:** The application automatically detects file paths (strings starting with `/`) and reads the file content. This is the Docker secrets pattern.
 
@@ -175,20 +169,47 @@ For production deployments, use file-based secrets for sensitive values:
 
 ### When to Use Environment Variables
 
-Use environment variables for:
+**Set environment variables for:**
+- **Required fields** (`TAUTULLI_URL`, `TAUTULLI_API_KEY`) - **Always required**
+- **Optional fields you want to customize** (e.g., `DAYS_BACK`, `DISCORD_WEBHOOK_URL`)
 
-- **Required fields** (tautulli_url, tautulli_api_key) - **Must be defined**
-- **Optional fields you want to override** (e.g., days_back, discord_webhook_url)
+**Don't set environment variables for:**
+- **Optional fields you want to keep at default values** - they work automatically
 
-You do **NOT** need environment variables for optional fields you want to keep at their defaults.
+**How optional fields work:**
 
-> **✨ Lenient Behavior:** Optional fields use `${VAR}` placeholders by default:
->
-> - **Undefined env var** (not set): Silently uses default value (clean logs)
-> - **Empty env var** (set to `""`): Logs WARNING, uses default (possible mistake)
-> - **Valid env var**: Uses your custom value
->
-> Only required fields will cause startup errors if undefined or empty.
+The default `config.yml` has all fields pre-configured with `${VAR}` placeholders:
+
+```yaml
+# Example from config.yml
+days_back: ${DAYS_BACK}          # Optional - defaults to 7
+discord_webhook_url: ${DISCORD_WEBHOOK_URL}  # Optional - defaults to None
+```
+
+**Behavior based on environment variable state:**
+
+| Env Var State | Required Field (`TAUTULLI_URL`) | Optional Field (`DAYS_BACK`) |
+|---------------|--------------------------------|------------------------------|
+| **Not set** | ❌ Startup error | ✅ Uses default (7) - no log message |
+| **Empty string** (`""`) | ❌ Startup error | ⚠️ WARNING logged, uses default |
+| **Valid value** | ✅ Uses your value | ✅ Uses your value |
+
+**Example - Only setting what you need:**
+
+```yaml
+# docker-compose.yml
+environment:
+  # Required - must set these
+  - TAUTULLI_URL=http://tautulli:8181
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+  
+  # Optional - only set what you want to customize
+  - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook  # Enable Discord (file path)
+  # OR direct URL: - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+  - DAYS_BACK=14  # Change from default 7 to 14
+  
+  # Not setting CRON_SCHEDULE, LOG_LEVEL, etc. - they use defaults
+```
 
 ### Environment Variable to Field Mapping
 
@@ -204,38 +225,62 @@ You do **NOT** need environment variables for optional fields you want to keep a
 | `RUN_ONCE`            | `run_once`            | Override default (false)       |
 | `LOG_LEVEL`           | `log_level`           | Override default (INFO)        |
 | `INITIAL_BATCH_SIZE`  | `initial_batch_size`  | Override adaptive batching     |
+| `TZ`                  | N/A                   | Container timezone (UTC default) |
+| `PUID`                | N/A                   | User ID for file permissions - see [PUID/PGID Configuration](../README.md#puidpgid-configuration) |
+| `PGID`                | N/A                   | Group ID for file permissions - see [PUID/PGID Configuration](../README.md#puidpgid-configuration) |
 
 ---
 
 ## Optional Field Overrides
 
-**All optional fields are pre-configured with `${VAR}` placeholders** in `config.yml`.
+**All optional fields are pre-configured with `${VAR}` placeholders** in the default `config.yml`.
 
-To override: **Just set the environment variable** in `docker-compose.yml`. No config file editing needed!
+**To customize an optional field:** Just set the environment variable in `docker-compose.yml`. No config file editing needed!
 
-**Example: Change to daily execution at midnight:**
+**To use the default value:** Don't set the environment variable at all - it will use the default automatically.
+
+**Example 1: Change to daily execution at midnight (override default):**
 
 ```yaml
-# docker-compose.yml - just add this env var
+# docker-compose.yml
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-  - CRON_SCHEDULE=0 0 * * *
+  - CRON_SCHEDULE=0 0 * * *  # Override default (was: 0 16 * * SUN)
 ```
 
-The config.yml already has `cron_schedule: ${CRON_SCHEDULE}`, so it will automatically use your value.
+The `config.yml` already has `cron_schedule: ${CRON_SCHEDULE}`, so it will use your value.
 
-**Example: Enable Discord notifications:**
+**Example 2: Enable Discord notifications (was disabled by default):**
 
 ```yaml
-# docker-compose.yml - just add this env var
+# docker-compose.yml
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-  - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
+  - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook  # File path (recommended)
+  # OR direct URL:
+  # - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123/abc...
 ```
 
-The config.yml already has `discord_webhook_url: ${DISCORD_WEBHOOK_URL}`, so it will automatically use your value.
+The `config.yml` already has `discord_webhook_url: ${DISCORD_WEBHOOK_URL}`, which defaults to `None` if not set.
+
+**Example 3: Using multiple optional overrides:**
+
+```yaml
+# docker-compose.yml
+environment:
+  # Required
+  - TAUTULLI_URL=http://tautulli:8181
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+  
+  # Optional customizations
+  - DAYS_BACK=14           # Override default (7)
+  - RUN_ONCE=true          # Override default (false)
+  - LOG_LEVEL=DEBUG        # Override default (INFO)
+  
+  # Not setting CRON_SCHEDULE, PLEX_URL, etc. - they use defaults
+```
 
 ### Discord Embed Limits
 
@@ -245,30 +290,50 @@ Discord enforces the following limits on embeds:
 - **1024 characters** per field (enforced, no splitting)
 - **25 fields** maximum per embed
 
-The application automatically handles these limits:
+The application automatically handles these limits with a sophisticated dynamic trimming system:
 
+**Field-Level Handling:**
 - **Long fields:** Split across multiple fields at 1024 chars (preserves readability)
 - **Too many fields:** Trims oldest entries when exceeding 25 fields (keeps most recent items)
-- **Oversized embeds:** Unlikely to cause issues due to field-level trimming, but if total exceeds 6000 chars, Discord may reject (rare)
 
-**Retry Logic:** Both Tautulli and Discord clients use exponential backoff with 3 retry attempts and increasing delays to handle transient network failures gracefully.
+**Embed-Level Validation:**
+- Dynamic size calculation with 5800-character safety buffer
+- Automatic trimming algorithm with up to 5 attempts
+- 20% reduction per attempt when embed exceeds limits
+- Items split into multiple Discord messages if necessary
+
+**What you'll see:**
+
+When trimming occurs, you'll see log messages like:
+```
+WARNING - Embed for Movies exceeds size limits, trimming attempt 1/5
+WARNING - Reduced field count from 30 to 24 items
+```
+
+**How to reduce trimming:**
+- Reduce `days_back` value (fewer days = fewer items)
+- Use more selective media type filtering in Tautulli settings
+- Accept that some older items may not appear in Discord (all items still logged)
+
+**Note:** All items are processed and logged regardless of Discord limits - trimming only affects Discord message content, not the actual functionality.
 
 ---
 
 ## Docker Secrets
 
-### Volume-Mounted Secrets (Recommended)
+### Volume-Mounted Secrets (Recommended for Sensitive Values)
 
-The simplest approach for secrets:
+For sensitive values like API keys and webhooks, use file-based secrets:
 
 ```yaml
 # docker-compose.yml
 services:
   app:
     volumes:
-      - ./secrets:/app/secrets:ro # Mount secrets directory
+      - ./secrets:/run/secrets:ro # Mount secrets directory
     environment:
-      - TAUTULLI_API_KEY=/run/secrets/tautulli_key # Point to file
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_key  # File path
+      - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook  # File path
 ```
 
 Create secret files:
@@ -276,8 +341,23 @@ Create secret files:
 ```bash
 mkdir -p secrets
 echo "your_api_key" > secrets/tautulli_key
-chmod 600 secrets/tautulli_key  # Secure permissions
+echo "https://discord.com/api/webhooks/..." > secrets/discord_webhook
+chmod 600 secrets/*  # Secure permissions
 ```
+
+### Direct Values (Alternative)
+
+You can also use direct values in environment variables (less secure for production):
+
+```yaml
+# docker-compose.yml
+environment:
+  - TAUTULLI_URL=http://tautulli:8181
+  - TAUTULLI_API_KEY=your_api_key_here  # Direct value
+  - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123/abc...  # Direct URL
+```
+
+⚠️ **Security Note:** Direct values are visible in `docker-compose.yml`. Use file-based secrets for production.
 
 ### Docker Compose Secrets (Alternative)
 
@@ -299,13 +379,43 @@ secrets:
 
 Both methods work identically from the application's perspective.
 
+### How Values Are Processed
+
+The application automatically detects whether you're using a file path (starts with `/`) or a direct value:
+
+```yaml
+environment:
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_key      # File path → reads file
+  - DISCORD_WEBHOOK_URL=https://discord.com/api/... # Direct value → uses as-is
+```
+
+**File handling:** Whitespace trimmed, first line used for multi-line files, startup fails with clear error if file unreadable.
+
+**Security considerations:**
+
+See [Security](../README.md#security) for comprehensive security best practices including:
+- File permissions and PUID/PGID considerations
+- Container privilege dropping
+- Secret management
+- Production deployment security
+
+**Troubleshooting:**
+
+If file reading fails:
+- Verify file exists: `docker exec <container> ls -la /path/to/file`
+- Check file permissions (should be 600 or 400)
+- Ensure volume mount is correct in docker-compose.yml
+- Check logs for "Read secret from file" or error messages
+
 ---
 
 ## Examples
 
-### Example 1: Minimal Production Setup
+> **💡 New to the project?** See [Quick Start](../README.md#quick-start) in the main README for the simplest setup guide.
 
-**Goal:** Weekly summary on Sundays using defaults
+### Example 1: Minimal Production
+
+Weekly summary using defaults:
 
 ```yaml
 # docker-compose.yml
@@ -314,20 +424,16 @@ services:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     volumes:
       - ./configs:/app/configs:ro
-      - ./secrets:/app/secrets:ro
+      - ./secrets:/run/secrets:ro
     environment:
       - TAUTULLI_URL=http://tautulli:8181
       - TAUTULLI_API_KEY=/run/secrets/tautulli_key
     restart: unless-stopped
 ```
 
-Use the default `config.yml` as-is. All optional fields use their defaults silently when environment variables are not set (clean logs).
+### Example 2: Discord + One-Shot
 
----
-
-### Example 2: Daily Summaries with Discord
-
-**Goal:** Daily summaries at 9 AM with Discord notifications
+With Discord notifications and one-shot mode:
 
 ```yaml
 # docker-compose.yml
@@ -336,83 +442,151 @@ services:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
     volumes:
       - ./configs:/app/configs:ro
-      - ./secrets:/app/secrets:ro
+      - ./secrets:/run/secrets:ro
     environment:
       - TAUTULLI_URL=http://tautulli:8181
       - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-      - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
-      - CRON_SCHEDULE=0 9 * * *
-    restart: unless-stopped
-```
-
-**Discord Message Format:**
-
-Messages are sent as rich embeds—one per media category (Movies, TV Shows, Albums, Tracks):
-
-- **Embed Structure**: Each embed shows the media type with emoji (e.g., "🎬 Movies - Last 7 days")
-- **Field Grouping**: Items grouped by date range (e.g., "12/01 - 12/07")
-- **Clickable Links**: Direct links to Plex Web for each media item
-- **Auto-Detection**: Plex Server ID automatically detected from Tautulli
-- **Smart Formatting**: Automatically handles rate limits and character limits
-
-Each media item includes:
-
-- **Movies**: Clickable title with year (e.g., [Interstellar](https://app.plex.tv/desktop#!/server/.../details) (2014))
-- **TV Episodes**: Show name, season/episode, and episode title
-- **Music**: Artist, album, and track information
-
----
-
-### Example 3: One-Shot Execution
-
-**Goal:** Run once and exit (for external cron or manual execution)
-
-```yaml
-# docker-compose.yml
-services:
-  app:
-    image: ghcr.io/thomas-lg/plex-releases-summary:latest
-    volumes:
-      - ./configs:/app/configs:ro
-      - ./secrets:/app/secrets:ro
-    environment:
-      - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+      - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook
       - RUN_ONCE=true
+      - DAYS_BACK=14
+      - LOG_LEVEL=DEBUG
 ```
 
-Or run directly with Docker CLI:
+**Discord notifications include:**
+- 🎬 Movies | 📺 TV Shows | 💿 Albums | 🎵 Tracks
+- Rich embeds per category with clickable Plex links
+- Items grouped by date range
+
+---
+
+## Operational Guide
+
+### Configuration Auto-Creation
+
+Container auto-creates `config.yml` on first run if missing:
+1. Copies from built-in template (`config.yml.default`)
+2. Sets ownership via PUID/PGID (see [README](../README.md#puidpgid-configuration))
+3. Pre-configured with `${VAR}` placeholders
+
+Reset to defaults: `rm configs/config.yml && docker compose restart`
+
+### Exit Codes
+
+| Code | Meaning | Cause |
+|------|---------|-------|
+| `0` | Success | Completed successfully |
+| `1` | Error | Config/API/Discord errors |
+| `130` | Interrupted | KeyboardInterrupt (Ctrl+C) |
+
+Use for monitoring: `docker run --rm app; [ $? -eq 0 ] || alert`
+
+### Logging
+
+**Format:** `%(asctime)s | %(levelname)-7s | %(name)s | %(message)s`
+
+**Levels:** DEBUG (all items, API responses), INFO (default, first 10 items per type), WARNING (issues), ERROR (failures), CRITICAL (fatal)
+
+**INFO Display Limit:** Shows first 10 items per media type, logs total count. All items still processed/sent to Discord. Use `LOG_LEVEL=DEBUG` to see all.
+
+**View logs:** `docker logs plex-releases-summary` or `docker logs -f plex-releases-summary`
+
+### Scheduler Behavior
+
+Scheduled mode (`run_once: false`) with APScheduler:
+- **Coalesce:** Skips missed runs if previous execution still running
+- **Max Instances:** 1 - only one job at a time
+- **No retroactive runs:** Missed schedules don't execute after restart
+
+Example: Daily 4 PM job, container down 2-6 PM → Missed run doesn't execute at 6 PM, next run tomorrow 4 PM.
+
+**Graceful Shutdown:** SIGTERM/SIGINT handled, completes job if possible, clean exit.
+
+### Performance and Scaling
+
+**Resource Requirements:** ~50-100MB (small libraries <1000 items), ~400-800MB (very large 10000+)
+
+**Factors:** Library size, time range (`days_back`), network latency, Tautulli performance
+
+**Optimization:**
+```yaml
+# Large libraries or slow networks - fewer API calls
+environment:
+  - INITIAL_BATCH_SIZE=1000
+  - DAYS_BACK=7
+
+# Better Discord display - avoid trimming
+environment:
+  - DAYS_BACK=3
+```
+
+**Expected iterations:** 1-2 (1000 items, 7 days), 3-5 (10000 items, 7 days), 5-10 (10000 items, 30 days)
+
+### Backup and Restoration
+
+**Backup essentials:** `configs/config.yml` and `secrets/` directory
 
 ```bash
-docker run --rm \
-  -e TAUTULLI_URL=http://tautulli:8181 \
-  -e TAUTULLI_API_KEY=your_key \
-  -e RUN_ONCE=true \
-  -v ./configs:/app/configs:ro \
-  ghcr.io/thomas-lg/plex-releases-summary:latest
+# Backup
+tar czf backup-$(date +%Y%m%d).tar.gz configs/ secrets/
+
+# Restore
+docker compose down
+tar xzf backup-YYYYMMDD.tar.gz
+chmod 600 secrets/*
+docker compose up -d
 ```
 
----
 
-### Example 4: Advanced Configuration
 
-**Goal:** Biweekly summaries, custom Plex URL, debug logging
+### Migration and Updates
 
+**Update procedure:**
+```bash
+cp configs/config.yml configs/config.yml.backup  # Backup
+docker compose pull && docker compose down && docker compose up -d
+docker logs -f plex-releases-summary  # Verify
+```
+
+**Pinning:** Use `:latest` for auto-updates or `:v1.0.0` for stable production. Config format is stable.
+
+**Rollback:** `docker compose down`, restore backup, update image tag to old version, `docker compose up -d`
+
+### Tautulli API Version Compatibility
+
+**Endpoints used:** `get_recently_added`, `get_server_identity` (auto-detects Plex server ID)
+
+**Minimum:** Tautulli v2.1.0 | **Recommended:** v2.5.0+ | **Tested:** v2.5.0 - v2.13.0+
+
+Handles both wrapped and direct response formats automatically. API maintains backward compatibility.
+
+**Test API:** `curl "http://tautulli:8181/api/v2?apikey=YOUR_KEY&cmd=get_recently_added&count=10"`
+
+### Docker Networking
+
+**Bridge Network (Default):** Use container names as hostnames
 ```yaml
-# docker-compose.yml
-services:
-  app:
-    image: ghcr.io/thomas-lg/plex-releases-summary:latest
-    volumes:
-      - ./configs:/app/configs:ro
-      - ./secrets:/app/secrets:ro
-    environment:
-      - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-      - DAYS_BACK=14
-      - PLEX_URL=http://plex:32400
-      - LOG_LEVEL=DEBUG
-    restart: unless-stopped
+environment:
+  - TAUTULLI_URL=http://tautulli:8181  # Container name
+```
+
+**Tautulli on host:** Use `http://host.docker.internal:8181` (Docker Desktop) or host IP `http://192.168.1.100:8181` (Linux)
+
+**External server:** Use hostname `http://tautulli.example.com:8181`
+
+**Troubleshooting:**
+```bash
+# Check network
+docker network inspect bridge
+
+# Test connectivity
+docker exec plex-releases-summary ping tautulli
+
+# Get IP
+docker inspect tautulli | grep IPAddress
+
+# Linux host.docker.internal fix
+extra_hosts:
+  - "host.docker.internal:host-gateway"
 ```
 
 ---
@@ -491,7 +665,7 @@ environment:
 **Solution:**
 
 1. Verify file exists: `ls -la secrets/`
-2. Check volume mount in docker-compose.yml: `- ./secrets:/app/secrets:ro`
+2. Check volume mount in docker-compose.yml: `- ./secrets:/run/secrets:ro`
 3. Ensure file path in env var matches: `TAUTULLI_API_KEY=/run/secrets/tautulli_key`
 4. Check file permissions: `chmod 600 secrets/tautulli_key`
 

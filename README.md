@@ -2,6 +2,27 @@
 
 A lightweight Docker container that fetches recently added media from your Plex server via Tautulli and sends summaries to Discord. Perfect for automated weekly notifications of new movies, TV shows, and music added to your media library.
 
+> **🚀 Unraid Users:** Jump to [Unraid Quick Start](#unraid-quick-start) - just download the XML template and configure 2 settings!
+
+## Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Unraid Quick Start](#unraid-quick-start)
+- [Execution Modes](#execution-modes)
+- [Configuration](#configuration)
+- [PUID/PGID Configuration](#puidpgid-configuration)
+- [Example Output](#example-output)
+- [Discord Notifications](#discord-notifications)
+- [Development](#development)
+- [Docker Images](#docker-images)
+- [Deployment Options](#deployment-options)
+- [Operational Notes](#operational-notes)
+- [Troubleshooting](#troubleshooting)
+- [Security](#security)
+- [License](#license)
+
 ## Features
 
 - 📅 **Scheduled execution** with CRON-like timing (runs as daemon)
@@ -15,15 +36,11 @@ A lightweight Docker container that fetches recently added media from your Plex 
 
 ## Prerequisites
 
-- [Tautulli](https://tautulli.com/) v2.1.0 or later (v2.5.0+ recommended)
-  - Installed and configured with your Plex server
-  - API access must be enabled (enabled by default)
-- Tautulli API key (found in Tautulli → Settings → Web Interface → API)
+- [Tautulli](https://tautulli.com/) v2.1.0+ with API enabled
+- Tautulli API key (Settings → Web Interface → API)
 - Docker or Docker Compose
 
-> **Tautulli Compatibility Note:** This project uses the [`get_recently_added`](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference#get_recently_added) and [`get_server_identity`](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference#get_server_identity) Tautulli API endpoints. These have been stable core API features since Tautulli v2.0.0 (December 2017). Any reasonably current Tautulli installation should be fully compatible. For best results, use Tautulli v2.5.0 or later which includes Python 3 support and improved stability.
-
-> **Timezone Note:** Container defaults to UTC for CRON schedules. To use your local timezone, set the `TZ` environment variable (e.g., `TZ=America/New_York`). The default schedule `0 16 * * SUN` runs Sundays at 4 PM in the configured timezone. Use [crontab.guru](https://crontab.guru) for schedule validation.
+> **Timezone:** Container defaults to UTC. Set `TZ` environment variable for local timezone (e.g., `TZ=America/New_York`).
 
 ## Quick Start
 
@@ -58,34 +75,35 @@ That's it! On first run, the entrypoint automatically creates `config.yml` from 
 
 > **For advanced configuration options**, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#optional-field-overrides)
 
+## Unraid Quick Start
+
+**🚀 Unraid users:** Installation is super simple! Just download the XML template and you're ready to go:
+
+1. **Get the template:** Download [my-plex-releases-summary.xml](my-plex-releases-summary.xml)
+
+2. **Add to Unraid:**
+   - Copy to: `/boot/config/plugins/dockerMan/templates-user/my-plex-releases-summary.xml`
+   - Refresh Docker tab in Unraid UI
+
+3. **Configure (just 2 settings!):**
+   - **Add Container** → Select "my-plex-releases-summary"
+   - Set **TAUTULLI_URL**: `http://tautulli:8181` (your Tautulli container)
+   - Set **TAUTULLI_API_KEY**: Your Tautulli API key (find in Tautulli: Settings → Web Interface → API)
+   - Click **Apply**
+
+**Done!** Everything else is automatic - appdata, config, weekly schedule (Sundays 4 PM), PUID/PGID (99/100). 
+
 ## Execution Modes
 
 The application supports two execution modes:
 
 ### 📅 Scheduled Mode (Default)
 
-Runs automatically on a schedule (default: Sundays at 4 PM). The container stays running and executes on schedule.
-
-Using docker-compose.yml as-is runs in this mode with sensible defaults.
-
-To customize the schedule, see [CRON schedule examples](docs/CONFIGURATION.md#optional-field-overrides) in the configuration guide.
-
-**Graceful Shutdown:** The scheduler handles `SIGTERM` and `SIGINT` signals gracefully.
+Runs on schedule (default: Sundays at 4 PM). Container stays running. See [CRON examples](docs/CONFIGURATION.md#optional-field-overrides) for customization.
 
 ### ▶️ One-Shot Mode
 
-Run once and exit. Ideal for external cron jobs or manual execution.
-
-```bash
-docker run --rm \
-  -e TAUTULLI_URL=http://tautulli:8181 \
-  -e TAUTULLI_API_KEY=your-api-key \
-  -e RUN_ONCE=true \
-  -v $(pwd)/configs:/app/configs:ro \
-  ghcr.io/thomas-lg/plex-releases-summary:latest
-```
-
-For more execution mode examples, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#examples).
+Run once and exit. Set `RUN_ONCE=true`. See [examples](docs/CONFIGURATION.md#examples).
 
 ## Configuration
 
@@ -106,6 +124,24 @@ For more execution mode examples, see [docs/CONFIGURATION.md](docs/CONFIGURATION
 
 > **📖 For complete configuration documentation**, including configuration methods, Docker secrets, all fields, troubleshooting, and examples, see **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)**
 
+## PUID/PGID Configuration
+
+Control file ownership via PUID/PGID environment variables. Defaults: `99`/`100` (Unraid compatible).
+
+**Find your IDs:** `id` command shows `uid=1000 gid=1000`
+
+**Example:**
+```yaml
+environment:
+  - PUID=1000
+  - PGID=1000
+```
+
+**Notes:**
+- Rejects root (UID/GID 0) for security
+- Entrypoint drops privileges before running app
+- Permission errors? Check [Configuration Troubleshooting](docs/CONFIGURATION.md#troubleshooting)
+
 ## Example Output
 
 ```
@@ -119,64 +155,28 @@ For more execution mode examples, see [docs/CONFIGURATION.md](docs/CONFIGURATION
 2026-02-15 10:00:16 - INFO - ➕ Succession - S04E01 - The Munsters | added: 2026-02-14 18:45
 ```
 
-> **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal - the application uses client-side filtering to work around Tautulli API date filtering limitations, fetching items in batches until all matches are found.
+> **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal behavior. See [Iteration Logs](docs/CONFIGURATION.md#minimal-configuration) for explanation.
 
 ## Discord Notifications
 
-Optionally send release summaries to Discord with rich embeds showing all new media grouped by type.
+Send release summaries to Discord with rich embeds.
 
 **Quick Setup:**
+1. Create webhook: Server Settings → Integrations → Webhooks ([Discord guide](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks))
+2. Create secret: `echo "webhook-url" > secrets/discord_webhook`
+3. Set: `DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook`
 
-1. Create webhook in Discord: Server Settings → Integrations → Webhooks → New Webhook ([Discord guide](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks))
-2. Create secret file: `echo "your-webhook-url" > secrets/discord_webhook`
-3. Set in docker-compose.yml: `DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook`
+**Features:** Rich embeds, grouped media, clickable Plex links, auto-retry. See [Discord Configuration](docs/CONFIGURATION.md#discord-embed-limits) for details.
 
-**Features:**
-
-- Rich embeds with media grouped by type (Movies, TV Shows, Music)
-- Clickable links to Plex Web (Server ID auto-detected from Tautulli when Discord enabled)
-- Automatic rate limiting and retry logic with exponential backoff
-- Smart character limit handling (6000 chars/embed, 1024/field, 25 fields max)
-- Optional - disabled by default
-
-For detailed Discord configuration and message format, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#examples).
+**Troubleshooting:** Not receiving notifications? See [Discord Troubleshooting](docs/CONFIGURATION.md#discord-notifications-not-sending).
 
 ## Development
 
-### Local Development Setup
+1. Clone repo: `git clone https://github.com/thomas-lg/plex-releases-summary.git`
+2. Configure: Edit [configs/config-dev.yml](configs/config-dev.yml) or use [docker-compose.dev.local.yml.example](docker-compose.dev.local.yml.example) for overrides
+3. Run: `docker compose -f docker-compose.dev.yml up --build` (see [docker-compose.dev.yml](docker-compose.dev.yml))
 
-1. Clone and install dependencies:
-
-```bash
-git clone https://github.com/thomas-lg/plex-releases-summary.git
-cd plex-releases-summary
-```
-
-2. Update configuration file:
-
-```bash
-nano configs/config.yml
-# For development, set RUN_ONCE=true and log_level: DEBUG in docker-compose.dev.local.yml
-```
-
-3. (Optional) Create local overrides for custom network or other settings:
-
-```bash
-cp docker-compose.dev.local.yml.example docker-compose.dev.local.yml
-# Edit with your custom configuration (e.g., add custom networks)
-```
-
-4. Run in development mode (with hot-reload):
-
-```bash
-# Without local overrides
-docker compose -f docker-compose.dev.yml up --build
-
-# With local overrides
-docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up --build
-```
-
-**Note**: `docker-compose.dev.local.yml` is gitignored for personal customizations like custom Docker networks or volume mounts.
+**Features:** Hot-reload on `.py` changes, DEBUG logging, source mounted for live editing.
 
 ### Project Structure
 
@@ -184,147 +184,97 @@ docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up --bu
 .
 ├── src/
 │   ├── app.py              # Main application logic
+│   ├── config.py           # Configuration loader and validator
+│   ├── scheduler.py        # APScheduler daemon mode
 │   ├── tautulli_client.py  # Tautulli API client
 │   ├── discord_client.py   # Discord webhook client
 │   └── logging_config.py   # Logging configuration
-├── Dockerfile              # Production Docker image
-├── docker-compose.yml      # Production compose config
-├── docker-compose.dev.yml  # Development compose config
-├── docker-compose.dev.local.yml.example  # Example local overrides
+├── configs/
+│   ├── [config.yml](configs/config.yml)          # User configuration file
+│   └── [config-dev.yml](configs/config-dev.yml)      # Development configuration
+├── docs/
+│   └── [CONFIGURATION.md](docs/CONFIGURATION.md)    # Complete configuration reference
+├── assets/                 # Project assets (screenshots, etc.)
+├── [Dockerfile](Dockerfile)              # Production Docker image
+├── [Dockerfile.dev](Dockerfile.dev)          # Development Docker image
+├── [docker-compose.yml](docker-compose.yml)      # Production compose config
+├── [docker-compose.dev.yml](docker-compose.dev.yml)  # Development compose config
+├── [docker-compose.dev.local.yml.example](docker-compose.dev.local.yml.example)  # Example local overrides
+├── entrypoint.sh           # Container entrypoint script
 ├── requirements.txt        # Python dependencies
+├── requirements-dev.txt    # Development dependencies
+├── my-plex-releases-summary.xml  # Unraid template
 └── README.md
-```
-
-## Building from Source
-
-```bash
-# Build the image
-docker build -t plex-releases-summary:latest .
-
-# Run locally
-docker run --rm \
-  -v $(pwd)/configs:/app/configs:ro \
-  plex-releases-summary:latest
 ```
 
 ## Docker Images
 
-Pre-built images are available on GitHub Container Registry:
+Pre-built images available: `ghcr.io/thomas-lg/plex-releases-summary`
+
+Tags: `latest` (stable), `vX.Y.Z` (specific versions), `sha-<commit>` (commit builds)
 
 ```bash
-# Latest version
 docker pull ghcr.io/thomas-lg/plex-releases-summary:latest
-
-# Specific version
-docker pull ghcr.io/thomas-lg/plex-releases-summary:v1.0.0
 ```
-
-### Available Tags
-
-- `latest` - Latest stable release from main branch
-- `vX.Y.Z` - Specific semantic version releases
-- `sha-<commit>` - Specific commit builds
-
-## Unraid Installation
-
-Unraid users can easily install and configure this application with volume mapping for easy config editing.
-
-The Unraid template already handles auto-creating config.yml on first run. See [my-plex-releases-summary.xml](my-plex-releases-summary.xml) for the template details.
-
-### Setup Instructions
-
-1. **Create appdata directory** on your Unraid server:
-
-   ```bash
-   mkdir -p /mnt/user/appdata/plex-releases-summary
-   ```
-
-2. **Copy configuration file** to appdata:
-
-   ```bash
-   cd /mnt/user/appdata/plex-releases-summary
-   # Download config.yml from the repository
-   wget https://raw.githubusercontent.com/thomas-lg/plex-releases-summary/main/configs/config.yml -O config.yml
-   ```
-
-   The default `config.yml` comes pre-configured with environment variable references. You don't need to edit it for typical use.
-
-3. **Install via Docker** (or Community Applications):
-   - **Repository**: `ghcr.io/thomas-lg/plex-releases-summary:latest`
-   - **Volume mapping**: `/mnt/user/appdata/plex-releases-summary:/app/configs`
-   - **Restart policy**: `on-failure`
-   - **Network**: `bridge` or your custom network
-
-4. **Configure required environment variables:**
-   - `TAUTULLI_URL` = `http://tautulli:8181` (required)
-   - `TAUTULLI_API_KEY` = `your-api-key` (required)
-   - Optional: See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#optional-field-overrides) for additional environment variables
-
-### Editing Configuration on Unraid
-
-Your configuration file is accessible via the Unraid webUI if you need to customize it:
-
-1. Go to **Shares** → **appdata** → **plex-releases-summary**
-2. Edit `config.yml` with the built-in editor or via SMB share
-3. Restart the container for changes to take effect
-
-**Example appdata structure:**
-
-```
-/mnt/user/appdata/plex-releases-summary/
-└── config.yml  (your configuration file)
-```
-
-### Unraid Template (Community Applications)
-
-An Unraid template file is provided at [my-plex-releases-summary.xml](my-plex-releases-summary.xml).
 
 ## Deployment Options
 
-See [docker-compose.yml](docker-compose.yml) for the minimal production configuration. For additional deployment examples and advanced configurations, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#examples).
+See [docker-compose.yml](docker-compose.yml) for minimal production setup or [docs/CONFIGURATION.md](docs/CONFIGURATION.md#examples) for advanced configurations.
 
 ## Operational Notes
 
-- **Container restart:** Safe to restart anytime. Scheduler persists across restarts, missed schedules don't execute retroactively.
-- **Graceful shutdown:** Handles `SIGTERM`/`SIGINT` signals cleanly (e.g., `docker compose down`).
-- **Upgrades:** Pull new image, restart container. Config format is stable.
+- **Restart:** Safe anytime. Missed schedules don't run retroactively. See [Scheduler Behavior](docs/CONFIGURATION.md#scheduler-behavior).
+- **Shutdown:** Handles `SIGTERM`/`SIGINT` cleanly. 
+- **Upgrades:** Pull new image, restart. See [Migration Guide](docs/CONFIGURATION.md#migration-and-updates).
+- **Exit codes:** `0` (success), `1` (error), `130` (interrupted). See [Exit Codes](docs/CONFIGURATION.md#exit-codes).
+
+### Health Monitoring
+
+Monitor using exit codes or process checks:
+
+```dockerfile
+# Process monitoring
+HEALTHCHECK CMD pgrep -f "python.*app.py" || exit 1
+
+# One-shot mode - check exit code
+docker run --rm plex-releases-summary; [ $? -eq 0 ] || alert
+
+# Scheduled mode - check logs
+docker logs container --since 24h | grep -q "Job executed successfully"
+```
+
+External tools: Uptime Kuma, Prometheus/Grafana, Healthchecks.io. See [Exit Codes](docs/CONFIGURATION.md#exit-codes) for monitoring integration.
 
 ## Troubleshooting
 
-**Common Issues:**
+Common issues:
+- **Connection errors**: Check Tautulli URL/API key and accessibility
+- **No items**: Increase `days_back` or verify media timing
+- **Config not working**: Verify environment variables in docker-compose.yml
+- **"iteration 1, 2..." logs**: Normal - see [Iteration Logs](docs/CONFIGURATION.md#minimal-configuration)
 
-- **Connection errors**: Verify Tautulli URL/API key, ensure Tautulli is running and accessible
-- **No items found**: Check media was added in time range, increase `days_back` to test
-- **Configuration not working**: Ensure environment variable is set in docker-compose.yml (config.yml already has `${VAR}` placeholders)
-- **Empty env var warnings**: These indicate env vars set to empty strings. Either unset them or provide values.
-- **"iteration 1, 2, 3..." logs**: Normal behavior. The app fetches data in batches using client-side filtering.
-- **Validation errors**: Check field types (e.g., `days_back` must be integer ≥1, `log_level` must be DEBUG/INFO/WARNING/ERROR/CRITICAL)
-- **Docker networking**: Ensure containers can communicate (use Docker network or `host.docker.internal` on Docker Desktop)
+Enable debug: Set `LOG_LEVEL=DEBUG` in docker-compose.yml
 
-**Enable debug logging:**
-
-```yaml
-# docker-compose.yml
-environment:
-  - LOG_LEVEL=DEBUG
-```
-
-For comprehensive troubleshooting and solutions, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#troubleshooting).
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [Tautulli](https://tautulli.com/) - Monitoring and tracking tool for Plex Media Server
-- [Plex](https://www.plex.tv/) - Media server platform
+See [Configuration Troubleshooting](docs/CONFIGURATION.md#troubleshooting) for comprehensive guidance.
 
 ## Security
 
-**Important**: Never commit your `config.yml` file with real credentials or expose your Tautulli API key. If you accidentally commit secrets, rotate your Tautulli API key immediately.
+### Credentials
+Never commit credentials. Use file-based secrets: mount secrets directory and set `TAUTULLI_API_KEY=/run/secrets/tautulli_key`. Application auto-reads files starting with `/`. See [Docker Secrets](docs/CONFIGURATION.md#docker-secrets) for detailed setup.
 
-**Recommended**: Use file-based secrets for sensitive values. Mount a secrets directory and point environment variables to files (e.g., `TAUTULLI_API_KEY=/run/secrets/tautulli_key` and a volume like `./secrets:/run/secrets:ro`). The application automatically reads file contents for any path starting with `/`. For development, you can hardcode values directly in docker-compose.yml.
+### Container Security
+- **Privilege dropping**: Starts as root for permissions, drops to `appuser` (UID 99) via `gosu`
+- **PUID/PGID validation**: Rejects UID/GID 0, warns about shared UIDs (100, 1000)
+- **Best practices**: Use `:ro` mounts, isolated networks, Docker secrets. See [Dockerfile](Dockerfile) SECURITY NOTE.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file.
+
+## Acknowledgments
+
+- [Tautulli](https://tautulli.com/) - Plex monitoring tool
+- [Plex](https://www.plex.tv/) - Media server platform
 
 ---
 
