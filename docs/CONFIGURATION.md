@@ -156,8 +156,8 @@ For production deployments, use file-based secrets for sensitive values:
    ```yaml
    # docker-compose.yml
    environment:
-    - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-     - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
+     - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+       - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
    ```
 
 3. Reference in config.yml:
