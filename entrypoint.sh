@@ -43,8 +43,8 @@ echo "==> Running with PUID=$PUID, PGID=$PGID"
 echo "==> Adjusting appuser to UID=$PUID, GID=$PGID"
 
 # Detect current UID/GID for appuser (if it exists)
-current_gid="$(id -g appuser 2>/dev/null || echo '')"
 current_uid="$(id -u appuser 2>/dev/null || echo '')"
+current_gid="$(id -g appuser 2>/dev/null || echo '')"
 
 # Handle group (GID)
 if [ "$current_gid" = "$PGID" ] && [ -n "$current_gid" ]; then
