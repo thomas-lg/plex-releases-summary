@@ -1,0 +1,12 @@
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      # Coverage HTML output
+      - ./htmlcov:/app/htmlcov
+    environment:
+      - PYTHONPATH=/app/src
+      - COVERAGE_FILE=/tmp/.coverage
+    working_dir: /app

@@ -1,7 +1,7 @@
-import sys
-import signal
 import logging
-from typing import Callable
+import signal
+import sys
+from collections.abc import Callable
 from datetime import datetime
 
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -45,8 +45,14 @@ class GracefulScheduler:
             result = self.task_func()
             if result != 0:
                 logger.warning("Task completed with non-zero exit code: %d", result)
+        except (ConnectionError, TimeoutError) as e:
+            logger.error("Network error during scheduled task: %s", e)
+            # Don't propagate - scheduler should continue running
+        except ValueError as e:
+            logger.error("Configuration or data error during scheduled task: %s", e)
+            # Don't propagate - scheduler should continue running
         except Exception as e:
-            logger.exception("Error during scheduled task execution: %s", e)
+            logger.exception("Unexpected error during scheduled task execution: %s", e)
             # Don't propagate - scheduler should continue running
 
     def start(self) -> None:
@@ -68,7 +74,7 @@ class GracefulScheduler:
                 id="plex_summary_task",
                 name="Plex Summary Task",
                 coalesce=True,  # Skip missed runs if previous run is still executing
-                max_instances=1  # Only one instance at a time
+                max_instances=1,  # Only one instance at a time
             )
 
             logger.info("🕐 Scheduler started - waiting for scheduled executions")

@@ -8,43 +8,49 @@ Complete configuration guide for Plex Releases Summary. This document covers all
 
 ## Table of Contents
 
-- [Configuration Fields](#configuration-fields)
-- [Minimal Configuration](#minimal-configuration)
-- [Configuration Methods](#configuration-methods)
-  - [Method 1: Environment Variables](#method-1-environment-variables-recommended)
-  - [Method 2: Hardcoded Values](#method-2-hardcoded-values)
-  - [Method 3: Docker Secrets](#method-3-docker-secrets-production)
-- [Environment Variables and Docker](#environment-variables-and-docker)
-  - [When to Use Environment Variables](#when-to-use-environment-variables)
-  - [Environment Variable to Field Mapping](#environment-variable-to-field-mapping)
-- [Optional Field Overrides](#optional-field-overrides)
-  - [Discord Embed Limits](#discord-embed-limits)
-- [Docker Secrets](#docker-secrets)
-  - [Volume-Mounted Secrets](#volume-mounted-secrets-recommended-for-sensitive-values)
-  - [Direct Values](#direct-values-alternative)
-  - [How Values Are Processed](#how-values-are-processed)
-- [Examples](#examples)
-  - [Example 1: Minimal Production](#example-1-minimal-production)
-  - [Example 2: Discord + One-Shot](#example-2-discord--one-shot)
-- [Operational Guide](#operational-guide)
-  - [Configuration Auto-Creation](#configuration-auto-creation)
-  - [Exit Codes](#exit-codes)
-  - [Logging](#logging)
-  - [Scheduler Behavior](#scheduler-behavior)
-  - [Performance and Scaling](#performance-and-scaling)
-  - [Backup and Restoration](#backup-and-restoration)
-  - [Migration and Updates](#migration-and-updates)
-  - [Tautulli API Version Compatibility](#tautulli-api-version-compatibility)
-  - [Docker Networking](#docker-networking)
-- [Troubleshooting](#troubleshooting)
-  - [Configuration Not Working](#configuration-not-working)
-  - [Unresolved Environment Variable Error](#unresolved-environment-variable-error)
-  - [Discord Notifications Not Sending](#discord-notifications-not-sending)
-  - [CRON Schedule Not Running](#cron-schedule-not-running)
-  - [Secret File Not Found](#secret-file-not-found)
-  - [Validation Errors](#validation-errors)
-  - [Docker Networking Issues](#docker-networking-issues)
-  - [Need More Logging](#need-more-logging)
+- [Configuration Reference](#configuration-reference)
+  - [Table of Contents](#table-of-contents)
+  - [Configuration Fields](#configuration-fields)
+  - [Minimal Configuration](#minimal-configuration)
+    - [Understanding Retry Logic](#understanding-retry-logic)
+  - [Configuration Methods](#configuration-methods)
+    - [Method 1: Environment Variables (Recommended)](#method-1-environment-variables-recommended)
+    - [Method 2: Hardcoded Values](#method-2-hardcoded-values)
+    - [Method 3: Docker Secrets (Production)](#method-3-docker-secrets-production)
+  - [Environment Variables and Docker](#environment-variables-and-docker)
+    - [When to Use Environment Variables](#when-to-use-environment-variables)
+    - [Environment Variable to Field Mapping](#environment-variable-to-field-mapping)
+  - [Optional Field Overrides](#optional-field-overrides)
+    - [Discord Embed Limits](#discord-embed-limits)
+  - [Docker Secrets](#docker-secrets)
+    - [Volume-Mounted Secrets (Recommended for Sensitive Values)](#volume-mounted-secrets-recommended-for-sensitive-values)
+    - [Direct Values (Alternative)](#direct-values-alternative)
+    - [Docker Compose Secrets (Alternative)](#docker-compose-secrets-alternative)
+    - [How Values Are Processed](#how-values-are-processed)
+  - [Examples](#examples)
+    - [Example 1: Minimal Production](#example-1-minimal-production)
+    - [Example 2: Discord + One-Shot](#example-2-discord--one-shot)
+  - [Operational Guide](#operational-guide)
+    - [Configuration Auto-Creation](#configuration-auto-creation)
+    - [Exit Codes](#exit-codes)
+    - [Logging](#logging)
+    - [Scheduler Behavior](#scheduler-behavior)
+    - [Performance and Scaling](#performance-and-scaling)
+    - [Backup and Restoration](#backup-and-restoration)
+    - [Migration and Updates](#migration-and-updates)
+    - [Tautulli API Version Compatibility](#tautulli-api-version-compatibility)
+    - [Docker Networking](#docker-networking)
+  - [Troubleshooting](#troubleshooting)
+    - [Configuration Not Working](#configuration-not-working)
+    - [Unresolved Environment Variable Error](#unresolved-environment-variable-error)
+    - [Discord Notifications Not Sending](#discord-notifications-not-sending)
+    - [CRON Schedule Not Running](#cron-schedule-not-running)
+    - [Secret File Not Found](#secret-file-not-found)
+    - [Validation Errors](#validation-errors)
+    - [Docker Networking Issues](#docker-networking-issues)
+    - [Need More Logging](#need-more-logging)
+  - [Source of Truth](#source-of-truth)
+  - [See Also](#see-also)
 
 ---
 
@@ -74,10 +80,12 @@ All configuration fields are defined in `src/config.py`. The table below shows a
 ## Minimal Configuration
 
 **Only 2 fields are required:**
+
 1. **`tautulli_url`** - Tautulli server URL
 2. **`tautulli_api_key`** - Tautulli API key
 
 **All other fields are optional** and have sensible defaults:
+
 - `days_back`: 7 days
 - `cron_schedule`: Weekly Sundays at 4 PM UTC (`0 16 * * SUN`)
 - `plex_url`: Plex web app (`https://app.plex.tv`)
@@ -105,11 +113,13 @@ environment:
 Both Tautulli and Discord API clients implement retry logic with exponential backoff:
 
 **Tautulli API Retries:**
+
 - **Attempts:** 3 retries with exponential backoff (1s, 2s, 4s)
 - **Timeout:** 10s per request
 - **Triggers:** Network errors, HTTP 5xx, timeouts
 
 **Discord API Retries:**
+
 - **Attempts:** 3 retries with exponential backoff (1s, 2s, 4s)
 - **Timeout:** 10s per request
 - **Rate limits:** Respects HTTP 429 with `retry_after` header
@@ -170,10 +180,12 @@ tautulli_api_key: ${TAUTULLI_API_KEY}
 ### When to Use Environment Variables
 
 **Set environment variables for:**
+
 - **Required fields** (`TAUTULLI_URL`, `TAUTULLI_API_KEY`) - **Always required**
 - **Optional fields you want to customize** (e.g., `DAYS_BACK`, `DISCORD_WEBHOOK_URL`)
 
 **Don't set environment variables for:**
+
 - **Optional fields you want to keep at default values** - they work automatically
 
 **How optional fields work:**
@@ -182,17 +194,17 @@ The default `config.yml` has all fields pre-configured with `${VAR}` placeholder
 
 ```yaml
 # Example from config.yml
-days_back: ${DAYS_BACK}          # Optional - defaults to 7
-discord_webhook_url: ${DISCORD_WEBHOOK_URL}  # Optional - defaults to None
+days_back: ${DAYS_BACK} # Optional - defaults to 7
+discord_webhook_url: ${DISCORD_WEBHOOK_URL} # Optional - defaults to None
 ```
 
 **Behavior based on environment variable state:**
 
-| Env Var State | Required Field (`TAUTULLI_URL`) | Optional Field (`DAYS_BACK`) |
-|---------------|--------------------------------|------------------------------|
-| **Not set** | ❌ Startup error | ✅ Uses default (7) - no log message |
-| **Empty string** (`""`) | ❌ Startup error | ⚠️ WARNING logged, uses default |
-| **Valid value** | ✅ Uses your value | ✅ Uses your value |
+| Env Var State           | Required Field (`TAUTULLI_URL`) | Optional Field (`DAYS_BACK`)         |
+| ----------------------- | ------------------------------- | ------------------------------------ |
+| **Not set**             | ❌ Startup error                | ✅ Uses default (7) - no log message |
+| **Empty string** (`""`) | ❌ Startup error                | ⚠️ WARNING logged, uses default      |
+| **Valid value**         | ✅ Uses your value              | ✅ Uses your value                   |
 
 **Example - Only setting what you need:**
 
@@ -202,31 +214,32 @@ environment:
   # Required - must set these
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-  
+
   # Optional - only set what you want to customize
-  - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook  # Enable Discord (file path)
+  - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook # Enable Discord (file path)
   # OR direct URL: - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
-  - DAYS_BACK=14  # Change from default 7 to 14
-  
+  - DAYS_BACK=14 # Change from default 7 to 14
+
+
   # Not setting CRON_SCHEDULE, LOG_LEVEL, etc. - they use defaults
 ```
 
 ### Environment Variable to Field Mapping
 
-| Environment Variable  | Config Field          | Purpose                        |
-| --------------------- | --------------------- | ------------------------------ |
-| `TAUTULLI_URL`        | `tautulli_url`        | Tautulli server URL (required) |
-| `TAUTULLI_API_KEY`    | `tautulli_api_key`    | Tautulli API key (required)    |
-| `DAYS_BACK`           | `days_back`           | Override default (7 days)      |
-| `CRON_SCHEDULE`       | `cron_schedule`       | Override default (Sunday 4 PM) |
-| `DISCORD_WEBHOOK_URL` | `discord_webhook_url` | Enable Discord notifications   |
-| `PLEX_URL`            | `plex_url`            | Override default (app.plex.tv) |
-| `PLEX_SERVER_ID`      | `plex_server_id`      | Override auto-detection        |
-| `RUN_ONCE`            | `run_once`            | Override default (false)       |
-| `LOG_LEVEL`           | `log_level`           | Override default (INFO)        |
-| `INITIAL_BATCH_SIZE`  | `initial_batch_size`  | Override adaptive batching     |
-| `TZ`                  | N/A                   | Container timezone (UTC default) |
-| `PUID`                | N/A                   | User ID for file permissions - see [PUID/PGID Configuration](../README.md#puidpgid-configuration) |
+| Environment Variable  | Config Field          | Purpose                                                                                            |
+| --------------------- | --------------------- | -------------------------------------------------------------------------------------------------- |
+| `TAUTULLI_URL`        | `tautulli_url`        | Tautulli server URL (required)                                                                     |
+| `TAUTULLI_API_KEY`    | `tautulli_api_key`    | Tautulli API key (required)                                                                        |
+| `DAYS_BACK`           | `days_back`           | Override default (7 days)                                                                          |
+| `CRON_SCHEDULE`       | `cron_schedule`       | Override default (Sunday 4 PM)                                                                     |
+| `DISCORD_WEBHOOK_URL` | `discord_webhook_url` | Enable Discord notifications                                                                       |
+| `PLEX_URL`            | `plex_url`            | Override default (app.plex.tv)                                                                     |
+| `PLEX_SERVER_ID`      | `plex_server_id`      | Override auto-detection                                                                            |
+| `RUN_ONCE`            | `run_once`            | Override default (false)                                                                           |
+| `LOG_LEVEL`           | `log_level`           | Override default (INFO)                                                                            |
+| `INITIAL_BATCH_SIZE`  | `initial_batch_size`  | Override adaptive batching                                                                         |
+| `TZ`                  | N/A                   | Container timezone (UTC default)                                                                   |
+| `PUID`                | N/A                   | User ID for file permissions - see [PUID/PGID Configuration](../README.md#puidpgid-configuration)  |
 | `PGID`                | N/A                   | Group ID for file permissions - see [PUID/PGID Configuration](../README.md#puidpgid-configuration) |
 
 ---
@@ -246,7 +259,7 @@ environment:
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-  - CRON_SCHEDULE=0 0 * * *  # Override default (was: 0 16 * * SUN)
+  - CRON_SCHEDULE=0 0 * * * # Override default (was: 0 16 * * SUN)
 ```
 
 The `config.yml` already has `cron_schedule: ${CRON_SCHEDULE}`, so it will use your value.
@@ -258,7 +271,7 @@ The `config.yml` already has `cron_schedule: ${CRON_SCHEDULE}`, so it will use y
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-  - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook  # File path (recommended)
+  - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook # File path (recommended)
   # OR direct URL:
   # - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123/abc...
 ```
@@ -273,12 +286,13 @@ environment:
   # Required
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
-  
+
   # Optional customizations
-  - DAYS_BACK=14           # Override default (7)
-  - RUN_ONCE=true          # Override default (false)
-  - LOG_LEVEL=DEBUG        # Override default (INFO)
-  
+  - DAYS_BACK=14 # Override default (7)
+  - RUN_ONCE=true # Override default (false)
+  - LOG_LEVEL=DEBUG # Override default (INFO)
+
+
   # Not setting CRON_SCHEDULE, PLEX_URL, etc. - they use defaults
 ```
 
@@ -293,10 +307,12 @@ Discord enforces the following limits on embeds:
 The application automatically handles these limits with a sophisticated dynamic trimming system:
 
 **Field-Level Handling:**
+
 - **Long fields:** Split across multiple fields at 1024 chars (preserves readability)
 - **Too many fields:** Trims oldest entries when exceeding 25 fields (keeps most recent items)
 
 **Embed-Level Validation:**
+
 - Dynamic size calculation with 5800-character safety buffer
 - Automatic trimming algorithm with up to 5 attempts
 - 20% reduction per attempt when embed exceeds limits
@@ -305,12 +321,14 @@ The application automatically handles these limits with a sophisticated dynamic 
 **What you'll see:**
 
 When trimming occurs, you'll see log messages like:
+
 ```
 WARNING - Embed for Movies exceeds size limits, trimming attempt 1/5
 WARNING - Reduced field count from 30 to 24 items
 ```
 
 **How to reduce trimming:**
+
 - Reduce `days_back` value (fewer days = fewer items)
 - Use more selective media type filtering in Tautulli settings
 - Accept that some older items may not appear in Discord (all items still logged)
@@ -332,8 +350,8 @@ services:
     volumes:
       - ./secrets:/run/secrets:ro # Mount secrets directory
     environment:
-      - TAUTULLI_API_KEY=/run/secrets/tautulli_key  # File path
-      - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook  # File path
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_key # File path
+      - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook # File path
 ```
 
 Create secret files:
@@ -353,8 +371,8 @@ You can also use direct values in environment variables (less secure for product
 # docker-compose.yml
 environment:
   - TAUTULLI_URL=http://tautulli:8181
-  - TAUTULLI_API_KEY=your_api_key_here  # Direct value
-  - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123/abc...  # Direct URL
+  - TAUTULLI_API_KEY=your_api_key_here # Direct value
+  - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123/abc... # Direct URL
 ```
 
 ⚠️ **Security Note:** Direct values are visible in `docker-compose.yml`. Use file-based secrets for production.
@@ -385,7 +403,7 @@ The application automatically detects whether you're using a file path (starts w
 
 ```yaml
 environment:
-  - TAUTULLI_API_KEY=/run/secrets/tautulli_key      # File path → reads file
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_key # File path → reads file
   - DISCORD_WEBHOOK_URL=https://discord.com/api/... # Direct value → uses as-is
 ```
 
@@ -394,6 +412,7 @@ environment:
 **Security considerations:**
 
 See [Security](../README.md#security) for comprehensive security best practices including:
+
 - File permissions and PUID/PGID considerations
 - Container privilege dropping
 - Secret management
@@ -402,6 +421,7 @@ See [Security](../README.md#security) for comprehensive security best practices 
 **Troubleshooting:**
 
 If file reading fails:
+
 - Verify file exists: `docker exec <container> ls -la /path/to/file`
 - Check file permissions (should be 600 or 400)
 - Ensure volume mount is correct in docker-compose.yml
@@ -453,6 +473,7 @@ services:
 ```
 
 **Discord notifications include:**
+
 - 🎬 Movies | 📺 TV Shows | 💿 Albums | 🎵 Tracks
 - Rich embeds per category with clickable Plex links
 - Items grouped by date range
@@ -464,6 +485,7 @@ services:
 ### Configuration Auto-Creation
 
 Container auto-creates `config.yml` on first run if missing:
+
 1. Copies from built-in template (`config.yml.default`)
 2. Sets ownership via PUID/PGID (see [README](../README.md#puidpgid-configuration))
 3. Pre-configured with `${VAR}` placeholders
@@ -472,10 +494,10 @@ Reset to defaults: `rm configs/config.yml && docker compose restart`
 
 ### Exit Codes
 
-| Code | Meaning | Cause |
-|------|---------|-------|
-| `0` | Success | Completed successfully |
-| `1` | Error | Config/API/Discord errors |
+| Code  | Meaning     | Cause                      |
+| ----- | ----------- | -------------------------- |
+| `0`   | Success     | Completed successfully     |
+| `1`   | Error       | Config/API/Discord errors  |
 | `130` | Interrupted | KeyboardInterrupt (Ctrl+C) |
 
 Use for monitoring: `docker run --rm app; [ $? -eq 0 ] || alert`
@@ -493,6 +515,7 @@ Use for monitoring: `docker run --rm app; [ $? -eq 0 ] || alert`
 ### Scheduler Behavior
 
 Scheduled mode (`run_once: false`) with APScheduler:
+
 - **Coalesce:** Skips missed runs if previous execution still running
 - **Max Instances:** 1 - only one job at a time
 - **No retroactive runs:** Missed schedules don't execute after restart
@@ -508,6 +531,7 @@ Example: Daily 4 PM job, container down 2-6 PM → Missed run doesn't execute at
 **Factors:** Library size, time range (`days_back`), network latency, Tautulli performance
 
 **Optimization:**
+
 ```yaml
 # Large libraries or slow networks - fewer API calls
 environment:
@@ -536,11 +560,10 @@ chmod 600 secrets/*
 docker compose up -d
 ```
 
-
-
 ### Migration and Updates
 
 **Update procedure:**
+
 ```bash
 cp configs/config.yml configs/config.yml.backup  # Backup
 docker compose pull && docker compose down && docker compose up -d
@@ -564,9 +587,10 @@ Handles both wrapped and direct response formats automatically. API maintains ba
 ### Docker Networking
 
 **Bridge Network (Default):** Use container names as hostnames
+
 ```yaml
 environment:
-  - TAUTULLI_URL=http://tautulli:8181  # Container name
+  - TAUTULLI_URL=http://tautulli:8181 # Container name
 ```
 
 **Tautulli on host:** Use `http://host.docker.internal:8181` (Docker Desktop) or host IP `http://192.168.1.100:8181` (Linux)
@@ -574,6 +598,7 @@ environment:
 **External server:** Use hostname `http://tautulli.example.com:8181`
 
 **Troubleshooting:**
+
 ```bash
 # Check network
 docker network inspect bridge

@@ -7,7 +7,7 @@ def setup_logging(log_level: str = "INFO") -> None:
     Configure logging for the application.
 
     Sets up console logging with formatted output.
-    
+
     Args:
         log_level: Logging verbosity level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     """
