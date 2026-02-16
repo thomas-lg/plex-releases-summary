@@ -6,22 +6,33 @@ A lightweight Docker container that fetches recently added media from your Plex 
 
 ## Table of Contents
 
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Unraid Quick Start](#unraid-quick-start)
-- [Execution Modes](#execution-modes)
-- [Configuration](#configuration)
-- [PUID/PGID Configuration](#puidpgid-configuration)
-- [Example Output](#example-output)
-- [Discord Notifications](#discord-notifications)
-- [Development](#development)
-- [Docker Images](#docker-images)
-- [Deployment Options](#deployment-options)
-- [Operational Notes](#operational-notes)
-- [Troubleshooting](#troubleshooting)
-- [Security](#security)
-- [License](#license)
+- [Plex Releases Summary](#plex-releases-summary)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Prerequisites](#prerequisites)
+  - [Quick Start](#quick-start)
+  - [Unraid Quick Start](#unraid-quick-start)
+  - [Execution Modes](#execution-modes)
+    - [📅 Scheduled Mode (Default)](#-scheduled-mode-default)
+    - [▶️ One-Shot Mode](#️-one-shot-mode)
+  - [Configuration](#configuration)
+    - [Available Configuration](#available-configuration)
+  - [PUID/PGID Configuration](#puidpgid-configuration)
+  - [Example Output](#example-output)
+  - [Discord Notifications](#discord-notifications)
+  - [Development](#development)
+    - [For Contributors](#for-contributors)
+    - [Project Structure](#project-structure)
+  - [Docker Images](#docker-images)
+  - [Deployment Options](#deployment-options)
+  - [Operational Notes](#operational-notes)
+    - [Health Monitoring](#health-monitoring)
+  - [Troubleshooting](#troubleshooting)
+  - [Security](#security)
+    - [Credentials](#credentials)
+    - [Container Security](#container-security)
+  - [License](#license)
+  - [Acknowledgments](#acknowledgments)
 
 ## Features
 
@@ -91,7 +102,7 @@ That's it! On first run, the entrypoint automatically creates `config.yml` from 
    - Set **TAUTULLI_API_KEY**: Your Tautulli API key (find in Tautulli: Settings → Web Interface → API)
    - Click **Apply**
 
-**Done!** Everything else is automatic - appdata, config, weekly schedule (Sundays 4 PM), PUID/PGID (99/100). 
+**Done!** Everything else is automatic - appdata, config, weekly schedule (Sundays 4 PM), PUID/PGID (99/100).
 
 ## Execution Modes
 
@@ -131,6 +142,7 @@ Control file ownership via PUID/PGID environment variables. Defaults: `99`/`100`
 **Find your IDs:** `id` command shows `uid=1000 gid=1000`
 
 **Example:**
+
 ```yaml
 environment:
   - PUID=1000
@@ -138,6 +150,7 @@ environment:
 ```
 
 **Notes:**
+
 - Rejects root (UID/GID 0) for security
 - Entrypoint drops privileges before running app
 - Permission errors? Check [Configuration Troubleshooting](docs/CONFIGURATION.md#troubleshooting)
@@ -162,6 +175,7 @@ environment:
 Send release summaries to Discord with rich embeds.
 
 **Quick Setup:**
+
 1. Create webhook: Server Settings → Integrations → Webhooks ([Discord guide](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks))
 2. Create secret: `echo "webhook-url" > secrets/discord_webhook`
 3. Set: `DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook`
@@ -176,13 +190,39 @@ Send release summaries to Discord with rich embeds.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development setup, code style guidelines, testing, and contribution process.
 
-**Quick Development Setup:**
+**Quick Start:**
 
 ```bash
 # Clone repository
 git clone https://github.com/thomas-lg/plex-releases-summary.git
 cd plex-releases-summary
 
+# Start development with hot-reload (recommended)
+./scripts/dev.sh
+
+# OR: Run tests
+./scripts/test.sh
+
+# OR: Start production mode
+./scripts/start.sh
+```
+
+**Helper Scripts:**
+
+All scripts are located in the `scripts/` directory. See [scripts/README.md](scripts/README.md) for full documentation.
+
+```bash
+./scripts/dev.sh       # Start development with hot-reload
+./scripts/start.sh     # Start production mode
+./scripts/test.sh      # Run tests with coverage
+./scripts/logs.sh      # View logs (prod/dev/test)
+./scripts/stop.sh      # Stop all containers
+./scripts/clean.sh     # Clean up caches and Docker resources
+```
+
+**Development Setup (Manual):**
+
+```bash
 # Option 1: Docker development with hot-reload
 cp docker-compose.dev.local.yml.example docker-compose.dev.local.yml
 # Edit docker-compose.dev.local.yml with your settings
@@ -200,18 +240,19 @@ cd src && python app.py
 **Running Tests:**
 
 ```bash
-# Install dependencies
-pip install -r requirements-test.txt
+# Using helper script (recommended - uses Docker)
+./scripts/test.sh                           # Run all tests
+./scripts/test.sh tests/test_config.py      # Run specific test file
+./scripts/test.sh -k "test_config"          # Run tests matching pattern
 
-# Run tests
-pytest                          # All tests
-pytest --cov=src               # With coverage
-pytest -m unit                 # Unit tests only
+# Using docker-compose directly
+docker-compose -f docker-compose.test.yml run --rm test
 
-# Code quality
-black src/ tests/              # Format code
-ruff check src/ tests/ --fix  # Lint
-mypy src/                      # Type check
+# Using local Python environment (requires dependencies installed)
+PYTHONPATH=src pytest --cov=src             # Run tests locally
+PYTHONPATH=src black src/ tests/            # Format code locally
+PYTHONPATH=src ruff check src/ tests/       # Lint locally
+PYTHONPATH=src mypy src/                    # Type check locally
 ```
 
 ### Project Structure
@@ -219,40 +260,51 @@ mypy src/                      # Type check
 ```
 .
 ├── src/
-│   ├── app.py              # Main application logic
-│   ├── config.py           # Configuration loader and validator
-│   ├── scheduler.py        # APScheduler daemon mode
-│   ├── tautulli_client.py  # Tautulli API client
-│   ├── discord_client.py   # Discord webhook client
-│   └── logging_config.py   # Logging configuration
-├── tests/                  # Test suite
-│   ├── test_config.py     # Configuration tests
-│   ├── test_app.py        # App logic tests
-│   ├── test_discord_client.py  # Discord tests
-│   └── test_discord_markdown.py  # Markdown escaping tests
+│ ├── app.py # Main application logic
+│ ├── config.py # Configuration loader and validator
+│ ├── scheduler.py # APScheduler daemon mode
+│ ├── tautulli_client.py # Tautulli API client
+│ ├── discord_client.py # Discord webhook client
+│ └── logging_config.py # Logging configuration
+├── tests/ # Test suite
+│ ├── test_config.py # Configuration tests
+│ ├── test_app.py # App logic tests
+│ ├── test_discord_client.py # Discord tests
+│ └── test_discord_markdown.py # Markdown escaping tests
+├── scripts/ # Helper scripts
+│ ├── dev.sh # Start development mode
+│ ├── start.sh # Start production mode
+│ ├── test.sh # Run tests
+│ ├── logs.sh # View logs
+│ ├── stop.sh # Stop all containers
+│ ├── clean.sh # Clean up caches
+│ └── [README.md](scripts/README.md) # Scripts documentation
 ├── configs/
-│   ├── [config.yml](configs/config.yml)          # User configuration file
-│   └── [config-dev.yml](configs/config-dev.yml)      # Development configuration
+│ ├── [config.yml](configs/config.yml) # User configuration file
+│ └── [config-dev.yml](configs/config-dev.yml) # Development configuration
 ├── docs/
-│   └── [CONFIGURATION.md](docs/CONFIGURATION.md)    # Complete configuration reference
+│ └── [CONFIGURATION.md](docs/CONFIGURATION.md) # Complete configuration reference
 ├── .github/
-│   └── workflows/          # CI/CD pipelines
-├── assets/                 # Project assets (screenshots, etc.)
-├── [Dockerfile](Dockerfile)              # Production Docker image
-├── [Dockerfile.dev](Dockerfile.dev)          # Development Docker image
-├── [docker-compose.yml](docker-compose.yml)      # Production compose config
-├── [docker-compose.dev.yml](docker-compose.dev.yml)  # Development compose config
-├── [docker-compose.dev.local.yml.example](docker-compose.dev.local.yml.example)  # Example local overrides
-├── entrypoint.sh           # Container entrypoint script
-├── requirements.txt        # Python dependencies
-├── requirements-dev.txt    # Development dependencies  
-├── requirements-test.txt   # Testing dependencies
-├── pyproject.toml          # Python project configuration
-├── pytest.ini              # Pytest configuration
+│ └── workflows/ # CI/CD pipelines
+├── assets/ # Project assets (screenshots, etc.)
+├── [Dockerfile](Dockerfile) # Production Docker image
+├── [Dockerfile.dev](Dockerfile.dev) # Development Docker image
+├── [Dockerfile.test](Dockerfile.test) # Test Docker image
+├── [docker-compose.yml](docker-compose.yml) # Production compose config
+├── [docker-compose.dev.yml](docker-compose.dev.yml) # Development compose config
+├── [docker-compose.dev.local.yml.example](docker-compose.dev.local.yml.example) # Example local overrides
+├── [docker-compose.test.yml](docker-compose.test.yml) # Test compose config
+├── entrypoint.sh # Container entrypoint script
+├── requirements.txt # Python dependencies
+├── requirements-dev.txt # Development dependencies
+├── requirements-test.txt # Testing dependencies
+├── pyproject.toml # Python project configuration
+├── pytest.ini # Pytest configuration
 ├── .pre-commit-config.yaml # Pre-commit hooks
-├── my-plex-releases-summary.xml  # Unraid template
-├── [CONTRIBUTING.md](CONTRIBUTING.md)        # Contribution guidelines
+├── my-plex-releases-summary.xml # Unraid template
+├── [CONTRIBUTING.md](CONTRIBUTING.md) # Contribution guidelines
 └── README.md
+
 ```
 
 ## Docker Images
@@ -272,7 +324,7 @@ See [docker-compose.yml](docker-compose.yml) for minimal production setup or [do
 ## Operational Notes
 
 - **Restart:** Safe anytime. Missed schedules don't run retroactively. See [Scheduler Behavior](docs/CONFIGURATION.md#scheduler-behavior).
-- **Shutdown:** Handles `SIGTERM`/`SIGINT` cleanly. 
+- **Shutdown:** Handles `SIGTERM`/`SIGINT` cleanly.
 - **Upgrades:** Pull new image, restart. See [Migration Guide](docs/CONFIGURATION.md#migration-and-updates).
 - **Exit codes:** `0` (success), `1` (error), `130` (interrupted). See [Exit Codes](docs/CONFIGURATION.md#exit-codes).
 
@@ -296,6 +348,7 @@ External tools: Uptime Kuma, Prometheus/Grafana, Healthchecks.io. See [Exit Code
 ## Troubleshooting
 
 Common issues:
+
 - **Connection errors**: Check Tautulli URL/API key and accessibility
 - **No items**: Increase `days_back` or verify media timing
 - **Config not working**: Verify environment variables in docker-compose.yml
@@ -308,9 +361,11 @@ See [Configuration Troubleshooting](docs/CONFIGURATION.md#troubleshooting) for c
 ## Security
 
 ### Credentials
+
 Never commit credentials. Use file-based secrets: mount secrets directory and set `TAUTULLI_API_KEY=/run/secrets/tautulli_key`. Application auto-reads files starting with `/`. See [Docker Secrets](docs/CONFIGURATION.md#docker-secrets) for detailed setup.
 
 ### Container Security
+
 - **Privilege dropping**: Starts as root for permissions, drops to `appuser` (UID 99) via `gosu`
 - **PUID/PGID validation**: Rejects UID/GID 0, warns about shared UIDs (100, 1000)
 - **Best practices**: Use `:ro` mounts, isolated networks, Docker secrets. See [Dockerfile](Dockerfile) SECURITY NOTE.
