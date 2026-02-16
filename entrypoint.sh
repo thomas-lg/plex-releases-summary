@@ -53,7 +53,7 @@ fi
 # Ensure config directory exists and fix permissions
 echo "==> Ensuring correct permissions on $CONFIG_DIR"
 mkdir -p "$CONFIG_DIR"
-chown -R -h "$PUID:$PGID" "$CONFIG_DIR"
+chown -R "$PUID:$PGID" "$CONFIG_DIR"
 
 # Copy default config if not exists
 if [ ! -f "$CONFIG_FILE" ]; then
