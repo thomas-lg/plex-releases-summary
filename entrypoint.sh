@@ -11,7 +11,8 @@ CONFIG_DIR="/app/configs"
 CONFIG_FILE="${CONFIG_DIR}/config.yml"
 DEFAULT_CONFIG="/app/config.yml.default"
 
-# Validate that a given ID is a numeric value within the range 0–65535.
+# Validate that a given ID is a numeric value within the range 1–65535.
+# Explicitly rejects 0 (root) for security reasons.
 validate_id() {
     value="$1"
     name="$2"
@@ -24,9 +25,16 @@ validate_id() {
             ;;
     esac
 
+    # Reject root user/group (UID/GID 0) for security reasons
+    if [ "$value" -eq 0 ]; then
+        echo "ERROR: $name cannot be 0 (root). Running as root is a security risk." >&2
+        echo "       Please specify a non-root user/group ID (1-65535)." >&2
+        exit 1
+    fi
+
     # Must be within the typical UID/GID range.
-    if [ "$value" -lt 0 ] || [ "$value" -gt 65535 ]; then
-        echo "ERROR: $name must be between 0 and 65535, got '$value'." >&2
+    if [ "$value" -gt 65535 ]; then
+        echo "ERROR: $name must be between 1 and 65535, got '$value'." >&2
         exit 1
     fi
 }
