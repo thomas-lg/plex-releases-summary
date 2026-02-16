@@ -80,11 +80,7 @@ class TestResolveValue:
             temp_path = f.name
 
         try:
-            data = {
-                "key1": "value1",
-                "key2": temp_path,
-                "nested": {"key3": temp_path}
-            }
+            data = {"key1": "value1", "key2": temp_path, "nested": {"key3": temp_path}}
             result = _resolve_value(data)
             assert result["key1"] == "value1"
             assert result["key2"] == "nested_secret"
@@ -153,12 +149,7 @@ class TestExpandEnvVars:
     def test_expand_nested_dict(self):
         """Test recursive expansion in nested dictionaries."""
         with patch.dict(os.environ, {"VAR1": "value1", "VAR2": "value2"}):
-            data = {
-                "outer": "${VAR1}",
-                "nested": {
-                    "inner": "${VAR2}"
-                }
-            }
+            data = {"outer": "${VAR1}", "nested": {"inner": "${VAR2}"}}
             result = _expand_env_vars(data)
             assert result["outer"] == "value1"
             assert result["nested"]["inner"] == "value2"
@@ -181,7 +172,7 @@ class TestConfigModel:
         config = Config(
             tautulli_url="http://localhost:8181",
             tautulli_api_key="test_api_key",
-            run_once=True  # Avoid needing cron_schedule
+            run_once=True,  # Avoid needing cron_schedule
         )
         assert config.tautulli_url == "http://localhost:8181"
         assert config.tautulli_api_key == "test_api_key"
@@ -193,7 +184,7 @@ class TestConfigModel:
         """Test that missing required fields raise ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
             Config(tautulli_url="http://localhost:8181")  # Missing api_key
-        
+
         assert "tautulli_api_key" in str(exc_info.value)
 
     @pytest.mark.unit
@@ -201,10 +192,7 @@ class TestConfigModel:
         """Test that valid log levels are accepted."""
         for level in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
             config = Config(
-                tautulli_url="http://localhost:8181",
-                tautulli_api_key="test_key",
-                log_level=level,
-                run_once=True
+                tautulli_url="http://localhost:8181", tautulli_api_key="test_key", log_level=level, run_once=True
             )
             assert config.log_level == level
 
@@ -212,10 +200,7 @@ class TestConfigModel:
     def test_log_level_validation_case_insensitive(self):
         """Test that log level validation is case-insensitive."""
         config = Config(
-            tautulli_url="http://localhost:8181",
-            tautulli_api_key="test_key",
-            log_level="info",
-            run_once=True
+            tautulli_url="http://localhost:8181", tautulli_api_key="test_key", log_level="info", run_once=True
         )
         assert config.log_level == "INFO"
 
@@ -224,12 +209,9 @@ class TestConfigModel:
         """Test that invalid log levels raise ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
             Config(
-                tautulli_url="http://localhost:8181",
-                tautulli_api_key="test_key",
-                log_level="INVALID",
-                run_once=True
+                tautulli_url="http://localhost:8181", tautulli_api_key="test_key", log_level="INVALID", run_once=True
             )
-        
+
         assert "log_level" in str(exc_info.value)
 
     @pytest.mark.unit
@@ -237,22 +219,16 @@ class TestConfigModel:
         """Test that cron_schedule is required when run_once is False."""
         with pytest.raises(ValidationError) as exc_info:
             Config(
-                tautulli_url="http://localhost:8181",
-                tautulli_api_key="test_key",
-                run_once=False,
-                cron_schedule=None
+                tautulli_url="http://localhost:8181", tautulli_api_key="test_key", run_once=False, cron_schedule=None
             )
-        
+
         assert "cron_schedule is required" in str(exc_info.value)
 
     @pytest.mark.unit
     def test_cron_schedule_not_required_when_run_once(self):
         """Test that cron_schedule is optional when run_once is True."""
         config = Config(
-            tautulli_url="http://localhost:8181",
-            tautulli_api_key="test_key",
-            run_once=True,
-            cron_schedule=None
+            tautulli_url="http://localhost:8181", tautulli_api_key="test_key", run_once=True, cron_schedule=None
         )
         assert config.run_once is True
         assert config.cron_schedule is None
@@ -261,13 +237,8 @@ class TestConfigModel:
     def test_days_back_validation_positive(self):
         """Test that days_back must be positive."""
         with pytest.raises(ValidationError) as exc_info:
-            Config(
-                tautulli_url="http://localhost:8181",
-                tautulli_api_key="test_key",
-                days_back=0,
-                run_once=True
-            )
-        
+            Config(tautulli_url="http://localhost:8181", tautulli_api_key="test_key", days_back=0, run_once=True)
+
         assert "days_back" in str(exc_info.value)
 
     @pytest.mark.unit
@@ -275,20 +246,14 @@ class TestConfigModel:
         """Test that initial_batch_size is within valid range."""
         # Valid range
         config = Config(
-            tautulli_url="http://localhost:8181",
-            tautulli_api_key="test_key",
-            initial_batch_size=500,
-            run_once=True
+            tautulli_url="http://localhost:8181", tautulli_api_key="test_key", initial_batch_size=500, run_once=True
         )
         assert config.initial_batch_size == 500
 
         # Too small
         with pytest.raises(ValidationError):
             Config(
-                tautulli_url="http://localhost:8181",
-                tautulli_api_key="test_key",
-                initial_batch_size=0,
-                run_once=True
+                tautulli_url="http://localhost:8181", tautulli_api_key="test_key", initial_batch_size=0, run_once=True
             )
 
         # Too large
@@ -297,19 +262,15 @@ class TestConfigModel:
                 tautulli_url="http://localhost:8181",
                 tautulli_api_key="test_key",
                 initial_batch_size=10001,
-                run_once=True
+                run_once=True,
             )
 
     @pytest.mark.unit
     def test_unresolved_env_var_detection_in_required_fields(self):
         """Test detection of unresolved env vars in required fields."""
         with pytest.raises(ValidationError) as exc_info:
-            Config(
-                tautulli_url="${UNSET_VAR}",
-                tautulli_api_key="test_key",
-                run_once=True
-            )
-        
+            Config(tautulli_url="${UNSET_VAR}", tautulli_api_key="test_key", run_once=True)
+
         error_msg = str(exc_info.value)
         assert "Unresolved environment variable" in error_msg
         assert "${UNSET_VAR}" in error_msg
@@ -317,11 +278,7 @@ class TestConfigModel:
     @pytest.mark.unit
     def test_default_values(self):
         """Test that default values are correctly applied."""
-        config = Config(
-            tautulli_url="http://localhost:8181",
-            tautulli_api_key="test_key",
-            run_once=True
-        )
+        config = Config(tautulli_url="http://localhost:8181", tautulli_api_key="test_key", run_once=True)
         assert config.days_back == 7
         assert config.plex_url == "https://app.plex.tv"
         assert config.log_level == "INFO"
@@ -339,9 +296,9 @@ class TestLoadConfig:
             "tautulli_url": "http://localhost:8181",
             "tautulli_api_key": "test_api_key",
             "run_once": True,
-            "days_back": 14
+            "days_back": 14,
         }
-        
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             yaml.dump(config_data, f)
             temp_path = f.name
@@ -360,18 +317,15 @@ class TestLoadConfig:
         config_data = {
             "tautulli_url": "${TEST_TAUTULLI_URL}",
             "tautulli_api_key": "${TEST_TAUTULLI_KEY}",
-            "run_once": True
+            "run_once": True,
         }
-        
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             yaml.dump(config_data, f)
             temp_path = f.name
 
         try:
-            with patch.dict(os.environ, {
-                "TEST_TAUTULLI_URL": "http://env-url:8181",
-                "TEST_TAUTULLI_KEY": "env-key"
-            }):
+            with patch.dict(os.environ, {"TEST_TAUTULLI_URL": "http://env-url:8181", "TEST_TAUTULLI_KEY": "env-key"}):
                 config = load_config(temp_path)
                 assert config.tautulli_url == "http://env-url:8181"
                 assert config.tautulli_api_key == "env-key"
@@ -385,13 +339,13 @@ class TestLoadConfig:
         with tempfile.TemporaryDirectory() as temp_dir:
             secret_file = Path(temp_dir) / "api_key_secret"
             secret_file.write_text("secret_from_file")
-            
+
             config_data = {
                 "tautulli_url": "http://localhost:8181",
                 "tautulli_api_key": "${API_KEY_FILE}",
-                "run_once": True
+                "run_once": True,
             }
-            
+
             config_file = Path(temp_dir) / "config.yml"
             config_file.write_text(yaml.dump(config_data))
 
@@ -424,9 +378,9 @@ class TestLoadConfig:
         config_data = {
             "tautulli_url": "http://localhost:8181",
             # Missing required tautulli_api_key
-            "run_once": True
+            "run_once": True,
         }
-        
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             yaml.dump(config_data, f)
             temp_path = f.name

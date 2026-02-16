@@ -80,11 +80,12 @@ class TestEscapeMarkdown:
         """Test escaping real-world problematic titles."""
         # Title with brackets
         assert _escape_markdown("Marvel's The Avengers [2012]") == "Marvel's The Avengers \\[2012\\]"
-        
+
         # Title with asterisk
-        assert _escape_markdown("Monty Python's Life of Brian *Best Comedy*") == \
-            "Monty Python's Life of Brian \\*Best Comedy\\*"
-        
+        assert (
+            _escape_markdown("Monty Python's Life of Brian *Best Comedy*")
+            == "Monty Python's Life of Brian \\*Best Comedy\\*"
+        )
+
         # Title with parentheses
-        assert _escape_markdown("The Good (The Bad & The Ugly)") == \
-            "The Good \\(The Bad & The Ugly\\)"
+        assert _escape_markdown("The Good (The Bad & The Ugly)") == "The Good \\(The Bad & The Ugly\\)"
