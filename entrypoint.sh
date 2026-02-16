@@ -44,62 +44,48 @@ PGID=${PGID:-100}
 
 validate_id "$PUID" "PUID"
 validate_id "$PGID" "PGID"
-echo "==> Plex Releases Summary - Starting..."
-echo "==> Running with PUID=$PUID, PGID=$PGID"
+echo "Plex Releases Summary - starting"
+echo "Running with PUID=$PUID, PGID=$PGID"
 
 # Adjust appuser to match PUID/PGID
-echo "==> Adjusting appuser to UID=$PUID, GID=$PGID"
 
 # Detect current UID/GID for appuser (if it exists)
 current_uid="$(id -u appuser 2>/dev/null || echo '')"
 current_gid="$(id -g appuser 2>/dev/null || echo '')"
 
 # Handle group (GID)
-if [ "$current_gid" = "$PGID" ] && [ -n "$current_gid" ]; then
-    echo "==> Group for appuser already has GID $PGID; no change needed."
-else
+if [ -z "$current_gid" ] || [ "$current_gid" != "$PGID" ]; then
     existing_group="$(getent group "$PGID" 2>/dev/null | cut -d: -f1 || true)"
     if [ -n "$existing_group" ] && [ "$existing_group" != "appuser" ]; then
         echo "WARNING: Requested PGID $PGID is already used by group '$existing_group'; appuser will share this GID and therefore have the same group permissions as '$existing_group'." >&2
     fi
-    if groupmod -o -g "$PGID" appuser 2>/dev/null; then
-        echo "==> Updated appuser group to GID $PGID"
-    else
+    if ! groupmod -o -g "$PGID" appuser 2>/dev/null; then
         echo "WARNING: Failed to modify group for appuser; continuing with existing GID '${current_gid:-unknown}'." >&2
     fi
 fi
 
 # Handle user (UID)
-if [ "$current_uid" = "$PUID" ] && [ -n "$current_uid" ]; then
-    echo "==> User appuser already has UID $PUID; no change needed."
-else
+if [ -z "$current_uid" ] || [ "$current_uid" != "$PUID" ]; then
     existing_user="$(getent passwd "$PUID" 2>/dev/null | cut -d: -f1 || true)"
     if [ -n "$existing_user" ] && [ "$existing_user" != "appuser" ]; then
         echo "WARNING: Requested PUID $PUID is already used by user '$existing_user'; appuser will share this UID, file ownership, and permissions, which may be a security risk if that user has elevated privileges." >&2
     fi
-    if usermod -o -u "$PUID" appuser 2>/dev/null; then
-        echo "==> Updated appuser user to UID $PUID"
-    else
+    if ! usermod -o -u "$PUID" appuser 2>/dev/null; then
         echo "WARNING: Failed to modify user for appuser; continuing with existing UID '${current_uid:-unknown}'." >&2
     fi
 fi
 
 # Ensure config directory exists and fix permissions
-echo "==> Ensuring correct permissions on $CONFIG_DIR"
 mkdir -p "$CONFIG_DIR"
 chown -R "$PUID:$PGID" "$CONFIG_DIR"
 
 # Copy default config if not exists
 if [ ! -f "$CONFIG_FILE" ]; then
-    echo "==> Config file not found at $CONFIG_FILE"
-    echo "==> Creating default configuration template..."
     cp "$DEFAULT_CONFIG" "$CONFIG_FILE"
     chown "$PUID:$PGID" "$CONFIG_FILE"
-    echo "==> IMPORTANT: Set TAUTULLI_URL and TAUTULLI_API_KEY environment variables"
-else
-    echo "==> Config file found at $CONFIG_FILE"
+    echo "Config created at $CONFIG_FILE"
 fi
 
 # Run application as appuser
-echo "==> Starting application as appuser..."
+echo "Starting app"
 exec gosu appuser "$@"

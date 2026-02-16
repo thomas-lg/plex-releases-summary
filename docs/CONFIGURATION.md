@@ -69,7 +69,7 @@ All other fields have sensible defaults and work out of the box:
 # docker-compose.yml
 environment:
   - TAUTULLI_URL=http://tautulli:8181
-  - TAUTULLI_API_KEY=/app/secrets/tautulli_key
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
 ```
 
 The default `config.yml` is already configured with all fields - you only set environment variables for what you want to customize.
@@ -156,8 +156,8 @@ For production deployments, use file-based secrets for sensitive values:
    ```yaml
    # docker-compose.yml
    environment:
-     - TAUTULLI_API_KEY=/app/secrets/tautulli_key
-     - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
+     - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+       - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
    ```
 
 3. Reference in config.yml:
@@ -219,7 +219,7 @@ To override: **Just set the environment variable** in `docker-compose.yml`. No c
 # docker-compose.yml - just add this env var
 environment:
   - TAUTULLI_URL=http://tautulli:8181
-  - TAUTULLI_API_KEY=/app/secrets/tautulli_key
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
   - CRON_SCHEDULE=0 0 * * *
 ```
 
@@ -231,7 +231,7 @@ The config.yml already has `cron_schedule: ${CRON_SCHEDULE}`, so it will automat
 # docker-compose.yml - just add this env var
 environment:
   - TAUTULLI_URL=http://tautulli:8181
-  - TAUTULLI_API_KEY=/app/secrets/tautulli_key
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
   - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
 ```
 
@@ -268,7 +268,7 @@ services:
     volumes:
       - ./secrets:/app/secrets:ro # Mount secrets directory
     environment:
-      - TAUTULLI_API_KEY=/app/secrets/tautulli_key # Point to file
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_key # Point to file
 ```
 
 Create secret files:
@@ -317,7 +317,7 @@ services:
       - ./secrets:/app/secrets:ro
     environment:
       - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/app/secrets/tautulli_key
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
     restart: unless-stopped
 ```
 
@@ -339,7 +339,7 @@ services:
       - ./secrets:/app/secrets:ro
     environment:
       - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/app/secrets/tautulli_key
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
       - DISCORD_WEBHOOK_URL=/app/secrets/discord_webhook
       - CRON_SCHEDULE=0 9 * * *
     restart: unless-stopped
@@ -377,7 +377,7 @@ services:
       - ./secrets:/app/secrets:ro
     environment:
       - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/app/secrets/tautulli_key
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
       - RUN_ONCE=true
 ```
 
@@ -408,7 +408,7 @@ services:
       - ./secrets:/app/secrets:ro
     environment:
       - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/app/secrets/tautulli_key
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
       - DAYS_BACK=14
       - PLEX_URL=http://plex:32400
       - LOG_LEVEL=DEBUG
@@ -492,7 +492,7 @@ environment:
 
 1. Verify file exists: `ls -la secrets/`
 2. Check volume mount in docker-compose.yml: `- ./secrets:/app/secrets:ro`
-3. Ensure file path in env var matches: `TAUTULLI_API_KEY=/app/secrets/tautulli_key`
+3. Ensure file path in env var matches: `TAUTULLI_API_KEY=/run/secrets/tautulli_key`
 4. Check file permissions: `chmod 600 secrets/tautulli_key`
 
 ---

@@ -44,8 +44,9 @@ echo "your_tautulli_api_key" > secrets/tautulli_key
 ```
 
 3. **Update docker-compose.yml:**
+   - Mount the secrets directory into the container (example: `./secrets:/run/secrets:ro`)
    - Set `TAUTULLI_URL` to your Tautulli server URL (e.g., `http://tautulli:8181` or `http://192.168.1.100:8181`)
-   - Verify `TAUTULLI_API_KEY=/app/secrets/tautulli_key` points to the secret file created above
+   - Set `TAUTULLI_API_KEY=/run/secrets/tautulli_key` to read the secret from the mounted path
 
 4. **Run the container:**
 
@@ -323,7 +324,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Important**: Never commit your `config.yml` file with real credentials or expose your Tautulli API key. If you accidentally commit secrets, rotate your Tautulli API key immediately.
 
-**Recommended**: Use file-based secrets for sensitive values. Mount a secrets directory and point environment variables to files (e.g., `TAUTULLI_API_KEY=/app/secrets/tautulli_key`). The application automatically reads file contents for any path starting with `/`. For development, you can hardcode values directly in docker-compose.yml.
+**Recommended**: Use file-based secrets for sensitive values. Mount a secrets directory and point environment variables to files (e.g., `TAUTULLI_API_KEY=/run/secrets/tautulli_key` and a volume like `./secrets:/run/secrets:ro`). The application automatically reads file contents for any path starting with `/`. For development, you can hardcode values directly in docker-compose.yml.
 
 ---
 
