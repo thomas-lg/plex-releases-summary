@@ -4,42 +4,102 @@ set -e
 # =============================================================================
 # Docker Entrypoint Script for Plex Releases Summary
 # =============================================================================
-# This script ensures a config file exists before starting the application.
-# If no config.yml is found in /app/configs/, it copies the default template.
-# This is especially useful for Unraid and other Docker deployments where
-# the config directory is volume-mapped but initially empty.
+# Handles PUID/PGID permissions and auto-creates config.yml from template.
 # =============================================================================
 
 CONFIG_DIR="/app/configs"
 CONFIG_FILE="${CONFIG_DIR}/config.yml"
-DEFAULT_CONFIG="/app/config.yml.default" 
+DEFAULT_CONFIG="/app/config.yml.default"
 
+# Validate that a given ID is a numeric value within the range 1–65535.
+# Explicitly rejects 0 (root) for security reasons.
+validate_id() {
+    value="$1"
+    name="$2"
+
+    # Must be composed only of digits.
+    case "$value" in
+        ''|*[!0-9]*)
+            echo "ERROR: $name must be a positive integer, got '$value'." >&2
+            exit 1
+            ;;
+    esac
+
+    # Reject root user/group (UID/GID 0) for security reasons
+    if [ "$value" -eq 0 ]; then
+        echo "ERROR: $name cannot be 0 (root). Running as root is a security risk." >&2
+        echo "       Please specify a non-root user/group ID (1-65535)." >&2
+        exit 1
+    fi
+
+    # Must be within the typical UID/GID range.
+    if [ "$value" -gt 65535 ]; then
+        echo "ERROR: $name must be between 1 and 65535, got '$value'." >&2
+        exit 1
+    fi
+}
+
+PUID=${PUID:-99}
+PGID=${PGID:-100}
+
+validate_id "$PUID" "PUID"
+validate_id "$PGID" "PGID"
 echo "==> Plex Releases Summary - Starting..."
+echo "==> Running with PUID=$PUID, PGID=$PGID"
 
-# Create config directory if it doesn't exist (shouldn't happen with volume mounts, but be safe)
-if [ ! -d "$CONFIG_DIR" ]; then
-    echo "==> Creating config directory: $CONFIG_DIR"
-    mkdir -p "$CONFIG_DIR"
+# Adjust appuser to match PUID/PGID
+echo "==> Adjusting appuser to UID=$PUID, GID=$PGID"
+
+# Detect current UID/GID for appuser (if it exists)
+current_uid="$(id -u appuser 2>/dev/null || echo '')"
+current_gid="$(id -g appuser 2>/dev/null || echo '')"
+
+# Handle group (GID)
+if [ "$current_gid" = "$PGID" ] && [ -n "$current_gid" ]; then
+    echo "==> Group for appuser already has GID $PGID; no change needed."
+else
+    existing_group="$(getent group "$PGID" 2>/dev/null | cut -d: -f1 || true)"
+    if [ -n "$existing_group" ] && [ "$existing_group" != "appuser" ]; then
+        echo "WARNING: Requested PGID $PGID is already used by group '$existing_group'; appuser will share this GID and therefore have the same group permissions as '$existing_group'." >&2
+    fi
+    if groupmod -o -g "$PGID" appuser 2>/dev/null; then
+        echo "==> Updated appuser group to GID $PGID"
+    else
+        echo "WARNING: Failed to modify group for appuser; continuing with existing GID '${current_gid:-unknown}'." >&2
+    fi
 fi
 
-# Check if config.yml exists
+# Handle user (UID)
+if [ "$current_uid" = "$PUID" ] && [ -n "$current_uid" ]; then
+    echo "==> User appuser already has UID $PUID; no change needed."
+else
+    existing_user="$(getent passwd "$PUID" 2>/dev/null | cut -d: -f1 || true)"
+    if [ -n "$existing_user" ] && [ "$existing_user" != "appuser" ]; then
+        echo "WARNING: Requested PUID $PUID is already used by user '$existing_user'; appuser will share this UID, file ownership, and permissions, which may be a security risk if that user has elevated privileges." >&2
+    fi
+    if usermod -o -u "$PUID" appuser 2>/dev/null; then
+        echo "==> Updated appuser user to UID $PUID"
+    else
+        echo "WARNING: Failed to modify user for appuser; continuing with existing UID '${current_uid:-unknown}'." >&2
+    fi
+fi
+
+# Ensure config directory exists and fix permissions
+echo "==> Ensuring correct permissions on $CONFIG_DIR"
+mkdir -p "$CONFIG_DIR"
+chown -R "$PUID:$PGID" "$CONFIG_DIR"
+
+# Copy default config if not exists
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "==> Config file not found at $CONFIG_FILE"
-    echo "==> Copying default configuration template..."
-    
-    # Copy default config
+    echo "==> Creating default configuration template..."
     cp "$DEFAULT_CONFIG" "$CONFIG_FILE"
-    
-    echo "==> Default config created at $CONFIG_FILE"
-    echo "==> IMPORTANT: You MUST edit this file and set:"
-    echo "    - TAUTULLI_URL environment variable"
-    echo "    - TAUTULLI_API_KEY environment variable"
-    echo "==> Or edit config.yml directly with your values."
-    echo ""
+    chown "$PUID:$PGID" "$CONFIG_FILE"
+    echo "==> IMPORTANT: Set TAUTULLI_URL and TAUTULLI_API_KEY environment variables"
 else
     echo "==> Config file found at $CONFIG_FILE"
 fi
 
-# Execute the main application
-echo "==> Starting Plex Releases Summary application..."
-exec "$@"
+# Run application as appuser
+echo "==> Starting application as appuser..."
+exec gosu appuser "$@"

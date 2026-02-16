@@ -8,7 +8,16 @@ LABEL org.opencontainers.image.url="https://github.com/thomas-lg/plex-releases-s
 LABEL org.opencontainers.image.source="https://github.com/thomas-lg/plex-releases-summary"
 LABEL org.opencontainers.image.licenses="MIT"
 
+# Prevent Python from writing bytecode files
+ENV PYTHONDONTWRITEBYTECODE=1
+
 WORKDIR /app
+
+# Install gosu for privilege dropping
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gosu && \
+    rm -rf /var/lib/apt/lists/* && \
+    gosu nobody true
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -17,12 +26,17 @@ COPY src/ src/
 COPY configs/config.yml config.yml.default
 COPY entrypoint.sh .
 
-# Make entrypoint executable and run as non-root user for security
-RUN chmod +x entrypoint.sh && \
-    useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
 
-USER appuser
+# Create default user (will be modified by entrypoint based on PUID/PGID)
+RUN useradd -m -u 1000 appuser
 
+# SECURITY NOTE:
+# The entrypoint is invoked as root so it can adjust file ownership/permissions
+# according to the requested PUID/PGID before the main process starts. This
+# briefly increases the attack surface during initialization, so the logic in
+# entrypoint.sh must remain minimal, well-audited, and should drop privileges
+# with gosu to the unprivileged user (appuser) as early as possible.
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["python", "src/app.py"]
