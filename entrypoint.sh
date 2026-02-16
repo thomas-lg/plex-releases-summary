@@ -42,12 +42,38 @@ echo "==> Running with PUID=$PUID, PGID=$PGID"
 # Adjust appuser to match PUID/PGID
 echo "==> Adjusting appuser to UID=$PUID, GID=$PGID"
 
-if ! groupmod -o -g "$PGID" appuser 2>&1; then
-    echo "WARNING: Failed to modify group for appuser (may already be set)" >&2
+# Detect current UID/GID for appuser (if it exists)
+current_gid="$(id -g appuser 2>/dev/null || echo '')"
+current_uid="$(id -u appuser 2>/dev/null || echo '')"
+
+# Handle group (GID)
+if [ "$current_gid" = "$PGID" ] && [ -n "$current_gid" ]; then
+    echo "==> Group for appuser already has GID $PGID; no change needed."
+else
+    existing_group="$(getent group "$PGID" 2>/dev/null | cut -d: -f1 || true)"
+    if [ -n "$existing_group" ] && [ "$existing_group" != "appuser" ]; then
+        echo "WARNING: Requested PGID $PGID is already used by group '$existing_group'; appuser will share this GID." >&2
+    fi
+    if groupmod -o -g "$PGID" appuser 2>/dev/null; then
+        echo "==> Updated appuser group to GID $PGID"
+    else
+        echo "WARNING: Failed to modify group for appuser; continuing with existing GID '${current_gid:-unknown}'." >&2
+    fi
 fi
 
-if ! usermod -o -u "$PUID" appuser 2>&1; then
-    echo "WARNING: Failed to modify user for appuser (may already be set)" >&2
+# Handle user (UID)
+if [ "$current_uid" = "$PUID" ] && [ -n "$current_uid" ]; then
+    echo "==> User appuser already has UID $PUID; no change needed."
+else
+    existing_user="$(getent passwd "$PUID" 2>/dev/null | cut -d: -f1 || true)"
+    if [ -n "$existing_user" ] && [ "$existing_user" != "appuser" ]; then
+        echo "WARNING: Requested PUID $PUID is already used by user '$existing_user'; appuser will share this UID." >&2
+    fi
+    if usermod -o -u "$PUID" appuser 2>/dev/null; then
+        echo "==> Updated appuser user to UID $PUID"
+    else
+        echo "WARNING: Failed to modify user for appuser; continuing with existing UID '${current_uid:-unknown}'." >&2
+    fi
 fi
 
 # Ensure config directory exists and fix permissions
