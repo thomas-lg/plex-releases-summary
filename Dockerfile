@@ -26,9 +26,8 @@ COPY src/ src/
 COPY configs/config.yml config.yml.default
 COPY entrypoint.sh .
 
-# Make entrypoint executable and ensure all app files are readable by any user
-RUN chmod +x entrypoint.sh && \
-    chmod -R a+rX /app
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
 
 # Create default user (will be modified by entrypoint based on PUID/PGID)
 RUN useradd -m -u 1000 appuser
