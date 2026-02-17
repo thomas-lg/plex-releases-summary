@@ -11,9 +11,11 @@ from discord_webhook import DiscordEmbed, DiscordWebhook
 logger = logging.getLogger(__name__)
 
 
-def _escape_markdown(text: str) -> str:
+def _escape_title_markdown(text: str) -> str:
     """
-    Escape Discord markdown characters to prevent formatting issues.
+    Escape markdown metacharacters that can alter a title's visible text.
+    This keeps titles looking raw in Discord while preventing emphasis, code,
+    and link-text parsing from changing what the user sees.
 
     Args:
         text: Text that may contain markdown characters
@@ -21,8 +23,7 @@ def _escape_markdown(text: str) -> str:
     Returns:
         Text with markdown characters escaped
     """
-    # Escape special markdown characters: * _ ~ ` | [ ] ( ) \
-    markdown_chars = r"([\*_~`\|\[\]\(\)\\])"
+    markdown_chars = r"([\\`*_~\[\]])"
     return re.sub(markdown_chars, r"\\\1", text)
 
 
@@ -420,8 +421,8 @@ class DiscordNotifier:
         title = item.get("title", "Unknown")
         rating_key = item.get("rating_key")
 
-        # Escape markdown characters in title to prevent formatting issues
-        safe_title = _escape_markdown(title)
+        # Escape only markdown characters that would alter the visible title
+        safe_title = _escape_title_markdown(title)
 
         # Create clickable link to Plex if URL and server ID are available
         if self.plex_url and self.plex_server_id and rating_key:
