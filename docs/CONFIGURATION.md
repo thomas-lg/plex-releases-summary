@@ -516,7 +516,7 @@ Use for monitoring: `docker run --rm app; [ $? -eq 0 ] || alert`
 
 - Max file size: `5 MB` per file
 - Retention: `5` backup files + current file (`6` total max)
-- Rotation behavior: when a new file is created beyond limit, oldest backup is deleted automatically
+- Rotation behavior: when the current log file reaches `5 MB`, it is rotated (renamed to `app.log.1`) and a new `app.log` is created. Older backups are shifted (`app.log.1` → `app.log.2`, etc.), and the oldest backup beyond the 5-file limit is deleted.
 
 ### Scheduler Behavior
 
