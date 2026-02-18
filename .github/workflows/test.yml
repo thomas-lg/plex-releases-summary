@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   quality-and-tests:
@@ -19,19 +19,19 @@ jobs:
 
       - name: Run formatting checks (Black)
         run: |
-          docker run --rm -v "${{ github.workspace }}:/app" -w /app prs-devcontainer black --check src tests
+          docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app prs-devcontainer black --check src tests
 
       - name: Run linting checks (Ruff)
         run: |
-          docker run --rm -v "${{ github.workspace }}:/app" -w /app prs-devcontainer ruff check src tests
+          docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app prs-devcontainer ruff check src tests
 
       - name: Run type checks (mypy)
         run: |
-          docker run --rm -v "${{ github.workspace }}:/app" -w /app -e PYTHONPATH=src prs-devcontainer mypy src
+          docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app -e PYTHONPATH=src prs-devcontainer mypy src
 
       - name: Run tests (pytest)
         run: |
-          docker run --rm -v "${{ github.workspace }}:/app" -w /app -e PYTHONPATH=src prs-devcontainer pytest --cov=src --cov-report=xml --cov-report=term
+          docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app -e PYTHONPATH=src prs-devcontainer pytest --cov=src --cov-report=xml --cov-report=term
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
