@@ -68,13 +68,13 @@ cd plex-releases-summary
 
 ```bash
 mkdir -p secrets
-echo "your_tautulli_api_key" > secrets/tautulli_key
+echo "your_tautulli_api_key" > secrets/tautulli_api_key
 ```
 
 3. **Update docker-compose.yml:**
    - Mount the secrets directory into the container (example: `./secrets:/run/secrets:ro`)
    - Set `TAUTULLI_URL` to your Tautulli server URL (e.g., `http://tautulli:8181` or `http://192.168.1.100:8181`)
-   - Set `TAUTULLI_API_KEY=/run/secrets/tautulli_key` to read the secret from the mounted path
+  - Set `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key` to read the secret from the mounted path
 
 4. **Run the container:**
 
@@ -257,7 +257,6 @@ Script reference: [scripts/README.md](scripts/README.md)
 ├── entrypoint.sh # Container entrypoint script
 ├── my-plex-releases-summary.xml # Unraid template
 ├── pyproject.toml # Python project configuration
-├── pytest.ini # Pytest configuration
 ├── requirements-dev.txt # Development dependencies
 ├── requirements-test.txt # Testing dependencies
 ├── requirements.txt # Python dependencies
@@ -299,8 +298,8 @@ HEALTHCHECK CMD pgrep -f "python.*app.py" || exit 1
 # One-shot mode - check exit code
 docker run --rm plex-releases-summary; [ $? -eq 0 ] || alert
 
-# Scheduled mode - check logs
-docker logs container --since 24h | grep -q "Job executed successfully"
+# Scheduled mode - check logs for successful summary completion
+docker logs container --since 24h | grep -q "✅ Summary complete"
 ```
 
 External tools: Uptime Kuma, Prometheus/Grafana, Healthchecks.io. See [Exit Codes](docs/CONFIGURATION.md#exit-codes) for monitoring integration.
@@ -322,7 +321,7 @@ See [Configuration Troubleshooting](docs/CONFIGURATION.md#troubleshooting) for c
 
 ### Credentials
 
-Never commit credentials. Use file-based secrets: mount secrets directory and set `TAUTULLI_API_KEY=/run/secrets/tautulli_key`. Application auto-reads files starting with `/`. See [Docker Secrets](docs/CONFIGURATION.md#docker-secrets) for detailed setup.
+Never commit credentials. Use file-based secrets: mount secrets directory and set `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key`. Application auto-reads files starting with `/`. See [Docker Secrets](docs/CONFIGURATION.md#docker-secrets) for detailed setup.
 
 ### Container Security
 

@@ -1,6 +1,7 @@
 """Tautulli API client for fetching Plex media library data."""
 
 import logging
+import re
 import time
 from typing import Any, cast
 
@@ -16,6 +17,7 @@ class TautulliClient:
     DEFAULT_TIMEOUT = 10  # seconds
     DEFAULT_MAX_RETRIES = 3
     RETRY_BACKOFF_BASE = 2  # Exponential backoff base (1s, 2s, 4s, ...)
+    APIKEY_PATTERN = re.compile(r"(apikey=)[^&\s]+", re.IGNORECASE)
 
     def __init__(self, base_url: str, api_key: str):
         """
@@ -27,6 +29,21 @@ class TautulliClient:
         """
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
+
+    def _sanitize_error(self, error: Exception) -> str:
+        """
+        Sanitize exception text to avoid leaking credentials.
+
+        Args:
+            error: Exception to sanitize
+
+        Returns:
+            Redacted exception message
+        """
+        message = str(error)
+        if self.api_key:
+            message = message.replace(self.api_key, "***")
+        return self.APIKEY_PATTERN.sub(r"\1***", message)
 
     def _request(self, cmd: str, max_retries: int | None = None, **params) -> dict[str, Any]:
         """
@@ -63,19 +80,27 @@ class TautulliClient:
 
                 data = resp.json()
                 if data.get("response", {}).get("result") != "success":
-                    raise RuntimeError(f"Tautulli error: {data}")
+                    response_data = cast(dict[str, Any], data.get("response", {}))
+                    message = response_data.get("message", "unknown error")
+                    raise RuntimeError(f"Tautulli command '{cmd}' returned unsuccessful response: {message}")
                 return cast(dict[str, Any], data["response"]["data"])
 
             except (requests.RequestException, RuntimeError) as e:
                 last_exception = e
+                safe_error = self._sanitize_error(e)
                 if attempt < max_retries - 1:
                     wait_time = self.RETRY_BACKOFF_BASE**attempt  # Exponential backoff: 1s, 2s, 4s
                     logger.warning(
-                        "Request failed (attempt %d/%d): %s. Retrying in %ds...", attempt + 1, max_retries, e, wait_time
+                        "Request failed for cmd=%s (attempt %d/%d): %s. Retrying in %ds...",
+                        cmd,
+                        attempt + 1,
+                        max_retries,
+                        safe_error,
+                        wait_time,
                     )
                     time.sleep(wait_time)
                 else:
-                    logger.error("Request failed after %d attempts: %s", max_retries, e)
+                    logger.error("Request failed for cmd=%s after %d attempts: %s", cmd, max_retries, safe_error)
 
         raise last_exception
 

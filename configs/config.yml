@@ -24,7 +24,7 @@
 #
 # 3. Docker Secrets (Best for production):
 #    Set in your deployment environment file (example: docker-compose.yml):
-#    TAUTULLI_API_KEY=/run/secrets/tautulli_key
+#    TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
 #    Reference in config.yml: tautulli_api_key: ${TAUTULLI_API_KEY}
 #    The file content is automatically read.
 #

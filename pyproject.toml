@@ -62,7 +62,7 @@ extend-exclude = '''
 '''
 
 [tool.pytest.ini_options]
-# Pytest configuration (duplicates pytest.ini but in pyproject.toml)
+# Pytest configuration
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]

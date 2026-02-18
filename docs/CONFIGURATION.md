@@ -100,7 +100,7 @@ All configuration fields are defined in `src/config.py`. The table below shows a
 # Deployment environment file
 environment:
   - TAUTULLI_URL=http://tautulli:8181
-  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
   # That's it! All other fields use defaults
 ```
 
@@ -165,7 +165,7 @@ tautulli_api_key: your_api_key
 ```yaml
 # deployment env file (example: docker-compose.yml)
 environment:
-  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
 
 # config.yml (already configured)
 tautulli_api_key: ${TAUTULLI_API_KEY}
@@ -213,7 +213,7 @@ discord_webhook_url: ${DISCORD_WEBHOOK_URL} # Optional - defaults to None
 environment:
   # Required - must set these
   - TAUTULLI_URL=http://tautulli:8181
-  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
 
   # Optional - only set what you want to customize
   - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook # Enable Discord (file path)
@@ -258,7 +258,7 @@ environment:
 # deployment env file (example: docker-compose.yml)
 environment:
   - TAUTULLI_URL=http://tautulli:8181
-  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
   - CRON_SCHEDULE=0 0 * * * # Override default (was: 0 16 * * SUN)
 ```
 
@@ -270,7 +270,7 @@ The `config.yml` already has `cron_schedule: ${CRON_SCHEDULE}`, so it will use y
 # deployment env file (example: docker-compose.yml)
 environment:
   - TAUTULLI_URL=http://tautulli:8181
-  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
   - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook # File path (recommended)
   # OR direct URL:
   # - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123/abc...
@@ -285,7 +285,7 @@ The `config.yml` already has `discord_webhook_url: ${DISCORD_WEBHOOK_URL}`, whic
 environment:
   # Required
   - TAUTULLI_URL=http://tautulli:8181
-  - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
 
   # Optional customizations
   - DAYS_BACK=14 # Override default (7)
@@ -350,7 +350,7 @@ services:
     volumes:
       - ./secrets:/run/secrets:ro # Mount secrets directory
     environment:
-      - TAUTULLI_API_KEY=/run/secrets/tautulli_key # File path
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key # File path
       - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook # File path
 ```
 
@@ -358,7 +358,7 @@ Create secret files:
 
 ```bash
 mkdir -p secrets
-echo "your_api_key" > secrets/tautulli_key
+echo "your_api_key" > secrets/tautulli_api_key
 echo "https://discord.com/api/webhooks/..." > secrets/discord_webhook
 chmod 600 secrets/*  # Secure permissions
 ```
@@ -386,13 +386,13 @@ For more complex deployments:
 services:
   app:
     secrets:
-      - tautulli_key
+      - tautulli_api_key
     environment:
-      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
 
 secrets:
-  tautulli_key:
-    file: ./secrets/tautulli_key
+  tautulli_api_key:
+    file: ./secrets/tautulli_api_key
 ```
 
 Both methods work identically from the application's perspective.
@@ -403,7 +403,7 @@ The application automatically detects whether you're using a file path (starts w
 
 ```yaml
 environment:
-  - TAUTULLI_API_KEY=/run/secrets/tautulli_key # File path → reads file
+  - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key # File path → reads file
   - DISCORD_WEBHOOK_URL=https://discord.com/api/... # Direct value → uses as-is
 ```
 
@@ -447,7 +447,7 @@ services:
       - ./secrets:/run/secrets:ro
     environment:
       - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
     restart: unless-stopped
 ```
 
@@ -465,7 +465,7 @@ services:
       - ./secrets:/run/secrets:ro
     environment:
       - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
       - DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook
       - RUN_ONCE=true
       - DAYS_BACK=14
@@ -506,7 +506,7 @@ Reset to defaults: `rm configs/config.yml && docker compose restart`
 | Code  | Meaning     | Cause                      |
 | ----- | ----------- | -------------------------- |
 | `0`   | Success     | Completed successfully     |
-| `1`   | Error       | Config/API/Discord errors  |
+| `1`   | Error       | Config/API errors, plus Discord errors in one-shot mode |
 | `130` | Interrupted | KeyboardInterrupt (Ctrl+C) |
 
 Use for monitoring: `docker run --rm app; [ $? -eq 0 ] || alert`
@@ -706,8 +706,8 @@ environment:
 
 1. Verify file exists: `ls -la secrets/`
 2. Check volume mount in your deployment environment file (for example `docker-compose.yml`): `- ./secrets:/run/secrets:ro`
-3. Ensure file path in env var matches: `TAUTULLI_API_KEY=/run/secrets/tautulli_key`
-4. Check file permissions: `chmod 600 secrets/tautulli_key`
+3. Ensure file path in env var matches: `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key`
+4. Check file permissions: `chmod 600 secrets/tautulli_api_key`
 
 ---
 

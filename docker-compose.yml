@@ -13,7 +13,7 @@ services:
     environment:
       # ========== REQUIRED ==========
       - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
 
     logging:
       driver: json-file
@@ -25,7 +25,7 @@ services:
 # Optional: Docker Compose secrets (alternative to volume-mounted secrets)
 # Uncomment to use Docker secrets instead of volume-mounted files
 # secrets:
-#   tautulli_key:
-#     file: ./secrets/tautulli_key
+#   tautulli_api_key:
+#     file: ./secrets/tautulli_api_key
 #   discord_webhook:
 #     file: ./secrets/discord_webhook

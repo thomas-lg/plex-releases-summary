@@ -1,9 +1,10 @@
 -r requirements.txt
 # Development dependencies
-watchdog==5.0.3
 
 # Static analysis and code quality
 mypy>=1.8.0
+types-requests>=2.32.0
+types-PyYAML>=6.0.12
 ruff>=0.1.0
 black>=24.0.0
 

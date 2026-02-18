@@ -193,38 +193,28 @@ def run_summary(config: Config) -> int:
 
     logger.info("Found %d recent items matching criteria", len(items))
 
-    # Prepare structured data for Discord
+    # Prepare structured data for Discord and display items in logs
     discord_items = []
+    suppressed_by_type: dict[str, int] = {}
+    displayed_by_type: dict[str, int] = {}
+    debug_enabled = logger.isEnabledFor(logging.DEBUG)
 
-    # Display items (limit to first 10 in INFO, show all in DEBUG)
-    display_count = len(items) if logger.isEnabledFor(logging.DEBUG) else min(DEFAULT_INFO_DISPLAY_LIMIT, len(items))
-    for item in items[:display_count]:
+    for item in items:
         added_at = int(item.get("added_at", 0))
         date_str = datetime.fromtimestamp(added_at, tz=UTC).strftime("%Y-%m-%d %H:%M")
         date_str_short = datetime.fromtimestamp(added_at, tz=UTC).strftime("%m/%d")
         media_type = item.get("media_type", "unknown")
-
         display_title = _format_display_title(item)
 
-        logger.info("➕ %s | added: %s", display_title, date_str)
-
-        # Store structured data for Discord
-        discord_items.append(
-            {
-                "type": media_type,
-                "title": display_title,
-                "added_at": date_str_short,
-                "rating_key": item.get("rating_key"),
-            }
-        )
-
-    # Process remaining items for Discord (if not already shown)
-    for item in items[display_count:]:
-        added_at = int(item.get("added_at", 0))
-        date_str_short = datetime.fromtimestamp(added_at, tz=UTC).strftime("%m/%d")
-        media_type = item.get("media_type", "unknown")
-
-        display_title = _format_display_title(item)
+        if debug_enabled:
+            logger.info("➕ %s | added: %s", display_title, date_str)
+        else:
+            shown_count = displayed_by_type.get(media_type, 0)
+            if shown_count < DEFAULT_INFO_DISPLAY_LIMIT:
+                logger.info("➕ %s | added: %s", display_title, date_str)
+                displayed_by_type[media_type] = shown_count + 1
+            else:
+                suppressed_by_type[media_type] = suppressed_by_type.get(media_type, 0) + 1
 
         discord_items.append(
             {
@@ -235,8 +225,15 @@ def run_summary(config: Config) -> int:
             }
         )
 
-    if len(items) > display_count:
-        logger.info("... and %d more items (set log_level: DEBUG in config.yml to see all)", len(items) - display_count)
+    if suppressed_by_type:
+        suppressed_summary = ", ".join(
+            f"{media_type}: {count}" for media_type, count in sorted(suppressed_by_type.items())
+        )
+        logger.info(
+            "... additional items hidden at INFO level by type (%s). "
+            "Set log_level: DEBUG in config.yml to see all entries.",
+            suppressed_summary,
+        )
 
     # Summary
     logger.info("✅ Summary complete: Found %d items in the last %d days", len(items), days)
@@ -266,13 +263,16 @@ def run_summary(config: Config) -> int:
             notifier.send_summary(discord_items, days, len(items))
         except (ConnectionError, TimeoutError) as e:
             logger.error("Network error while sending Discord notification: %s", e)
-            # Continue execution even if Discord fails
+            if config.run_once:
+                return 1
         except ValueError as e:
             logger.error("Invalid Discord webhook configuration: %s", e)
-            # Continue execution even if Discord fails
+            if config.run_once:
+                return 1
         except Exception as e:
             logger.exception("Unexpected error while sending Discord notification: %s", e)
-            # Continue execution even if Discord fails
+            if config.run_once:
+                return 1
     else:
         logger.debug("No Discord webhook URL configured, skipping Discord notification")
 
@@ -307,6 +307,8 @@ def main():
         # Scheduled mode: run as daemon with CRON schedule
         logger.info("📅 Starting in SCHEDULED mode")
         from scheduler import run_scheduled
+
+        assert config.cron_schedule is not None
 
         # Wrap run_summary to pass config
         return run_scheduled(lambda: run_summary(config), config.cron_schedule)

@@ -1,8 +1,11 @@
 """Unit tests for app module formatting logic."""
 
+from datetime import UTC, datetime
+
 import pytest
 
-from src.app import _calculate_batch_params, _format_display_title
+from src.app import _calculate_batch_params, _format_display_title, run_summary
+from src.config import Config
 
 
 class TestCalculateBatchParams:
@@ -229,3 +232,100 @@ class TestFormatDisplayTitle:
         item = {"media_type": "unknown"}
         result = _format_display_title(item)
         assert result == "Unknown"
+
+
+class TestRunSummary:
+    """Tests for run_summary behavior and operational guarantees."""
+
+    @pytest.mark.unit
+    def test_run_summary_fails_in_run_once_when_discord_send_fails(self, monkeypatch):
+        """Discord delivery errors should produce non-zero exit code in one-shot mode."""
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                timestamp = int(datetime.now(UTC).timestamp())
+                return {"recently_added": [{"media_type": "movie", "title": "Movie", "added_at": timestamp}]}
+
+            def get_server_identity(self):
+                return {"machine_identifier": "server-id"}
+
+        class StubDiscordNotifier:
+            def __init__(self, webhook_url, plex_url, plex_server_id):
+                self.webhook_url = webhook_url
+                self.plex_url = plex_url
+                self.plex_server_id = plex_server_id
+
+            def send_summary(self, media_items, days_back, total_count):
+                raise TimeoutError("network timeout")
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+        monkeypatch.setattr("src.app.DiscordNotifier", StubDiscordNotifier)
+
+        config = Config(
+            tautulli_url="http://tautulli:8181",
+            tautulli_api_key="secret",
+            run_once=True,
+            discord_webhook_url="https://discord.example/webhook",
+        )
+
+        assert run_summary(config) == 1
+
+    @pytest.mark.unit
+    def test_run_summary_keeps_scheduled_mode_non_fatal_on_discord_error(self, monkeypatch):
+        """Discord errors should not fail scheduled executions."""
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                timestamp = int(datetime.now(UTC).timestamp())
+                return {"recently_added": [{"media_type": "movie", "title": "Movie", "added_at": timestamp}]}
+
+            def get_server_identity(self):
+                return {"machine_identifier": "server-id"}
+
+        class StubDiscordNotifier:
+            def __init__(self, webhook_url, plex_url, plex_server_id):
+                self.webhook_url = webhook_url
+                self.plex_url = plex_url
+                self.plex_server_id = plex_server_id
+
+            def send_summary(self, media_items, days_back, total_count):
+                raise TimeoutError("network timeout")
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+        monkeypatch.setattr("src.app.DiscordNotifier", StubDiscordNotifier)
+
+        config = Config(
+            tautulli_url="http://tautulli:8181",
+            tautulli_api_key="secret",
+            run_once=False,
+            discord_webhook_url="https://discord.example/webhook",
+        )
+
+        assert run_summary(config) == 0
+
+    @pytest.mark.unit
+    def test_run_summary_limits_info_output_per_media_type(self, monkeypatch, caplog):
+        """INFO logging should show at most 10 entries per media type."""
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                timestamp = int(datetime.now(UTC).timestamp())
+                movies = [{"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp} for i in range(1, 13)]
+                shows = [{"media_type": "show", "title": f"Show {i}", "added_at": timestamp} for i in range(1, 12)]
+                return {"recently_added": movies + shows}
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+
+        config = Config(
+            tautulli_url="http://tautulli:8181",
+            tautulli_api_key="secret",
+            run_once=True,
+            discord_webhook_url=None,
+        )
+
+        caplog.set_level("INFO")
+        assert run_summary(config) == 0
+
+        added_lines = [record.message for record in caplog.records if record.message.startswith("➕")]
+        assert len(added_lines) == 20
+        assert any("movie: 2" in record.message and "show: 1" in record.message for record in caplog.records)
