@@ -84,6 +84,11 @@ docker compose up
 
 That's it! On first run, the entrypoint automatically creates `config.yml` from the template with environment variable references. The application will run weekly on Sundays at 4 PM UTC by default.
 
+> **Container path contract (Docker):** Keep container-side targets fixed and customize only host-side paths.
+> - Config: `/app/configs/config.yml`
+> - Logs: `/app/logs`
+> - Examples: `./my-configs:/app/configs`, `./my-logs:/app/logs`
+
 > **For advanced configuration options**, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#optional-field-overrides)
 
 ## Unraid Quick Start

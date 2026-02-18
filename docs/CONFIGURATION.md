@@ -490,6 +490,15 @@ Container auto-creates `config.yml` on first run if missing:
 2. Sets ownership via PUID/PGID (see [README](../README.md#puidpgid-configuration))
 3. Pre-configured with `${VAR}` placeholders
 
+**Container path contract (Docker):**
+
+- Keep container-side targets fixed:
+  - Config file: `/app/configs/config.yml`
+  - Logs directory: `/app/logs`
+- Customize host-side paths only (left side of volume mapping), for example:
+  - `./custom-config:/app/configs`
+  - `./custom-logs:/app/logs`
+
 Reset to defaults: `rm configs/config.yml && docker compose restart`
 
 ### Exit Codes
