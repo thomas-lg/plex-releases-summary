@@ -193,74 +193,23 @@ Send release summaries to Discord with rich embeds.
 
 ### For Contributors
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development setup, code style guidelines, testing, and contribution process.
+Contributor setup and all development commands are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Quick Start:**
+Use the devcontainer for day-to-day work:
+
+```text
+Command Palette → Dev Containers: Reopen in Container
+```
+
+Then run contributor checks:
 
 ```bash
-# Clone repository
-git clone https://github.com/thomas-lg/plex-releases-summary.git
-cd plex-releases-summary
-
-# Start development with hot-reload (recommended)
-./scripts/dev.sh
-
-# OR: Run tests
+./scripts/format.sh
+./scripts/typecheck.sh
 ./scripts/test.sh
-
-# OR: Start production mode
-./scripts/start.sh
 ```
 
-**Helper Scripts:**
-
-All scripts are located in the `scripts/` directory. See [scripts/README.md](scripts/README.md) for full documentation.
-
-```bash
-./scripts/dev.sh       # Start development with hot-reload
-./scripts/start.sh     # Start production mode
-./scripts/test.sh      # Run tests with coverage
-./scripts/format.sh    # Format + auto-fix Python code in Docker
-./scripts/typecheck.sh # Type check Python code in Docker
-./scripts/logs.sh      # View logs (prod/dev/test)
-./scripts/stop.sh      # Stop all containers
-./scripts/clean.sh     # Clean up caches and Docker resources
-```
-
-**Development Setup (Manual):**
-
-```bash
-# Option 1: Docker development with hot-reload
-cp docker-compose.dev.local.yml.example docker-compose.dev.local.yml
-# Edit docker-compose.dev.local.yml with your settings
-docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up
-
-# Option 2: Local Python development
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt -r requirements-dev.txt -r requirements-test.txt
-cp configs/config.yml configs/config-dev.yml
-# Edit configs/config-dev.yml with your settings
-cd src && python app.py
-```
-
-**Running Tests:**
-
-```bash
-# Using helper script (recommended - uses Docker)
-./scripts/test.sh                           # Run all tests
-./scripts/test.sh tests/test_config.py      # Run specific test file
-./scripts/test.sh -k "test_config"          # Run tests matching pattern
-
-# Using docker compose directly
-docker compose -f docker-compose.test.yml run --rm test
-
-# Using local Python environment (requires dependencies installed)
-PYTHONPATH=src pytest --cov=src             # Run tests locally
-PYTHONPATH=src black src/ tests/            # Format code locally
-PYTHONPATH=src ruff check src/ tests/       # Lint locally
-PYTHONPATH=src mypy src/                    # Type check locally
-```
+Script reference: [scripts/README.md](scripts/README.md)
 
 ### Project Structure
 
@@ -280,29 +229,22 @@ PYTHONPATH=src mypy src/                    # Type check locally
 │ └── test_discord_markdown.py # Markdown escaping tests
 ├── scripts/ # Helper scripts
 │ ├── clean.sh # Clean up caches
-│ ├── dev.sh # Start development mode
 │ ├── format.sh # Format Python code
-│ ├── logs.sh # View logs
 │ ├── [README.md](scripts/README.md) # Scripts documentation
-│ ├── start.sh # Start production mode
-│ ├── stop.sh # Stop all containers
 │ ├── test.sh # Run tests
 │ └── typecheck.sh # Type-check with mypy
 ├── configs/
-│ ├── [config-dev.yml](configs/config-dev.yml) # Development configuration
 │ └── [config.yml](configs/config.yml) # User configuration file
 ├── docs/
 │ └── [CONFIGURATION.md](docs/CONFIGURATION.md) # Complete configuration reference
+├── .devcontainer/
+│ ├── Dockerfile.dev # Devcontainer image
+│ └── devcontainer.json # Devcontainer definition
 ├── .github/
 │ └── workflows/ # CI/CD pipelines
 ├── assets/ # Project assets (screenshots, etc.)
 ├── [CONTRIBUTING.md](CONTRIBUTING.md) # Contribution guidelines
 ├── [Dockerfile](Dockerfile) # Production Docker image
-├── [Dockerfile.dev](Dockerfile.dev) # Development Docker image
-├── [Dockerfile.test](Dockerfile.test) # Test Docker image
-├── [docker-compose.dev.local.yml.example](docker-compose.dev.local.yml.example) # Example local overrides
-├── [docker-compose.dev.yml](docker-compose.dev.yml) # Development compose config
-├── [docker-compose.test.yml](docker-compose.test.yml) # Test compose config
 ├── [docker-compose.yml](docker-compose.yml) # Production compose config
 ├── entrypoint.sh # Container entrypoint script
 ├── my-plex-releases-summary.xml # Unraid template
@@ -361,10 +303,10 @@ Common issues:
 
 - **Connection errors**: Check Tautulli URL/API key and accessibility
 - **No items**: Increase `days_back` or verify media timing
-- **Config not working**: Verify environment variables in docker-compose.yml
+- **Config not working**: Verify environment variables in your deployment environment file (example: `docker-compose.yml`)
 - **"iteration 1, 2..." logs**: Normal - see [Iteration Logs](docs/CONFIGURATION.md#minimal-configuration)
 
-Enable debug: Set `LOG_LEVEL=DEBUG` in docker-compose.yml
+Enable debug: Set `LOG_LEVEL=DEBUG` in your deployment environment file (example: `docker-compose.yml`)
 
 See [Configuration Troubleshooting](docs/CONFIGURATION.md#troubleshooting) for comprehensive guidance.
 

@@ -97,7 +97,7 @@ All configuration fields are defined in `src/config.py`. The table below shows a
 **You don't need to set optional fields unless you want to change the defaults.**
 
 ```yaml
-# docker-compose.yml - Minimal setup
+# Deployment environment file
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
@@ -131,10 +131,10 @@ Both Tautulli and Discord API clients implement retry logic with exponential bac
 
 ### Method 1: Environment Variables (Recommended)
 
-Set in docker-compose.yml, reference in config.yml:
+Set in your deployment environment file (for example `docker-compose.yml`), then reference in `config.yml`:
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 environment:
   - TAUTULLI_URL=http://tautulli:8181
 
@@ -163,7 +163,7 @@ tautulli_api_key: your_api_key
 ### Method 3: Docker Secrets (Production)
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 environment:
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
 
@@ -209,7 +209,7 @@ discord_webhook_url: ${DISCORD_WEBHOOK_URL} # Optional - defaults to None
 **Example - Only setting what you need:**
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 environment:
   # Required - must set these
   - TAUTULLI_URL=http://tautulli:8181
@@ -248,14 +248,14 @@ environment:
 
 **All optional fields are pre-configured with `${VAR}` placeholders** in the default `config.yml`.
 
-**To customize an optional field:** Just set the environment variable in `docker-compose.yml`. No config file editing needed!
+**To customize an optional field:** Just set the environment variable in your deployment environment file (for example `docker-compose.yml`). No config file editing needed.
 
 **To use the default value:** Don't set the environment variable at all - it will use the default automatically.
 
 **Example 1: Change to daily execution at midnight (override default):**
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
@@ -267,7 +267,7 @@ The `config.yml` already has `cron_schedule: ${CRON_SCHEDULE}`, so it will use y
 **Example 2: Enable Discord notifications (was disabled by default):**
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_key
@@ -281,7 +281,7 @@ The `config.yml` already has `discord_webhook_url: ${DISCORD_WEBHOOK_URL}`, whic
 **Example 3: Using multiple optional overrides:**
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 environment:
   # Required
   - TAUTULLI_URL=http://tautulli:8181
@@ -344,7 +344,7 @@ WARNING - Reduced field count from 30 to 24 items
 For sensitive values like API keys and webhooks, use file-based secrets:
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 services:
   app:
     volumes:
@@ -368,21 +368,21 @@ chmod 600 secrets/*  # Secure permissions
 You can also use direct values in environment variables (less secure for production):
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=your_api_key_here # Direct value
   - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123/abc... # Direct URL
 ```
 
-⚠️ **Security Note:** Direct values are visible in `docker-compose.yml`. Use file-based secrets for production.
+⚠️ **Security Note:** Direct values are visible in your deployment environment file (for example `docker-compose.yml`). Use file-based secrets for production.
 
 ### Docker Compose Secrets (Alternative)
 
 For more complex deployments:
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 services:
   app:
     secrets:
@@ -424,7 +424,7 @@ If file reading fails:
 
 - Verify file exists: `docker exec <container> ls -la /path/to/file`
 - Check file permissions (should be 600 or 400)
-- Ensure volume mount is correct in docker-compose.yml
+- Ensure volume mount is correct in your deployment environment file (for example `docker-compose.yml`)
 - Check logs for "Read secret from file" or error messages
 
 ---
@@ -438,7 +438,7 @@ If file reading fails:
 Weekly summary using defaults:
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 services:
   app:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
@@ -456,7 +456,7 @@ services:
 With Discord notifications and one-shot mode:
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 services:
   app:
     image: ghcr.io/thomas-lg/plex-releases-summary:latest
@@ -639,7 +639,7 @@ extra_hosts:
 
 **Solution:** Ensure both steps are complete:
 
-1. ✅ Environment variable set in docker-compose.yml
+1. ✅ Environment variable set in your deployment environment file (for example `docker-compose.yml`)
 2. ✅ Variable referenced in config.yml with `${VAR}` syntax (default config.yml has all fields configured)
 
 ---
@@ -650,7 +650,7 @@ extra_hosts:
 
 **Cause:** A **required field** (`tautulli_url` or `tautulli_api_key`) references an environment variable that is not set or is empty
 
-**Solution:** Set the required environment variable in docker-compose.yml to a non-empty value
+**Solution:** Set the required environment variable in your deployment environment file (for example `docker-compose.yml`) to a non-empty value
 
 **Note:** Optional fields with undefined environment variables silently use their default values (no log messages). Empty strings log a WARNING (possible configuration mistake). Only required fields cause startup errors.
 
@@ -662,7 +662,7 @@ extra_hosts:
 
 **Checklist:**
 
-1. ✅ `DISCORD_WEBHOOK_URL` set in docker-compose.yml
+1. ✅ `DISCORD_WEBHOOK_URL` set in your deployment environment file (for example `docker-compose.yml`)
 2. ✅ Webhook URL is valid (test with `curl -X POST -H "Content-Type: application/json" -d '{"content":"test"}' YOUR_WEBHOOK_URL`)
 3. ✅ If using file-based secret, verify file exists and is readable
 4. ✅ Check logs for warnings about undefined or empty environment variables
@@ -690,7 +690,7 @@ extra_hosts:
 **Setting Timezone:**
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 environment:
   - TZ=America/New_York # Use your timezone
   - CRON_SCHEDULE=0 16 * * SUN # Now runs 4 PM Eastern
@@ -705,7 +705,7 @@ environment:
 **Solution:**
 
 1. Verify file exists: `ls -la secrets/`
-2. Check volume mount in docker-compose.yml: `- ./secrets:/run/secrets:ro`
+2. Check volume mount in your deployment environment file (for example `docker-compose.yml`): `- ./secrets:/run/secrets:ro`
 3. Ensure file path in env var matches: `TAUTULLI_API_KEY=/run/secrets/tautulli_key`
 4. Check file permissions: `chmod 600 secrets/tautulli_key`
 
@@ -746,7 +746,7 @@ environment:
 **Solution:** Enable debug logging by setting the environment variable:
 
 ```yaml
-# docker-compose.yml
+# deployment env file (example: docker-compose.yml)
 environment:
   - LOG_LEVEL=DEBUG
 ```
@@ -767,7 +767,7 @@ Configuration is defined in these files (in order of authority):
 
 1. **`src/config.py`** - Schema definition with types, defaults, and validation rules
 2. **`configs/config.yml`** - User configuration with environment variable references
-3. **`docker-compose.yml`** - Environment variable values
+3. **Deployment environment file** (for example `docker-compose.yml`) - Environment variable values
 
 When in doubt, refer to `src/config.py` for the authoritative field definitions and defaults.
 

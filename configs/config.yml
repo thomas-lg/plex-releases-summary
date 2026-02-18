@@ -14,15 +14,17 @@
 # =============================================================================
 # CONFIGURATION METHODS:
 #
-# 1. Environment Variables (Recommended for Docker):
-#    Set in docker-compose.yml: TAUTULLI_URL=http://tautulli:8181
+# 1. Environment Variables (Recommended for container deployments):
+#    Set in your deployment environment file (example: docker-compose.yml):
+#    TAUTULLI_URL=http://tautulli:8181
 #    Reference in config.yml: tautulli_url: ${TAUTULLI_URL}
 #
 # 2. Hardcoded Values (Simple for testing):
 #    tautulli_url: http://192.168.1.100:8181
 #
 # 3. Docker Secrets (Best for production):
-#    Set in docker-compose.yml: TAUTULLI_API_KEY=/run/secrets/tautulli_key
+#    Set in your deployment environment file (example: docker-compose.yml):
+#    TAUTULLI_API_KEY=/run/secrets/tautulli_key
 #    Reference in config.yml: tautulli_api_key: ${TAUTULLI_API_KEY}
 #    The file content is automatically read.
 #
@@ -52,7 +54,8 @@ tautulli_api_key: ${TAUTULLI_API_KEY}
 #       - Undefined: silently uses default value (clean logs)
 #       - Empty string (e.g., DAYS_BACK=""): logs WARNING, uses default (possible mistake)
 #
-#       To override: Just set the environment variable in docker-compose.yml.
+#       To override: Just set the environment variable in your deployment environment file
+#       (example: docker-compose.yml).
 #       No need to edit this file for typical use.
 
 # Number of days to look back for new media releases

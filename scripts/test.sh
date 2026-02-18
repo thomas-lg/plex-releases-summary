@@ -1,20 +1,17 @@
-#!/bin/bash
-# Run tests in Docker container
+#!/bin/sh
+# Run tests in the current environment (devcontainer recommended)
 
 set -e
 
 cd "$(dirname "$0")/.."
 
-echo "🧪 Running tests in Docker..."
+echo "🧪 Running tests..."
 echo ""
 
-# Build and run tests
-docker-compose -f docker-compose.test.yml build
-
 if [ "$#" -gt 0 ]; then
-	docker-compose -f docker-compose.test.yml run --rm test pytest "$@"
+	PYTHONPATH=src pytest "$@"
 else
-	docker-compose -f docker-compose.test.yml run --rm test
+	PYTHONPATH=src pytest --cov=src --cov-report=xml --cov-report=term
 fi
 
 echo ""
