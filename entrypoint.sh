@@ -10,6 +10,7 @@ set -e
 CONFIG_DIR="/app/configs"
 CONFIG_FILE="${CONFIG_DIR}/config.yml"
 DEFAULT_CONFIG="/app/config.yml.default"
+LOG_DIR="/app/logs"
 
 # Validate that a given ID is a numeric value within the range 1–65535.
 # Explicitly rejects 0 (root) for security reasons.
@@ -78,6 +79,10 @@ fi
 # Ensure config directory exists and fix permissions
 mkdir -p "$CONFIG_DIR"
 chown -R "$PUID:$PGID" "$CONFIG_DIR"
+
+# Ensure log directory exists and fix permissions
+mkdir -p "$LOG_DIR"
+chown -R "$PUID:$PGID" "$LOG_DIR"
 
 # Copy default config if not exists
 if [ ! -f "$CONFIG_FILE" ]; then

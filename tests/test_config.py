@@ -14,6 +14,7 @@ from src.config import (
     _expand_env_vars,
     _is_env_var_reference,
     _resolve_value,
+    get_bootstrap_log_level,
     load_config,
 )
 
@@ -213,6 +214,56 @@ class TestConfigModel:
             )
 
         assert "log_level" in str(exc_info.value)
+
+
+class TestBootstrapLogLevel:
+    """Tests for get_bootstrap_log_level helper."""
+
+    @pytest.mark.unit
+    def test_bootstrap_log_level_from_config_file(self):
+        """Reads and normalizes a valid log level from config file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            yaml.safe_dump({"log_level": "debug"}, f)
+            temp_path = f.name
+
+        try:
+            assert get_bootstrap_log_level(temp_path) == "DEBUG"
+        finally:
+            Path(temp_path).unlink()
+
+    @pytest.mark.unit
+    def test_bootstrap_log_level_invalid_value_falls_back_to_info(self):
+        """Invalid log level falls back to INFO."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            yaml.safe_dump({"log_level": "verbose"}, f)
+            temp_path = f.name
+
+        try:
+            assert get_bootstrap_log_level(temp_path) == "INFO"
+        finally:
+            Path(temp_path).unlink()
+
+    @pytest.mark.unit
+    def test_bootstrap_log_level_missing_file_falls_back_to_info(self):
+        """Missing config file falls back to INFO."""
+        assert get_bootstrap_log_level("/nonexistent/config.yml") == "INFO"
+
+    @pytest.mark.unit
+    def test_bootstrap_log_level_from_env_var(self):
+        """Expands env var references in log_level before validation."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            yaml.safe_dump({"log_level": "${TEST_LOG_LEVEL}"}, f)
+            temp_path = f.name
+
+        try:
+            with patch.dict(os.environ, {"TEST_LOG_LEVEL": "WARNING"}):
+                assert get_bootstrap_log_level(temp_path) == "WARNING"
+        finally:
+            Path(temp_path).unlink()
+
+
+class TestConfigValidation:
+    """Additional validation tests for Config model."""
 
     @pytest.mark.unit
     def test_cron_schedule_required_when_not_run_once(self):

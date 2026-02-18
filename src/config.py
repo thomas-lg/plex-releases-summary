@@ -302,3 +302,38 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
         error_msg = f"Failed to load configuration: {e}"
         logger.error(error_msg)
         raise
+
+
+def get_bootstrap_log_level(config_path: str = "/app/configs/config.yml") -> str:
+    """
+    Read log_level from config file before full validation.
+
+    This enables early logger setup so load-time logs can honor configured verbosity.
+    Falls back to INFO for any missing/invalid/unreadable value.
+
+    Args:
+        config_path: Path to config.yml file
+
+    Returns:
+        Uppercased log level string (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    """
+    try:
+        config_file = Path(config_path)
+        if not config_file.exists():
+            return "INFO"
+
+        with config_file.open("r") as f:
+            raw_config = yaml.safe_load(f)
+
+        if not isinstance(raw_config, dict):
+            return "INFO"
+
+        expanded = _expand_env_vars({"log_level": raw_config.get("log_level", "INFO")})
+        level = expanded.get("log_level", "INFO")
+
+        if not isinstance(level, str):
+            return "INFO"
+
+        return Config.validate_log_level(level.strip())
+    except Exception:
+        return "INFO"

@@ -10,7 +10,12 @@ echo ""
 
 # Build and run tests
 docker-compose -f docker-compose.test.yml build
-docker-compose -f docker-compose.test.yml run --rm test "$@"
+
+if [ "$#" -gt 0 ]; then
+	docker-compose -f docker-compose.test.yml run --rm test pytest "$@"
+else
+	docker-compose -f docker-compose.test.yml run --rm test
+fi
 
 echo ""
 echo "✅ Tests complete!"

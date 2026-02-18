@@ -490,6 +490,15 @@ Container auto-creates `config.yml` on first run if missing:
 2. Sets ownership via PUID/PGID (see [README](../README.md#puidpgid-configuration))
 3. Pre-configured with `${VAR}` placeholders
 
+**Container path contract (Docker):**
+
+- Keep container-side targets fixed:
+  - Config file: `/app/configs/config.yml`
+  - Logs directory: `/app/logs`
+- Customize host-side paths only (left side of volume mapping), for example:
+  - `./custom-config:/app/configs`
+  - `./custom-logs:/app/logs`
+
 Reset to defaults: `rm configs/config.yml && docker compose restart`
 
 ### Exit Codes
@@ -511,6 +520,12 @@ Use for monitoring: `docker run --rm app; [ $? -eq 0 ] || alert`
 **INFO Display Limit:** Shows first 10 items per media type, logs total count. All items still processed/sent to Discord. Use `LOG_LEVEL=DEBUG` to see all.
 
 **View logs:** `docker logs plex-releases-summary` or `docker logs -f plex-releases-summary`
+
+**Persistent file logs:** The container also writes rotating logs to `/app/logs/app.log` (mounted to host `./logs`).
+
+- Max file size: `5 MB` per file
+- Retention: `5` backup files + current file (`6` total max)
+- Rotation behavior: when the current log file reaches `5 MB`, it is rotated (renamed to `app.log.1`) and a new `app.log` is created. Older backups are shifted (`app.log.1` → `app.log.2`, etc.), and the oldest backup beyond the 5-file limit is deleted.
 
 ### Scheduler Behavior
 

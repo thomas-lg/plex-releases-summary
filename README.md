@@ -84,6 +84,11 @@ docker compose up
 
 That's it! On first run, the entrypoint automatically creates `config.yml` from the template with environment variable references. The application will run weekly on Sundays at 4 PM UTC by default.
 
+> **Container path contract (Docker):** Keep container-side targets fixed and customize only host-side paths.
+> - Config: `/app/configs/config.yml`
+> - Logs: `/app/logs`
+> - Examples: `./my-configs:/app/configs`, `./my-logs:/app/logs`
+
 > **For advanced configuration options**, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#optional-field-overrides)
 
 ## Unraid Quick Start
@@ -215,6 +220,8 @@ All scripts are located in the `scripts/` directory. See [scripts/README.md](scr
 ./scripts/dev.sh       # Start development with hot-reload
 ./scripts/start.sh     # Start production mode
 ./scripts/test.sh      # Run tests with coverage
+./scripts/format.sh    # Format + auto-fix Python code in Docker
+./scripts/typecheck.sh # Type check Python code in Docker
 ./scripts/logs.sh      # View logs (prod/dev/test)
 ./scripts/stop.sh      # Stop all containers
 ./scripts/clean.sh     # Clean up caches and Docker resources
@@ -226,7 +233,7 @@ All scripts are located in the `scripts/` directory. See [scripts/README.md](scr
 # Option 1: Docker development with hot-reload
 cp docker-compose.dev.local.yml.example docker-compose.dev.local.yml
 # Edit docker-compose.dev.local.yml with your settings
-docker-compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up
+docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up
 
 # Option 2: Local Python development
 python -m venv venv
@@ -245,8 +252,8 @@ cd src && python app.py
 ./scripts/test.sh tests/test_config.py      # Run specific test file
 ./scripts/test.sh -k "test_config"          # Run tests matching pattern
 
-# Using docker-compose directly
-docker-compose -f docker-compose.test.yml run --rm test
+# Using docker compose directly
+docker compose -f docker-compose.test.yml run --rm test
 
 # Using local Python environment (requires dependencies installed)
 PYTHONPATH=src pytest --cov=src             # Run tests locally
@@ -262,47 +269,49 @@ PYTHONPATH=src mypy src/                    # Type check locally
 ├── src/
 │ ├── app.py # Main application logic
 │ ├── config.py # Configuration loader and validator
-│ ├── scheduler.py # APScheduler daemon mode
-│ ├── tautulli_client.py # Tautulli API client
 │ ├── discord_client.py # Discord webhook client
-│ └── logging_config.py # Logging configuration
+│ ├── logging_config.py # Logging configuration
+│ ├── scheduler.py # APScheduler daemon mode
+│ └── tautulli_client.py # Tautulli API client
 ├── tests/ # Test suite
-│ ├── test_config.py # Configuration tests
 │ ├── test_app.py # App logic tests
+│ ├── test_config.py # Configuration tests
 │ ├── test_discord_client.py # Discord tests
 │ └── test_discord_markdown.py # Markdown escaping tests
 ├── scripts/ # Helper scripts
-│ ├── dev.sh # Start development mode
-│ ├── start.sh # Start production mode
-│ ├── test.sh # Run tests
-│ ├── logs.sh # View logs
-│ ├── stop.sh # Stop all containers
 │ ├── clean.sh # Clean up caches
-│ └── [README.md](scripts/README.md) # Scripts documentation
+│ ├── dev.sh # Start development mode
+│ ├── format.sh # Format Python code
+│ ├── logs.sh # View logs
+│ ├── [README.md](scripts/README.md) # Scripts documentation
+│ ├── start.sh # Start production mode
+│ ├── stop.sh # Stop all containers
+│ ├── test.sh # Run tests
+│ └── typecheck.sh # Type-check with mypy
 ├── configs/
-│ ├── [config.yml](configs/config.yml) # User configuration file
-│ └── [config-dev.yml](configs/config-dev.yml) # Development configuration
+│ ├── [config-dev.yml](configs/config-dev.yml) # Development configuration
+│ └── [config.yml](configs/config.yml) # User configuration file
 ├── docs/
 │ └── [CONFIGURATION.md](docs/CONFIGURATION.md) # Complete configuration reference
 ├── .github/
 │ └── workflows/ # CI/CD pipelines
 ├── assets/ # Project assets (screenshots, etc.)
+├── [CONTRIBUTING.md](CONTRIBUTING.md) # Contribution guidelines
 ├── [Dockerfile](Dockerfile) # Production Docker image
 ├── [Dockerfile.dev](Dockerfile.dev) # Development Docker image
 ├── [Dockerfile.test](Dockerfile.test) # Test Docker image
-├── [docker-compose.yml](docker-compose.yml) # Production compose config
-├── [docker-compose.dev.yml](docker-compose.dev.yml) # Development compose config
 ├── [docker-compose.dev.local.yml.example](docker-compose.dev.local.yml.example) # Example local overrides
+├── [docker-compose.dev.yml](docker-compose.dev.yml) # Development compose config
 ├── [docker-compose.test.yml](docker-compose.test.yml) # Test compose config
+├── [docker-compose.yml](docker-compose.yml) # Production compose config
 ├── entrypoint.sh # Container entrypoint script
-├── requirements.txt # Python dependencies
-├── requirements-dev.txt # Development dependencies
-├── requirements-test.txt # Testing dependencies
+├── my-plex-releases-summary.xml # Unraid template
 ├── pyproject.toml # Python project configuration
 ├── pytest.ini # Pytest configuration
+├── requirements-dev.txt # Development dependencies
+├── requirements-test.txt # Testing dependencies
+├── requirements.txt # Python dependencies
 ├── .pre-commit-config.yaml # Pre-commit hooks
-├── my-plex-releases-summary.xml # Unraid template
-├── [CONTRIBUTING.md](CONTRIBUTING.md) # Contribution guidelines
 └── README.md
 
 ```
@@ -327,6 +336,7 @@ See [docker-compose.yml](docker-compose.yml) for minimal production setup or [do
 - **Shutdown:** Handles `SIGTERM`/`SIGINT` cleanly.
 - **Upgrades:** Pull new image, restart. See [Migration Guide](docs/CONFIGURATION.md#migration-and-updates).
 - **Exit codes:** `0` (success), `1` (error), `130` (interrupted). See [Exit Codes](docs/CONFIGURATION.md#exit-codes).
+- **Persistent logs:** Rotating log files are stored in host `./logs` (`5 MB` each, `5` backups + current), while `docker logs` remains available.
 
 ### Health Monitoring
 

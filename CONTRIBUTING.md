@@ -8,6 +8,7 @@ Thank you for considering contributing to Plex Releases Summary! This document p
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
 - [Code Style Guidelines](#code-style-guidelines)
+- [Formatting](#formatting)
 - [Testing](#testing)
 - [Pull Request Process](#pull-request-process)
 - [Reporting Bugs](#reporting-bugs)
@@ -43,7 +44,7 @@ cp docker-compose.dev.local.yml.example docker-compose.dev.local.yml
 
 # Edit docker-compose.dev.local.yml with your Tautulli credentials
 # Then start the development environment
-docker-compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up
+docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up
 
 # The application will automatically reload when you edit source files
 ```
@@ -117,7 +118,7 @@ def calculate_batch_size(days: int, override: Optional[int] = None) -> tuple[int
 
     Returns:
         Tuple of (initial_count, increment)
-        
+
     Examples:
         >>> calculate_batch_size(7)
         (100, 100)
@@ -129,21 +130,40 @@ def calculate_batch_size(days: int, override: Optional[int] = None) -> tuple[int
     # ... implementation
 ```
 
+## Formatting
+
+Use the helper script to run Black formatting and Ruff linting/fixes with tools installed in the Docker development image:
+
+```bash
+# Format + auto-fix default targets (src and tests)
+./scripts/format.sh
+
+# Format specific paths
+./scripts/format.sh src
+
+# Check only (no file changes)
+./scripts/format.sh --check src tests
+```
+
+This keeps style and lint checks consistent across environments without requiring local formatter installation.
+
 ## Testing
 
 ### Running Tests
 
 ```bash
-# Run all tests
-pytest
-
-# Run with coverage report
-pytest --cov=src --cov-report=html
+# Using helper script (recommended - uses Docker)
+./scripts/test.sh
 
 # Run specific test file
-pytest tests/test_config.py
+./scripts/test.sh tests/test_config.py
 
-# Run specific test
+# Run tests matching pattern
+./scripts/test.sh -k "test_config"
+
+# Local Python alternatives
+pytest --cov=src --cov-report=html
+pytest tests/test_config.py
 pytest tests/test_config.py::TestConfigModel::test_minimal_valid_config
 
 # Run only unit tests
@@ -199,20 +219,21 @@ class TestConfigValidation:
 
 ### Before Submitting
 
+Use the Docker workflow below for consistency:
+
 1. **Run tests:** Ensure all tests pass
    ```bash
-   pytest
+    ./scripts/test.sh
    ```
 
 2. **Run linters:** Fix any linting issues
    ```bash
-   ruff check src/ tests/ --fix
-   black src/ tests/
+    ./scripts/format.sh
    ```
 
 3. **Run type checker:** Address any type errors
    ```bash
-   mypy src/
+    ./scripts/typecheck.sh
    ```
 
 4. **Update documentation:** Update relevant docs if needed
@@ -294,17 +315,14 @@ Use the bug report issue template and include:
 ### Useful Commands
 
 ```bash
-# Format code
-black src/ tests/
-
-# Lint code
-ruff check src/ tests/ --fix
+# Format and lint (auto-fix)
+./scripts/format.sh
 
 # Type check
-mypy src/
+./scripts/typecheck.sh
 
 # Run tests with coverage
-pytest --cov=src --cov-report=html
+./scripts/test.sh
 
 # View coverage report
 open htmlcov/index.html  # macOS
@@ -328,12 +346,12 @@ plex-releases-summary/
 │   ├── app.py             # Main application logic
 │   ├── config.py          # Configuration management
 │   ├── discord_client.py  # Discord webhook client
-│   ├── tautulli_client.py # Tautulli API client
+│   ├── logging_config.py  # Logging configuration
 │   ├── scheduler.py       # CRON scheduler
-│   └── logging_config.py  # Logging configuration
+│   └── tautulli_client.py # Tautulli API client
 ├── tests/                  # Test files
-│   ├── test_config.py     # Config tests
 │   ├── test_app.py        # App tests
+│   ├── test_config.py     # Config tests
 │   └── test_discord_client.py  # Discord tests
 ├── configs/               # Configuration files
 ├── docs/                  # Documentation
@@ -354,13 +372,13 @@ For Docker environments:
 
 ```bash
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Execute commands in running container
-docker-compose exec plex-releases-summary sh
+docker compose exec plex-releases-summary sh
 
 # View configuration
-docker-compose exec plex-releases-summary cat /app/configs/config.yml
+docker compose exec plex-releases-summary cat /app/configs/config.yml
 ```
 
 ## Questions?

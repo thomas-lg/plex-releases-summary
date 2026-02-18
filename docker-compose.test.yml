@@ -10,3 +10,9 @@ services:
       - PYTHONPATH=/app/src
       - COVERAGE_FILE=/tmp/.coverage
     working_dir: /app
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "5"

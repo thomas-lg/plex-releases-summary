@@ -6,7 +6,7 @@ This directory contains helper scripts to run the application in different modes
 
 ### 🚀 `start.sh` - Production Mode
 
-Start the application in production mode using `docker-compose.yml`.
+Start the application in production mode using `docker compose` with `docker-compose.yml`.
 
 ```bash
 ./scripts/start.sh              # Start in foreground
@@ -15,7 +15,7 @@ Start the application in production mode using `docker-compose.yml`.
 
 **Requirements:**
 
-- TAUTULLI_URL and TAUTULLI_API_KEY set in docker-compose.yml
+- TAUTULLI_URL and TAUTULLI_API_KEY set in `docker-compose.yml`
 - Secrets file at `./secrets/tautulli_key` (if using file-based secrets)
 
 ---
@@ -57,6 +57,30 @@ Run the full test suite in Docker with coverage reports.
 - Terminal coverage summary
 - HTML coverage report in `htmlcov/index.html`
 - XML coverage report in `coverage.xml`
+
+---
+
+### 🎨 `format.sh` - Format + Auto-fix Python Code
+
+Run Black and Ruff in the development container.
+
+```bash
+./scripts/format.sh                          # Black format + Ruff --fix (default: src tests)
+./scripts/format.sh src                      # Black + Ruff --fix for src only
+./scripts/format.sh --check src tests        # Check mode (Black --check + Ruff check)
+```
+
+---
+
+### 🧠 `typecheck.sh` - Type Check Python Code
+
+Run mypy in the development container.
+
+```bash
+./scripts/typecheck.sh                        # Type check default target: src
+./scripts/typecheck.sh src                    # Type check src explicitly
+./scripts/typecheck.sh src/config.py          # Type check specific file
+```
 
 ---
 
@@ -115,6 +139,8 @@ Removes:
 | Start production  | `./scripts/start.sh` |
 | Start development | `./scripts/dev.sh`   |
 | Run tests         | `./scripts/test.sh`  |
+| Format code       | `./scripts/format.sh`|
+| Type check        | `./scripts/typecheck.sh` |
 | View logs         | `./scripts/logs.sh`  |
 | Stop everything   | `./scripts/stop.sh`  |
 | Clean up          | `./scripts/clean.sh` |
