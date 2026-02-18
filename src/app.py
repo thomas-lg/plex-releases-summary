@@ -4,7 +4,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from config import Config, load_config
+from config import Config, get_bootstrap_log_level, load_config
 from discord_client import DiscordNotifier
 from logging_config import setup_logging
 from tautulli_client import TautulliClient
@@ -287,13 +287,12 @@ def main():
       - set run_once: true to run once and exit
       - or provide cron_schedule to run as a persistent scheduled task
     """
-    # Load configuration first (with basic logging)
-    setup_logging("INFO")
+    # Bootstrap logging level from raw config so load-time logs honor user verbosity
+    setup_logging(get_bootstrap_log_level())
     try:
         config = load_config()
     except Exception as e:
-        # Can't use logger yet as it's not configured
-        print(f"FATAL: Failed to load configuration: {e}", file=sys.stderr)
+        logger.exception("FATAL: Failed to load configuration: %s", e)
         return 1
 
     # Now setup logging with config
