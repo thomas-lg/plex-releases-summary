@@ -248,6 +248,19 @@ class TestBootstrapLogLevel:
         """Missing config file falls back to INFO."""
         assert get_bootstrap_log_level("/nonexistent/config.yml") == "INFO"
 
+    @pytest.mark.unit
+    def test_bootstrap_log_level_from_env_var(self):
+        """Expands env var references in log_level before validation."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            yaml.safe_dump({"log_level": "${TEST_LOG_LEVEL}"}, f)
+            temp_path = f.name
+
+        try:
+            with patch.dict(os.environ, {"TEST_LOG_LEVEL": "WARNING"}):
+                assert get_bootstrap_log_level(temp_path) == "WARNING"
+        finally:
+            Path(temp_path).unlink()
+
 
 class TestConfigValidation:
     """Additional validation tests for Config model."""

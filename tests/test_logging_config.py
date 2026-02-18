@@ -1,11 +1,22 @@
 """Unit tests for logging configuration module."""
 
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
 
 import pytest
 
 from src import logging_config
+
+
+@pytest.fixture(autouse=True)
+def cleanup_logging_handlers():
+    """Ensures root logger handlers do not leak between tests."""
+    yield
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        handler.close()
+        root_logger.removeHandler(handler)
 
 
 class TestLoggingSetup:
@@ -25,7 +36,13 @@ class TestLoggingSetup:
         root_logger = logging.getLogger()
         handlers = root_logger.handlers
 
-        stream_handlers = [handler for handler in handlers if isinstance(handler, logging.StreamHandler)]
+        stream_handlers = [
+            handler
+            for handler in handlers
+            if isinstance(handler, logging.StreamHandler)
+            and not isinstance(handler, RotatingFileHandler)
+            and getattr(handler, "stream", None) is sys.stdout
+        ]
         file_handlers = [handler for handler in handlers if isinstance(handler, RotatingFileHandler)]
 
         assert root_logger.level == logging.DEBUG
