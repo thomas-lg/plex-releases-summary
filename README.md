@@ -209,6 +209,14 @@ Then run contributor checks:
 ./scripts/test.sh
 ```
 
+To run the app locally in the devcontainer:
+
+```bash
+cp .env.example .env
+# Edit .env with your Tautulli values
+./scripts/start.sh
+```
+
 Script reference: [scripts/README.md](scripts/README.md)
 
 ### Project Structure

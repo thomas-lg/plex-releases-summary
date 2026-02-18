@@ -4,6 +4,28 @@ These scripts are thin wrappers for contributor workflows and are intended to ru
 
 ## Available Scripts
 
+### ▶️ `start.sh` - Start Application
+
+Run the app locally with optional `.env` loading.
+
+Quick setup:
+
+```bash
+cp .env.example .env
+# Edit .env with your values, then:
+./scripts/start.sh
+```
+
+```bash
+./scripts/start.sh                       # Load .env if present
+ENV_FILE=.env.local ./scripts/start.sh  # Use custom env file
+```
+
+Required environment variables for default config placeholders:
+
+- `TAUTULLI_URL`
+- `TAUTULLI_API_KEY`
+
 ### 🧪 `test.sh` - Run Tests
 
 Run pytest with coverage.
@@ -46,6 +68,7 @@ Remove generated test/coverage/cache files.
 
 | Task       | Command                |
 | ---------- | ---------------------- |
+| Start app  | `./scripts/start.sh`   |
 | Run tests  | `./scripts/test.sh`    |
 | Format     | `./scripts/format.sh`  |
 | Type check | `./scripts/typecheck.sh` |

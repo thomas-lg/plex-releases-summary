@@ -4,11 +4,17 @@ Thank you for contributing to Plex Releases Summary.
 
 ## Table of Contents
 
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Code Style](#code-style)
-- [Testing](#testing)
-- [Pull Request Process](#pull-request-process)
+- [Contributing to Plex Releases Summary](#contributing-to-plex-releases-summary)
+  - [Table of Contents](#table-of-contents)
+  - [Getting Started](#getting-started)
+  - [Development Setup](#development-setup)
+    - [Prerequisites](#prerequisites)
+    - [Canonical Workflow (Devcontainer)](#canonical-workflow-devcontainer)
+    - [Optional Host Workflow](#optional-host-workflow)
+  - [Code Style](#code-style)
+  - [Testing](#testing)
+  - [Pull Request Process](#pull-request-process)
+  - [Production Image and Deployment](#production-image-and-deployment)
 
 ## Getting Started
 
