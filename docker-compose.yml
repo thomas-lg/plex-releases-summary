@@ -4,6 +4,7 @@ services:
     container_name: plex-releases-summary
     volumes:
       - ./configs:/app/configs:rw
+      - ./logs:/app/logs:rw
       - ./secrets:/run/secrets:ro
 
     # Environment variables for configuration
@@ -13,6 +14,12 @@ services:
       # ========== REQUIRED ==========
       - TAUTULLI_URL=http://tautulli:8181
       - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "5"
 
     restart: on-failure
 # Optional: Docker Compose secrets (alternative to volume-mounted secrets)

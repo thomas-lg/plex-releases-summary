@@ -512,6 +512,12 @@ Use for monitoring: `docker run --rm app; [ $? -eq 0 ] || alert`
 
 **View logs:** `docker logs plex-releases-summary` or `docker logs -f plex-releases-summary`
 
+**Persistent file logs:** The container also writes rotating logs to `/app/logs/app.log` (mounted to host `./logs`).
+
+- Max file size: `5 MB` per file
+- Retention: `5` backup files + current file (`6` total max)
+- Rotation behavior: when a new file is created beyond limit, oldest backup is deleted automatically
+
 ### Scheduler Behavior
 
 Scheduled mode (`run_once: false`) with APScheduler:

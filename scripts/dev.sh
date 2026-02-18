@@ -45,6 +45,18 @@ echo "📋 Using configuration files:"
 echo "   - docker-compose.dev.yml (base dev config)"
 echo "   - docker-compose.dev.local.yml (your local overrides)"
 echo ""
+
+# Ensure host log directory exists and is writable for container user
+mkdir -p logs
+chmod 775 logs
+
+# If dev script is not run by UID/GID 1000 (container appuser),
+# relax permissions so bind-mounted logs stay writable during development.
+if [ "$(id -u)" -ne 1000 ] && [ "$(id -g)" -ne 1000 ]; then
+    echo "⚠️  logs/ is not owned by UID/GID 1000; applying permissive mode (777) for dev compatibility"
+    chmod 777 logs
+fi
+
 echo "🔥 Hot-reload enabled - Python files will auto-reload on save"
 echo "📊 Logs will stream below..."
 echo ""

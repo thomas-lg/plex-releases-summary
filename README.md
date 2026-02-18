@@ -327,6 +327,7 @@ See [docker-compose.yml](docker-compose.yml) for minimal production setup or [do
 - **Shutdown:** Handles `SIGTERM`/`SIGINT` cleanly.
 - **Upgrades:** Pull new image, restart. See [Migration Guide](docs/CONFIGURATION.md#migration-and-updates).
 - **Exit codes:** `0` (success), `1` (error), `130` (interrupted). See [Exit Codes](docs/CONFIGURATION.md#exit-codes).
+- **Persistent logs:** Rotating log files are stored in host `./logs` (`5 MB` each, `5` backups + current), while `docker logs` remains available.
 
 ### Health Monitoring
 
