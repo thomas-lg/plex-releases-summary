@@ -308,7 +308,9 @@ def main():
         logger.info("📅 Starting in SCHEDULED mode")
         from scheduler import run_scheduled
 
-        assert config.cron_schedule is not None
+        if config.cron_schedule is None:
+            logger.error("Configuration error: 'cron_schedule' must be set when run_once is false.")
+            return 1
 
         # Wrap run_summary to pass config
         return run_scheduled(lambda: run_summary(config), config.cron_schedule)
