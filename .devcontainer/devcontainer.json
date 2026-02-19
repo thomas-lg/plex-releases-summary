@@ -8,7 +8,6 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
   "remoteUser": "appuser",
   "updateRemoteUserUID": true,
-  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt -r requirements-test.txt && pre-commit install",
   "customizations": {
     "vscode": {
       "extensions": [

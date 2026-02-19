@@ -39,6 +39,8 @@ Open the project in the devcontainer:
 Command Palette → Dev Containers: Reopen in Container
 ```
 
+Dependencies are installed in the devcontainer image, so post-create setup only installs Git hooks.
+
 Inside the devcontainer, run checks with either direct commands or helper scripts:
 
 ```bash

@@ -260,7 +260,6 @@ Script reference: [scripts/README.md](scripts/README.md)
 ├── requirements-dev.txt # Development dependencies
 ├── requirements-test.txt # Testing dependencies
 ├── requirements.txt # Python dependencies
-├── .pre-commit-config.yaml # Pre-commit hooks
 └── README.md
 
 ```
