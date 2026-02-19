@@ -45,6 +45,19 @@ class TautulliClient:
             message = message.replace(self.api_key, "***")
         return self.APIKEY_PATTERN.sub(r"\1***", message)
 
+    def _sanitize_exception(self, error: Exception) -> Exception:
+        """
+        Create a sanitized exception instance to avoid leaking credentials.
+
+        Args:
+            error: Exception to sanitize
+
+        Returns:
+            New exception with redacted message
+        """
+        safe_message = self._sanitize_error(error)
+        return type(error)(safe_message)
+
     def _request(self, cmd: str, max_retries: int | None = None, **params) -> dict[str, Any]:
         """
         Make a request to Tautulli API with exponential backoff retry logic.
@@ -102,7 +115,7 @@ class TautulliClient:
                 else:
                     logger.error("Request failed for cmd=%s after %d attempts: %s", cmd, max_retries, safe_error)
 
-        raise last_exception
+        raise self._sanitize_exception(last_exception) from None
 
     def get_recently_added(self, days: int = 7, count: int = 100) -> dict[str, Any]:
         """

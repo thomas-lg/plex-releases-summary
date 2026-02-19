@@ -43,6 +43,25 @@ class TestTautulliClient:
         assert "apikey=***" in log_text
 
     @pytest.mark.unit
+    def test_request_failure_raises_redacted_exception(self, monkeypatch):
+        """Raised request exceptions should be sanitized to avoid leaking secrets."""
+        client = TautulliClient("http://tautulli:8181", "super-secret")
+
+        def raise_request_exception(url, params, timeout):
+            raise requests.RequestException(
+                "failed calling " f"{url}?apikey={params['apikey']}&cmd={params['cmd']}&count={params.get('count', 0)}"
+            )
+
+        monkeypatch.setattr("src.tautulli_client.requests.get", raise_request_exception)
+
+        with pytest.raises(requests.RequestException) as exc_info:
+            client._request("get_recently_added", max_retries=1, count=10)
+
+        error_message = str(exc_info.value)
+        assert "super-secret" not in error_message
+        assert "apikey=***" in error_message
+
+    @pytest.mark.unit
     def test_unsuccessful_api_response_raises_safe_runtime_error(self, monkeypatch):
         """Unsuccessful API responses should raise concise command-scoped errors."""
         client = TautulliClient("http://tautulli:8181", "super-secret")
