@@ -149,14 +149,13 @@ class TestDiscordNotifier:
 
     @pytest.mark.unit
     def test_group_items_by_type_unknown(self, notifier):
-        """Test grouping with unknown media type."""
+        """Test grouping with unknown media type — should land in Other, not be dropped."""
         items: list[DiscordMediaItem] = [
-            {"type": "unknown", "title": "Unknown Item"},
+            {"type": "audiobook", "title": "Unknown Item"},
         ]
         grouped = notifier._group_items_by_type(items)
-        # Unknown types should be skipped or handled gracefully
-        # Check implementation behavior
-        assert isinstance(grouped, dict)
+        assert len(grouped["Other"]) == 1
+        assert grouped["Other"][0]["title"] == "Unknown Item"
 
     @pytest.mark.unit
     def test_format_media_item_with_link(self, notifier):
@@ -354,3 +353,66 @@ class TestDiscordNotifier:
         ok = notifier.send_summary(media_items=[], days_back=3, total_count=0)
 
         assert ok is False
+
+    @pytest.mark.unit
+    def test_send_with_retry_respects_rate_limit_429(self, notifier, monkeypatch):
+        """_send_with_retry should wait retry_after seconds and retry on 429 responses."""
+        sleep_calls: list[float] = []
+        monkeypatch.setattr("src.discord_client.time.sleep", lambda s: sleep_calls.append(s))
+
+        attempt = {"n": 0}
+
+        class StubResponse429:
+            status_code = 429
+            text = ""
+
+            def json(self):
+                return {"retry_after": 2.5}
+
+        class StubResponse204:
+            status_code = 204
+            text = ""
+
+            def json(self):
+                return {}
+
+        class StubWebhook:
+            def __init__(self):
+                self.timeout = None
+
+            def execute(self):
+                attempt["n"] += 1
+                if attempt["n"] == 1:
+                    return StubResponse429()
+                return StubResponse204()
+
+        webhook = StubWebhook()
+        response = notifier._send_with_retry(webhook, max_retries=3)
+
+        assert response.status_code == 204
+        assert attempt["n"] == 2  # one 429, one success
+        assert 2.5 in sleep_calls  # waited the retry_after value
+
+    @pytest.mark.unit
+    def test_send_with_retry_exhausts_retries_on_persistent_429(self, notifier, monkeypatch):
+        """_send_with_retry should return the last response after exhausting retries on persistent 429."""
+        monkeypatch.setattr("src.discord_client.time.sleep", lambda _: None)
+
+        class StubResponse429:
+            status_code = 429
+            text = ""
+
+            def json(self):
+                return {"retry_after": 0.1}
+
+        class StubWebhook:
+            def __init__(self):
+                self.timeout = None
+
+            def execute(self):
+                return StubResponse429()
+
+        webhook = StubWebhook()
+        response = notifier._send_with_retry(webhook, max_retries=3)
+
+        assert response.status_code == 429

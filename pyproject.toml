@@ -1,3 +1,18 @@
+[project]
+name = "plex-releases-summary"
+version = "0.1.0"
+description = "Fetches recently added Plex media via Tautulli and posts Discord summaries"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "requests>=2.32.3,<3.0.0",
+    "APScheduler>=3.10.4,<4.0.0",
+    "discord-webhook>=1.3.1,<2.0.0",
+    "pyyaml>=6.0.1,<7.0.0",
+    "pydantic>=2.6.0,<3.0.0",
+]
+
 [tool.mypy]
 # MyPy configuration for type checking
 python_version = "3.12"

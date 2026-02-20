@@ -342,6 +342,110 @@ class TestRunSummary:
         assert any("movie: 2" in record.message and "show: 1" in record.message for record in caplog.records)
 
     @pytest.mark.unit
+    def test_run_summary_stops_when_api_returns_fewer_items_than_requested(self, monkeypatch):
+        """Fetching should stop when the API returns fewer items than requested (hit its limit)."""
+        call_counts = {"n": 0}
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                call_counts["n"] += 1
+                timestamp = int(datetime.now(UTC).timestamp())
+                # Always return 5 items regardless of how many were requested
+                return {
+                    "recently_added": [
+                        {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp}
+                        for i in range(5)
+                    ]
+                }
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+                "initial_batch_size": 100,  # request 100, get 5 → stop after first batch
+            }
+        )
+
+        assert run_summary(config) == 0
+        assert call_counts["n"] == 1  # exactly one API call
+
+    @pytest.mark.unit
+    def test_run_summary_expands_batch_when_oldest_item_still_in_range(self, monkeypatch):
+        """Fetching should expand the batch size when the oldest returned item is still within the date range."""
+        call_counts = {"n": 0}
+        timestamps = {
+            # First batch: all items are recent (within range), oldest still in range → expand
+            1: int(datetime.now(UTC).timestamp()),
+            # Second batch: oldest item is old (outside range) → stop
+            2: 0,
+        }
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                call_counts["n"] += 1
+                oldest_ts = timestamps.get(call_counts["n"], 0)
+                items = [
+                    {"media_type": "movie", "title": f"Movie {i}", "added_at": int(datetime.now(UTC).timestamp())}
+                    for i in range(count - 1)
+                ]
+                # Last item has the controlled timestamp
+                items.append({"media_type": "movie", "title": "Oldest", "added_at": oldest_ts})
+                return {"recently_added": items}
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+        monkeypatch.setattr("src.app.time.sleep", lambda _: None)
+
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+                "initial_batch_size": 5,
+            }
+        )
+
+        assert run_summary(config) == 0
+        assert call_counts["n"] == 2  # expanded once, then stopped
+
+    @pytest.mark.unit
+    def test_run_summary_stops_at_max_iterations(self, monkeypatch, caplog):
+        """Fetching should stop and warn when the max iteration guardrail (50) is reached."""
+        from src.app import MAX_FETCH_ITERATIONS
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                # Always return exactly `count` items, all recent → always triggers another iteration
+                timestamp = int(datetime.now(UTC).timestamp())
+                return {
+                    "recently_added": [
+                        {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp}
+                        for i in range(count)
+                    ]
+                }
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+        monkeypatch.setattr("src.app.time.sleep", lambda _: None)
+
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+                "initial_batch_size": 1,
+            }
+        )
+
+        caplog.set_level("WARNING")
+        assert run_summary(config) == 0
+        assert any("max fetch iterations" in r.message.lower() for r in caplog.records)
+
+    @pytest.mark.unit
     def test_run_summary_stops_when_max_fetch_count_reached(self, monkeypatch):
         """Iterative fetching should stop once the max fetch count guardrail is reached."""
 

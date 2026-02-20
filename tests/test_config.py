@@ -302,6 +302,42 @@ class TestBootstrapLogLevel:
         finally:
             Path(temp_path).unlink()
 
+    @pytest.mark.unit
+    def test_bootstrap_log_level_non_dict_yaml_falls_back_to_info(self):
+        """YAML that is not a mapping (e.g. a list) falls back to INFO."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            yaml.safe_dump(["not", "a", "dict"], f)
+            temp_path = f.name
+
+        try:
+            assert get_bootstrap_log_level(temp_path) == "INFO"
+        finally:
+            Path(temp_path).unlink()
+
+    @pytest.mark.unit
+    def test_bootstrap_log_level_unreadable_file_falls_back_to_info(self, tmp_path):
+        """File that cannot be read (permissions) falls back to INFO gracefully."""
+        secret_file = tmp_path / "config.yml"
+        secret_file.write_text("log_level: DEBUG\n")
+        secret_file.chmod(0o000)
+
+        try:
+            assert get_bootstrap_log_level(str(secret_file)) == "INFO"
+        finally:
+            secret_file.chmod(0o644)
+
+    @pytest.mark.unit
+    def test_bootstrap_log_level_integer_value_falls_back_to_info(self):
+        """Non-string log_level (e.g. integer) falls back to INFO."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            yaml.safe_dump({"log_level": 10}, f)
+            temp_path = f.name
+
+        try:
+            assert get_bootstrap_log_level(temp_path) == "INFO"
+        finally:
+            Path(temp_path).unlink()
+
 
 class TestConfigValidation:
     """Additional validation tests for Config model."""

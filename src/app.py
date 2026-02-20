@@ -97,41 +97,39 @@ def _format_display_title(item: TautulliMediaItem) -> str:
         return str(title)
 
 
-def run_summary(config: Config) -> int:
+def _fetch_items(
+    tautulli: TautulliClient,
+    days: int,
+    initial_batch_size: int | None = None,
+) -> list[TautulliMediaItem]:
     """
-    Execute the Plex summary task: fetch and display recently added media.
+    Fetch recently added items from Tautulli, iterating until all items in the
+    date range are retrieved or a guardrail limit is hit, then filter by date.
+
+    Note: Tautulli lacks server-side date filtering, so batches are expanded
+    progressively and filtered client-side against the cutoff timestamp.
 
     Args:
-        config: Application configuration
+        tautulli: Tautulli API client
+        days: Number of days to look back
+        initial_batch_size: Optional override for the initial batch size
 
     Returns:
-        Exit code: 0 for success, 1 for error
+        List of media items added within the last ``days`` days
+
+    Raises:
+        ConnectionError, TimeoutError: On network failures
+        ValueError: On invalid API responses
+        RuntimeError: On unexpected Tautulli errors
     """
-    logger.info("🚀 Plex weekly summary starting")
-
-    days = config.days_back
-    logger.info("Configuration: Looking back %d days", days)
-
-    tautulli = TautulliClient(
-        base_url=config.tautulli_url,
-        api_key=config.tautulli_api_key,
-    )
-
-    # Query items with date filter
-    # Fetch items iteratively since Tautulli API lacks date filtering (see TautulliClient.get_recently_added)
-    logger.info("Querying recently added items with iterative fetching...")
-
-    # Calculate cutoff timestamp for filtering
     cutoff_timestamp = int((datetime.now(UTC) - timedelta(days=days)).timestamp())
     logger.debug("Filtering items to show only those added after timestamp: %d", cutoff_timestamp)
 
-    # Calculate batch parameters based on time range
-    initial_count, increment = _calculate_batch_params(days, override=config.initial_batch_size)
+    initial_count, increment = _calculate_batch_params(days, override=initial_batch_size)
     current_count = initial_count
     iteration = 0
     items: list[TautulliMediaItem] = []
 
-    # Iteratively fetch items until we get items beyond the time range
     while True:
         iteration += 1
 
@@ -144,23 +142,13 @@ def run_summary(config: Config) -> int:
 
         logger.debug("Iteration %d: Fetching batch with count=%d", iteration, current_count)
 
-        # Add small delay between iterations to avoid hammering the API
+        # Small delay between iterations to avoid hammering the API
         if iteration > 1:
             time.sleep(0.2)
 
-        try:
-            items_raw: TautulliRecentlyAddedPayload = tautulli.get_recently_added(days=days, count=current_count)
-        except (ConnectionError, TimeoutError) as e:
-            logger.error("Network error while fetching recently added items: %s", e)
-            return 1
-        except ValueError as e:
-            logger.error("Invalid response from Tautulli API: %s", e)
-            return 1
-        except Exception as e:
-            logger.exception("Unexpected error while fetching recently added items: %s", e)
-            return 1
+        items_raw: TautulliRecentlyAddedPayload = tautulli.get_recently_added(days=days, count=current_count)
 
-        # depending on API version, the data is inside 'recently_added'
+        # Handle both dict (newer API) and list (older API) response formats
         if isinstance(items_raw, dict) and "recently_added" in items_raw:
             items = items_raw["recently_added"]
         elif isinstance(items_raw, list):
@@ -168,7 +156,6 @@ def run_summary(config: Config) -> int:
         else:
             items = []
 
-        # Break if no items returned
         if not items:
             logger.debug("No items returned, stopping iteration")
             break
@@ -178,11 +165,10 @@ def run_summary(config: Config) -> int:
             logger.debug("Received %d items (less than requested %d), reached API limit", len(items), current_count)
             break
 
-        # Check if oldest item is still within time range
         oldest_timestamp = int(items[-1].get("added_at", 0))
 
         if oldest_timestamp >= cutoff_timestamp:
-            # Oldest item is still in range, need to fetch more
+            # Oldest item is still in range — expand the batch
             next_count = current_count + increment
             if next_count > MAX_FETCH_COUNT:
                 logger.warning(
@@ -190,7 +176,6 @@ def run_summary(config: Config) -> int:
                     MAX_FETCH_COUNT,
                 )
                 break
-
             logger.info(
                 "Oldest item still in range (iteration %d), fetching more items (next count: %d)",
                 iteration,
@@ -198,11 +183,11 @@ def run_summary(config: Config) -> int:
             )
             current_count = next_count
         else:
-            # We've fetched beyond the time range, we're done
+            # Oldest item is outside the range — we have everything we need
             logger.debug("Fetched beyond time range after %d iteration(s)", iteration)
             break
 
-    # Filter items client-side by date
+    # Client-side date filter
     items_before_filter = len(items)
     items = [item for item in items if int(item.get("added_at", 0)) >= cutoff_timestamp]
 
@@ -217,9 +202,22 @@ def run_summary(config: Config) -> int:
     else:
         logger.info("Retrieved %d items, filtered to %d items from last %d days", items_before_filter, len(items), days)
 
-    logger.info("Found %d recent items matching criteria", len(items))
+    return items
 
-    # Prepare structured data for Discord and display items in logs
+
+def _build_discord_payload(items: list[TautulliMediaItem]) -> list[DiscordMediaItem]:
+    """
+    Build the Discord media payload from Tautulli items and log each entry.
+
+    Logs up to DEFAULT_INFO_DISPLAY_LIMIT items per media type at INFO level;
+    excess items are counted and reported in a single summary line.
+
+    Args:
+        items: Filtered list of Tautulli media items
+
+    Returns:
+        List of DiscordMediaItem dicts ready for the notifier
+    """
     discord_items: list[DiscordMediaItem] = []
     suppressed_by_type: dict[str, int] = {}
     displayed_by_type: dict[str, int] = {}
@@ -262,48 +260,105 @@ def run_summary(config: Config) -> int:
             suppressed_summary,
         )
 
-    # Summary
-    logger.info("✅ Summary complete: Found %d items in the last %d days", len(items), days)
+    return discord_items
 
-    # Send Discord notification if webhook URL is configured
+
+def _send_discord_notification(
+    config: Config,
+    tautulli: TautulliClient,
+    discord_items: list[DiscordMediaItem],
+    days: int,
+    total_count: int,
+) -> int:
+    """
+    Auto-detect Plex server ID (if needed) and dispatch the Discord summary.
+
+    Args:
+        config: Application configuration
+        tautulli: Tautulli client used for server identity auto-detection
+        discord_items: Payload built by _build_discord_payload
+        days: Days-back value forwarded to the notifier for display
+        total_count: Total item count forwarded to the notifier for display
+
+    Returns:
+        0 on success or in scheduled mode (non-fatal errors); 1 on hard failure
+        in one-shot mode
+    """
+    logger.debug("Discord webhook URL configured, sending notification...")
+    try:
+        plex_server_id = config.plex_server_id
+
+        # Auto-fetch Plex Server ID from Tautulli if not provided
+        if not plex_server_id:
+            logger.debug("plex_server_id not configured, fetching from Tautulli...")
+            try:
+                server_info: TautulliServerIdentity = tautulli.get_server_identity()
+                plex_server_id = server_info.get("machine_identifier")
+                if plex_server_id:
+                    logger.info("Auto-detected Plex Server ID: %s", plex_server_id)
+                else:
+                    logger.warning("Could not auto-detect Plex Server ID from Tautulli")
+            except (ConnectionError, TimeoutError) as e:
+                logger.warning("Network error while fetching Plex Server ID: %s", e)
+            except ValueError as e:
+                logger.warning("Invalid response from Tautulli: %s", e)
+
+        notifier = DiscordNotifier(config.discord_webhook_url, config.plex_url, plex_server_id)
+        notifier.send_summary(discord_items, days, total_count)
+    except (ConnectionError, TimeoutError) as e:
+        logger.error("Network error while sending Discord notification: %s", e)
+        if config.run_once:
+            return 1
+    except ValueError as e:
+        logger.error("Invalid Discord webhook configuration: %s", e)
+        if config.run_once:
+            return 1
+    except Exception as e:
+        logger.exception("Unexpected error while sending Discord notification: %s", e)
+        if config.run_once:
+            return 1
+    return 0
+
+
+def run_summary(config: Config) -> int:
+    """
+    Execute the Plex summary task: fetch and display recently added media.
+
+    Args:
+        config: Application configuration
+
+    Returns:
+        Exit code: 0 for success, 1 for error
+    """
+    logger.info("🚀 Plex weekly summary starting")
+    logger.info("Configuration: Looking back %d days", config.days_back)
+
+    tautulli = TautulliClient(base_url=config.tautulli_url, api_key=config.tautulli_api_key)
+
+    logger.info("Querying recently added items with iterative fetching...")
+    try:
+        items = _fetch_items(tautulli, config.days_back, config.initial_batch_size)
+    except (ConnectionError, TimeoutError) as e:
+        logger.error("Network error while fetching recently added items: %s", e)
+        return 1
+    except ValueError as e:
+        logger.error("Invalid response from Tautulli API: %s", e)
+        return 1
+    except Exception as e:
+        logger.exception("Unexpected error while fetching recently added items: %s", e)
+        return 1
+
+    logger.info("Found %d recent items matching criteria", len(items))
+
+    discord_items = _build_discord_payload(items)
+
+    logger.info("✅ Summary complete: Found %d items in the last %d days", len(items), config.days_back)
+
     if config.discord_webhook_url:
-        logger.debug("Discord webhook URL configured, sending notification...")
-        try:
-            plex_server_id = config.plex_server_id
+        return _send_discord_notification(config, tautulli, discord_items, config.days_back, len(items))
 
-            # Auto-fetch Plex Server ID from Tautulli if not provided
-            if not plex_server_id:
-                logger.debug("plex_server_id not configured, fetching from Tautulli...")
-                try:
-                    server_info: TautulliServerIdentity = tautulli.get_server_identity()
-                    plex_server_id = server_info.get("machine_identifier")
-                    if plex_server_id:
-                        logger.info("Auto-detected Plex Server ID: %s", plex_server_id)
-                    else:
-                        logger.warning("Could not auto-detect Plex Server ID from Tautulli")
-                except (ConnectionError, TimeoutError) as e:
-                    logger.warning("Network error while fetching Plex Server ID: %s", e)
-                except ValueError as e:
-                    logger.warning("Invalid response from Tautulli: %s", e)
-
-            notifier = DiscordNotifier(config.discord_webhook_url, config.plex_url, plex_server_id)
-            notifier.send_summary(discord_items, days, len(items))
-        except (ConnectionError, TimeoutError) as e:
-            logger.error("Network error while sending Discord notification: %s", e)
-            if config.run_once:
-                return 1
-        except ValueError as e:
-            logger.error("Invalid Discord webhook configuration: %s", e)
-            if config.run_once:
-                return 1
-        except Exception as e:
-            logger.exception("Unexpected error while sending Discord notification: %s", e)
-            if config.run_once:
-                return 1
-    else:
-        logger.debug("No Discord webhook URL configured, skipping Discord notification")
-
-    return 0  # Success
+    logger.debug("No Discord webhook URL configured, skipping Discord notification")
+    return 0
 
 
 def main():
