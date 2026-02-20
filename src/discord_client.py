@@ -5,7 +5,7 @@ import random
 import re
 import time
 from datetime import datetime
-from typing import Any, NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict, cast
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
@@ -525,16 +525,17 @@ class DiscordNotifier:
         for attempt in range(max_retries):
             try:
                 try:
-                    # Prefer passing timeout as a keyword argument (discord-webhook 1.x style)
-                    response = webhook.execute(timeout=self.REQUEST_TIMEOUT_SECONDS)  # type: ignore[call-arg]
-                except TypeError:
-                    # Fallback for older or non-standard implementations that use a timeout attribute
+                    # Prefer timeout attribute when available.
                     if hasattr(webhook, "timeout"):
                         webhook.timeout = self.REQUEST_TIMEOUT_SECONDS
                         response = webhook.execute()
                     else:
-                        # Re-raise if neither the kwarg nor the attribute is supported
-                        raise
+                        # Fallback for implementations that support timeout as a kwarg.
+                        execute_with_timeout = cast(Any, webhook.execute)
+                        response = execute_with_timeout(timeout=self.REQUEST_TIMEOUT_SECONDS)
+                except TypeError:
+                    # Last fallback: execute without timeout if unsupported.
+                    response = webhook.execute()
 
                 # If validation error (bad request), don't retry - it won't help
                 if response.status_code == 400:
