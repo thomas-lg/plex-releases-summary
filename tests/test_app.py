@@ -353,8 +353,7 @@ class TestRunSummary:
                 # Always return 5 items regardless of how many were requested
                 return {
                     "recently_added": [
-                        {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp}
-                        for i in range(5)
+                        {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp} for i in range(5)
                     ]
                 }
 
@@ -415,7 +414,6 @@ class TestRunSummary:
     @pytest.mark.unit
     def test_run_summary_stops_at_max_iterations(self, monkeypatch, caplog):
         """Fetching should stop and warn when the max iteration guardrail (50) is reached."""
-        from src.app import MAX_FETCH_ITERATIONS
 
         class StubTautulliClient:
             def get_recently_added(self, days, count):
@@ -423,8 +421,7 @@ class TestRunSummary:
                 timestamp = int(datetime.now(UTC).timestamp())
                 return {
                     "recently_added": [
-                        {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp}
-                        for i in range(count)
+                        {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp} for i in range(count)
                     ]
                 }
 

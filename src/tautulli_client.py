@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 T = TypeVar("T", bound=BaseModel)
 
+
 class TautulliMediaItem(TypedDict, total=False):
     added_at: int | str
     grandparent_title: str
