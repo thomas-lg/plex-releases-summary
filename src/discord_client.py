@@ -236,7 +236,6 @@ class DiscordNotifier:
         category: str,
         items: list[DiscordMediaItem],
         days_back: int,
-        total_count: int,
         part_num: int,
         estimated_parts: int,
         category_total: int,
@@ -343,7 +342,7 @@ class DiscordNotifier:
             estimated_parts = (len(all_items) + items_per_part - 1) // items_per_part if items_per_part > 0 else 1
 
             embed = self._create_category_embed(
-                category, current_items, days_back, total_count, part_num, estimated_parts, category_total
+                category, current_items, days_back, total_count, part_num, estimated_parts
             )
 
             size = self._calculate_embed_size(embed)
@@ -525,9 +524,17 @@ class DiscordNotifier:
         response = None
         for attempt in range(max_retries):
             try:
-                if hasattr(webhook, "timeout"):
-                    webhook.timeout = self.REQUEST_TIMEOUT_SECONDS
-                response = webhook.execute()
+                try:
+                    # Prefer passing timeout as a keyword argument (discord-webhook 1.x style)
+                    response = webhook.execute(timeout=self.REQUEST_TIMEOUT_SECONDS)  # type: ignore[call-arg]
+                except TypeError:
+                    # Fallback for older or non-standard implementations that use a timeout attribute
+                    if hasattr(webhook, "timeout"):
+                        webhook.timeout = self.REQUEST_TIMEOUT_SECONDS
+                        response = webhook.execute()
+                    else:
+                        # Re-raise if neither the kwarg nor the attribute is supported
+                        raise
 
                 # If validation error (bad request), don't retry - it won't help
                 if response.status_code == 400:
