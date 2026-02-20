@@ -3,7 +3,7 @@
 import pytest
 from discord_webhook import DiscordEmbed
 
-from src.discord_client import DiscordNotifier
+from src.discord_client import DiscordMediaItem, DiscordNotifier
 
 
 class TestDiscordNotifier:
@@ -150,7 +150,7 @@ class TestDiscordNotifier:
     @pytest.mark.unit
     def test_group_items_by_type_unknown(self, notifier):
         """Test grouping with unknown media type."""
-        items = [
+        items: list[DiscordMediaItem] = [
             {"type": "unknown", "title": "Unknown Item"},
         ]
         grouped = notifier._group_items_by_type(items)
@@ -161,7 +161,7 @@ class TestDiscordNotifier:
     @pytest.mark.unit
     def test_format_media_item_with_link(self, notifier):
         """Test formatting media item with Plex link."""
-        item = {"type": "movie", "rating_key": "12345", "title": "Test Movie"}
+        item: DiscordMediaItem = {"type": "movie", "rating_key": "12345", "title": "Test Movie"}
         formatted = notifier._format_media_item(item)
         assert "app.plex.tv" in formatted
         assert "test-server-id" in formatted
@@ -174,21 +174,21 @@ class TestDiscordNotifier:
         notifier = DiscordNotifier(
             webhook_url="https://discord.com/api/webhooks/test", plex_url="https://app.plex.tv", plex_server_id=None
         )
-        item = {"type": "movie", "rating_key": "12345", "title": "Test Movie"}
+        item: DiscordMediaItem = {"type": "movie", "rating_key": "12345", "title": "Test Movie"}
         formatted = notifier._format_media_item(item)
         assert formatted == "• **Test Movie**"
 
     @pytest.mark.unit
     def test_format_media_item_missing_rating_key(self, notifier):
         """Test formatting media item without rating_key."""
-        item = {"type": "movie", "title": "Test Movie"}
+        item: DiscordMediaItem = {"type": "movie", "title": "Test Movie"}
         formatted = notifier._format_media_item(item)
         assert formatted == "• **Test Movie**"
 
     @pytest.mark.unit
     def test_validate_and_trim_embed_within_limits(self, notifier):
         """Test that embed within limits is not trimmed."""
-        items = [
+        items: list[DiscordMediaItem] = [
             {"type": "movie", "title": "Movie 1", "added_at": "2024-01-01"},
             {"type": "movie", "title": "Movie 2", "added_at": "2024-01-02"},
         ]
@@ -204,7 +204,7 @@ class TestDiscordNotifier:
     def test_validate_and_trim_embed_exceeds_limits(self, notifier):
         """Test that oversized embed is trimmed."""
         # Create many items with long titles to exceed size limit
-        items = [
+        items: list[DiscordMediaItem] = [
             {"type": "movie", "title": "Very Long Movie Title " * 50, "added_at": f"2024-01-{i:02d}"}  # Very long title
             for i in range(1, 26)  # 25 items (max allowed)
         ]
@@ -241,7 +241,7 @@ class TestDiscordNotifier:
 
     @pytest.mark.unit
     def test_send_with_retry_passes_timeout_when_supported(self, notifier):
-        """Webhook execution should receive explicit timeout when supported."""
+        """Webhook execution should set timeout attribute when supported."""
 
         class StubResponse:
             status_code = 204
@@ -252,17 +252,16 @@ class TestDiscordNotifier:
 
         class StubWebhook:
             def __init__(self):
-                self.timeout_seen = None
+                self.timeout = None
 
-            def execute(self, timeout=None):
-                self.timeout_seen = timeout
+            def execute(self):
                 return StubResponse()
 
         webhook = StubWebhook()
         response = notifier._send_with_retry(webhook)
 
         assert response.status_code == 204
-        assert webhook.timeout_seen == notifier.REQUEST_TIMEOUT_SECONDS
+        assert webhook.timeout == notifier.REQUEST_TIMEOUT_SECONDS
 
     @pytest.mark.unit
     def test_send_with_retry_falls_back_when_timeout_kwarg_unsupported(self, notifier):
@@ -290,3 +289,68 @@ class TestDiscordNotifier:
         assert response.status_code == 204
         assert webhook.call_count == 1
         assert webhook.timeout == notifier.REQUEST_TIMEOUT_SECONDS
+
+    @pytest.mark.unit
+    def test_send_summary_no_items_sends_friendly_embed(self, notifier, monkeypatch):
+        """No items should trigger a friendly empty-state embed."""
+
+        class StubResponse:
+            status_code = 204
+            text = ""
+
+            def json(self):
+                return {}
+
+        sent_webhooks = []
+
+        class StubWebhook:
+            def __init__(self, url):
+                self.url = url
+                self.embeds = []
+                sent_webhooks.append(self)
+
+            def add_embed(self, embed):
+                self.embeds.append(embed)
+
+            def execute(self, timeout=None):
+                return StubResponse()
+
+        monkeypatch.setattr("src.discord_client.DiscordWebhook", StubWebhook)
+        monkeypatch.setattr("src.discord_client.random.choice", lambda choices: choices[0])
+
+        ok = notifier.send_summary(media_items=[], days_back=7, total_count=0)
+
+        assert ok is True
+        assert len(sent_webhooks) == 1
+        assert len(sent_webhooks[0].embeds) == 1
+        embed = sent_webhooks[0].embeds[0]
+        assert embed.title == DiscordNotifier.NO_NEW_TITLES[0]
+        assert "last 7 days" in embed.description
+        assert "add" in embed.description.lower()
+
+    @pytest.mark.unit
+    def test_send_summary_no_items_returns_false_on_webhook_failure(self, notifier, monkeypatch):
+        """No items empty-state notification should fail cleanly on webhook errors."""
+
+        class StubResponse:
+            status_code = 500
+            text = "internal error"
+
+            def json(self):
+                return {}
+
+        class StubWebhook:
+            def __init__(self, url):
+                self.url = url
+
+            def add_embed(self, embed):
+                pass
+
+            def execute(self, timeout=None):
+                return StubResponse()
+
+        monkeypatch.setattr("src.discord_client.DiscordWebhook", StubWebhook)
+
+        ok = notifier.send_summary(media_items=[], days_back=3, total_count=0)
+
+        assert ok is False

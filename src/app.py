@@ -5,15 +5,14 @@ import os
 import sys
 import time
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 from config import DEFAULT_CONFIG_PATH, Config, get_bootstrap_log_level, load_config
-from discord_client import DiscordNotifier
+from discord_client import DiscordMediaItem, DiscordNotifier
 from logging_config import setup_logging
 from scheduler import run_scheduled
-from tautulli_client import TautulliClient
+from tautulli_client import TautulliClient, TautulliMediaItem, TautulliRecentlyAddedPayload, TautulliServerIdentity
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app")
 
 # Constants
 DEFAULT_INFO_DISPLAY_LIMIT = 10  # Number of items to display in INFO log level
@@ -48,7 +47,7 @@ def _calculate_batch_params(days: int, override: int | None = None) -> tuple[int
         return (500, 500)
 
 
-def _format_display_title(item: dict[str, Any]) -> str:
+def _format_display_title(item: TautulliMediaItem) -> str:
     """
     Format display title based on media type.
 
@@ -130,7 +129,7 @@ def run_summary(config: Config) -> int:
     initial_count, increment = _calculate_batch_params(days, override=config.initial_batch_size)
     current_count = initial_count
     iteration = 0
-    items = []
+    items: list[TautulliMediaItem] = []
 
     # Iteratively fetch items until we get items beyond the time range
     while True:
@@ -150,7 +149,7 @@ def run_summary(config: Config) -> int:
             time.sleep(0.2)
 
         try:
-            items_raw = tautulli.get_recently_added(days=days, count=current_count)
+            items_raw: TautulliRecentlyAddedPayload = tautulli.get_recently_added(days=days, count=current_count)
         except (ConnectionError, TimeoutError) as e:
             logger.error("Network error while fetching recently added items: %s", e)
             return 1
@@ -221,7 +220,7 @@ def run_summary(config: Config) -> int:
     logger.info("Found %d recent items matching criteria", len(items))
 
     # Prepare structured data for Discord and display items in logs
-    discord_items = []
+    discord_items: list[DiscordMediaItem] = []
     suppressed_by_type: dict[str, int] = {}
     displayed_by_type: dict[str, int] = {}
     debug_enabled = logger.isEnabledFor(logging.DEBUG)
@@ -243,14 +242,15 @@ def run_summary(config: Config) -> int:
             else:
                 suppressed_by_type[media_type] = suppressed_by_type.get(media_type, 0) + 1
 
-        discord_items.append(
-            {
-                "type": media_type,
-                "title": display_title,
-                "added_at": date_str_short,
-                "rating_key": item.get("rating_key"),
-            }
-        )
+        discord_item: DiscordMediaItem = {
+            "type": media_type,
+            "title": display_title,
+            "added_at": date_str_short,
+        }
+        rating_key = item.get("rating_key")
+        if rating_key is not None:
+            discord_item["rating_key"] = rating_key
+        discord_items.append(discord_item)
 
     if suppressed_by_type:
         suppressed_summary = ", ".join(
@@ -275,7 +275,7 @@ def run_summary(config: Config) -> int:
             if not plex_server_id:
                 logger.debug("plex_server_id not configured, fetching from Tautulli...")
                 try:
-                    server_info = tautulli.get_server_identity()
+                    server_info: TautulliServerIdentity = tautulli.get_server_identity()
                     plex_server_id = server_info.get("machine_identifier")
                     if plex_server_id:
                         logger.info("Auto-detected Plex Server ID: %s", plex_server_id)

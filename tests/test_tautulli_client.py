@@ -85,3 +85,118 @@ class TestTautulliClient:
         assert "get_recently_added" in error_message
         assert "access denied" in error_message
         assert "super-secret" not in error_message
+
+    @pytest.mark.unit
+    def test_get_recently_added_missing_required_field(self, monkeypatch):
+        """Malformed response missing required field should raise RuntimeError with validation details."""
+        client = TautulliClient("http://tautulli:8181", "test-key")
+
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {
+            "response": {
+                "result": "success",
+                "data": {
+                    "recently_added": [
+                        {
+                            "media_type": "movie",
+                            "title": "Test Movie",
+                            # Missing required 'added_at' field
+                        }
+                    ]
+                },
+            }
+        }
+
+        monkeypatch.setattr("src.tautulli_client.requests.get", lambda *args, **kwargs: response)
+
+        with pytest.raises(RuntimeError) as exc_info:
+            client.get_recently_added()
+
+        error_message = str(exc_info.value)
+        assert "validation failed" in error_message.lower()
+        assert "added_at" in error_message.lower()
+
+    @pytest.mark.unit
+    def test_get_recently_added_wrong_type(self, monkeypatch):
+        """Malformed response with wrong field type should raise RuntimeError."""
+        client = TautulliClient("http://tautulli:8181", "test-key")
+
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {
+            "response": {
+                "result": "success",
+                "data": {
+                    "recently_added": [
+                        {
+                            "added_at": "not-a-number",  # Should be int
+                            "media_type": "movie",
+                            "title": "Test Movie",
+                        }
+                    ]
+                },
+            }
+        }
+
+        monkeypatch.setattr("src.tautulli_client.requests.get", lambda *args, **kwargs: response)
+
+        with pytest.raises(RuntimeError) as exc_info:
+            client.get_recently_added()
+
+        error_message = str(exc_info.value)
+        assert "validation failed" in error_message.lower()
+
+    @pytest.mark.unit
+    def test_get_server_identity_missing_machine_id(self, monkeypatch):
+        """Server identity response missing machine_identifier should raise RuntimeError."""
+        client = TautulliClient("http://tautulli:8181", "test-key")
+
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {
+            "response": {
+                "result": "success",
+                "data": {
+                    # Missing required 'machine_identifier' field
+                    "version": "2.13.4"
+                },
+            }
+        }
+
+        monkeypatch.setattr("src.tautulli_client.requests.get", lambda *args, **kwargs: response)
+
+        with pytest.raises(RuntimeError) as exc_info:
+            client.get_server_identity()
+
+        error_message = str(exc_info.value)
+        assert "validation failed" in error_message.lower()
+        assert "machine_identifier" in error_message.lower()
+
+    @pytest.mark.unit
+    def test_get_recently_added_list_format_validates(self, monkeypatch):
+        """Older API returning list format should validate successfully."""
+        client = TautulliClient("http://tautulli:8181", "test-key")
+
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {
+            "response": {
+                "result": "success",
+                "data": [
+                    {
+                        "added_at": 1234567890,
+                        "media_type": "movie",
+                        "title": "Test Movie",
+                    }
+                ],
+            }
+        }
+
+        monkeypatch.setattr("src.tautulli_client.requests.get", lambda *args, **kwargs: response)
+
+        result = client.get_recently_added()
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].get("title") == "Test Movie"

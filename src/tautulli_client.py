@@ -3,9 +3,74 @@
 import logging
 import re
 import time
-from typing import Any, cast
+from typing import TypedDict, TypeVar, cast
 
 import requests
+from pydantic import BaseModel, ConfigDict, ValidationError
+
+# Type definitions for Tautulli API responses
+
+
+class TautulliMediaItem(TypedDict, total=False):
+    added_at: int | str
+    grandparent_title: str
+    media_index: int | str
+    media_type: str
+    parent_media_index: int | str
+    parent_title: str
+    rating_key: int | str
+    title: str
+    year: int | str
+
+
+class TautulliRecentlyAdded(TypedDict, total=False):
+    recently_added: list[TautulliMediaItem]
+
+
+class TautulliServerIdentity(TypedDict, total=False):
+    machine_identifier: str
+
+
+TautulliRecentlyAddedPayload = TautulliRecentlyAdded | list[TautulliMediaItem]
+
+
+# Pydantic models for runtime validation
+
+
+class TautulliMediaItemModel(BaseModel):
+    """Pydantic model for runtime validation of Tautulli media items."""
+
+    model_config = ConfigDict(extra="allow")
+
+    # Required fields
+    added_at: int
+    media_type: str
+    title: str
+
+    # Optional fields
+    year: int | str | None = None
+    grandparent_title: str | None = None
+    parent_title: str | None = None
+    parent_media_index: int | str | None = None
+    media_index: int | str | None = None
+    rating_key: int | str | None = None
+
+
+class TautulliRecentlyAddedModel(BaseModel):
+    """Pydantic model for runtime validation of Tautulli recently_added responses."""
+
+    model_config = ConfigDict(extra="allow")
+
+    recently_added: list[TautulliMediaItemModel]
+
+
+class TautulliServerIdentityModel(BaseModel):
+    """Pydantic model for runtime validation of Tautulli server identity."""
+
+    model_config = ConfigDict(extra="allow")
+
+    machine_identifier: str
+
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +123,37 @@ class TautulliClient:
         safe_message = self._sanitize_error(error)
         return type(error)(safe_message)
 
-    def _request(self, cmd: str, max_retries: int | None = None, **params) -> dict[str, Any]:
+    T = TypeVar("T", bound=BaseModel)
+
+    def _validate_response(self, data: dict[str, object], model: type[T]) -> T:
+        """
+        Validate API response data using Pydantic model.
+
+        Args:
+            data: Raw response data from API
+            model: Pydantic model class to validate against
+
+        Returns:
+            Validated model instance
+
+        Raises:
+            RuntimeError: If validation fails
+        """
+        try:
+            return model.model_validate(data)
+        except ValidationError as e:
+            # Extract a concise error message
+            errors = e.errors()
+            error_details = "; ".join(
+                [
+                    f"{'.'.join(str(x) for x in err['loc'])}: {err['msg']}" if err["loc"] else err["msg"]
+                    for err in errors
+                ]
+            )
+            sanitized_msg = self._sanitize_error(Exception(error_details))
+            raise RuntimeError(f"Tautulli response validation failed: {sanitized_msg}") from None
+
+    def _request(self, cmd: str, max_retries: int | None = None, **params) -> dict[str, object]:
         """
         Make a request to Tautulli API with exponential backoff retry logic.
 
@@ -91,12 +186,13 @@ class TautulliClient:
                 resp = requests.get(url, params=query, timeout=self.DEFAULT_TIMEOUT)
                 resp.raise_for_status()
 
-                data = resp.json()
-                if data.get("response", {}).get("result") != "success":
-                    response_data = cast(dict[str, Any], data.get("response", {}))
-                    message = response_data.get("message", "unknown error")
+                data = cast(dict[str, object], resp.json())
+                response = cast(dict[str, object], data.get("response", {}))
+                if response.get("result") != "success":
+                    message = response.get("message", "unknown error")
                     raise RuntimeError(f"Tautulli command '{cmd}' returned unsuccessful response: {message}")
-                return cast(dict[str, Any], data["response"]["data"])
+                response_payload = cast(dict[str, object], response.get("data", {}))
+                return response_payload
 
             except (requests.RequestException, RuntimeError) as e:
                 last_exception = e
@@ -117,7 +213,7 @@ class TautulliClient:
 
         raise self._sanitize_exception(last_exception) from None
 
-    def get_recently_added(self, days: int = 7, count: int = 100) -> dict[str, Any]:
+    def get_recently_added(self, days: int = 7, count: int = 100) -> TautulliRecentlyAddedPayload:
         """
         Get recently added items from Tautulli.
 
@@ -135,12 +231,27 @@ class TautulliClient:
         """
         logger.debug("Requesting %d recently added items (will filter to last %d days client-side)", count, days)
 
-        return self._request(
+        response_payload = self._request(
             "get_recently_added",
             count=count,
         )
 
-    def get_server_identity(self) -> dict[str, Any]:
+        # Validate response - handle both dict and list formats
+        # Try dict format first (newer API)
+        if isinstance(response_payload, dict) and "recently_added" in response_payload:
+            validated = self._validate_response(response_payload, TautulliRecentlyAddedModel)
+            return cast(TautulliRecentlyAddedPayload, validated.model_dump())
+        elif isinstance(response_payload, list):
+            # List format (older API)
+            validated_items = [
+                self._validate_response(cast(dict[str, object], item), TautulliMediaItemModel)
+                for item in response_payload
+            ]
+            return cast(TautulliRecentlyAddedPayload, [item.model_dump() for item in validated_items])
+        else:
+            raise RuntimeError(f"Unexpected response format: {type(response_payload).__name__}")
+
+    def get_server_identity(self) -> TautulliServerIdentity:
         """
         Get Plex server identity information including machine identifier.
 
@@ -148,4 +259,6 @@ class TautulliClient:
             Dict with server info including 'machine_identifier'
         """
         logger.debug("Requesting Plex server identity")
-        return self._request("get_server_identity")
+        response_payload = self._request("get_server_identity")
+        validated = self._validate_response(response_payload, TautulliServerIdentityModel)
+        return cast(TautulliServerIdentity, validated.model_dump())

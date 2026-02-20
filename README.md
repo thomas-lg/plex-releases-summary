@@ -40,7 +40,7 @@ A lightweight Docker container that fetches recently added media from your Plex 
 - ▶️ **One-shot mode** for external cron jobs or manual runs (`RUN_ONCE=true`)
 - 📺 Fetches recently added movies, TV shows, episodes, music, and more
 - 🎯 Configurable time range (e.g., last 7 days)
-- 💬 **Optional Discord notifications** with rich embed formatting
+- 💬 **Optional Discord notifications** with rich embed formatting (including friendly "nothing new" updates)
 - 🐳 Docker-ready with minimal footprint
 - 📊 Clean, formatted output with media type detection
 - ⚡ Graceful shutdown handling for containerized environments
@@ -90,7 +90,7 @@ That's it! On first run, the entrypoint automatically creates `config.yml` from 
 > - Config: `/app/configs/config.yml`
 > - Logs: `/app/logs`
 > - Examples: `./my-configs:/app/configs`, `./my-logs:/app/logs`
->   **For advanced configuration options**, see [CONFIGURATION.md](CONFIGURATION.md#optional-field-overrides)
+>   **For advanced configuration options**, see [CONFIGURATION.md](CONFIGURATION.md#environment-variable-behavior)
 
 ## Unraid Quick Start
 
@@ -116,7 +116,7 @@ The application supports two execution modes:
 
 ### Scheduled Mode (Default)
 
-Runs on schedule (default: Sundays at 4 PM). Container stays running. See [CRON examples](CONFIGURATION.md#optional-field-overrides) for customization.
+Runs on schedule (default: Sundays at 4 PM). Container stays running. See [Configuration Fields](CONFIGURATION.md#configuration-fields) for schedule customization.
 
 ### One-Shot Mode
 
@@ -186,7 +186,14 @@ Send release summaries to Discord with rich embeds.
 2. Create secret: `echo "webhook-url" > secrets/discord_webhook`
 3. Set: `DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook`
 
-**Features:** Rich embeds, grouped media, clickable Plex links, auto-retry. See [Discord Configuration](CONFIGURATION.md#discord-embed-limits) for details.
+**Features:**
+
+- Rich embeds grouped by media category with clickable Plex links
+- Auto-retry with rate-limit handling
+- When no items are found in the selected period, sends a friendly "nothing new" embed
+- Empty-period embed message is randomized from a built-in set to keep updates fresh
+
+See [Discord Notification Notes](CONFIGURATION.md#discord-notification-notes) for details.
 
 **Troubleshooting:** Not receiving notifications? See [Discord Troubleshooting](CONFIGURATION.md#discord-notifications-not-sending).
 
