@@ -3,7 +3,7 @@
 import logging
 import re
 import time
-from typing import TypedDict, TypeVar, cast
+from typing import Any, TypedDict, TypeVar, cast
 
 import requests
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -152,7 +152,7 @@ class TautulliClient:
             sanitized_msg = self._sanitize_error(Exception(error_details))
             raise RuntimeError(f"Tautulli response validation failed: {sanitized_msg}") from None
 
-    def _request(self, cmd: str, max_retries: int | None = None, **params) -> dict[str, object]:
+    def _request(self, cmd: str, max_retries: int | None = None, **params: Any) -> dict[str, object]:
         """
         Make a request to Tautulli API with exponential backoff retry logic.
 

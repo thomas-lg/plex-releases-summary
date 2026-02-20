@@ -36,6 +36,27 @@ DEFAULT_CONFIG_PATH = "/app/configs/config.yml"
 type ConfigScalar = str | int | float | bool | None
 type ConfigValue = ConfigScalar | list["ConfigValue"] | dict[str, "ConfigValue"]
 
+_VALID_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+
+
+def _validate_log_level_str(v: str) -> str:
+    """
+    Validate and normalise a log level string.
+
+    Args:
+        v: Raw log level string
+
+    Returns:
+        Uppercased, validated log level string
+
+    Raises:
+        ValueError: If the value is not a recognised Python logging level
+    """
+    v_upper = v.upper()
+    if v_upper not in _VALID_LOG_LEVELS:
+        raise ValueError(f"log_level must be one of {_VALID_LOG_LEVELS}, got '{v}'")
+    return v_upper
+
 
 def _is_env_var_reference(value: str) -> bool:
     """
@@ -234,11 +255,7 @@ class Config(BaseModel):
     @classmethod
     def validate_log_level(cls, v: str) -> str:
         """Validate log level is one of the standard Python logging levels."""
-        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        v_upper = v.upper()
-        if v_upper not in valid_levels:
-            raise ValueError(f"log_level must be one of {valid_levels}, got '{v}'")
-        return v_upper
+        return _validate_log_level_str(v)
 
     @model_validator(mode="after")
     def validate_cron_schedule_required(self) -> "Config":
@@ -360,6 +377,6 @@ def get_bootstrap_log_level(config_path: str = DEFAULT_CONFIG_PATH) -> str:
         if not isinstance(level, str):
             return "INFO"
 
-        return Config.validate_log_level(level.strip())
+        return _validate_log_level_str(level.strip())
     except Exception:
         return "INFO"

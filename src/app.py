@@ -336,7 +336,8 @@ def main():
         # Scheduled mode: run as daemon with CRON schedule
         logger.info("📅 Starting in SCHEDULED mode")
         # Guaranteed non-None by Pydantic model validator (validate_cron_schedule_required)
-        assert config.cron_schedule is not None
+        if config.cron_schedule is None:
+            raise RuntimeError("cron_schedule must not be None when run_once is False")
         # Wrap run_summary to pass config
         return run_scheduled(lambda: run_summary(config), config.cron_schedule)
 

@@ -1,5 +1,6 @@
 """Discord webhook client for sending Plex release summaries."""
 
+import inspect
 import logging
 import random
 import re
@@ -63,6 +64,29 @@ class DiscordNotifier:
         "TV Episodes": "📺",
         "Music Albums": "💿",
         "Music Tracks": "🎵",
+        "Other": "📁",
+    }
+
+    # Singular display names for each category
+    CATEGORY_SINGULAR = {
+        "Movies": "movie",
+        "TV Shows": "TV show",
+        "TV Seasons": "TV season",
+        "TV Episodes": "TV episode",
+        "Music Albums": "music album",
+        "Music Tracks": "music track",
+        "Other": "item",
+    }
+
+    # Plural display names for each category
+    CATEGORY_PLURAL = {
+        "Movies": "movies",
+        "TV Shows": "TV shows",
+        "TV Seasons": "TV seasons",
+        "TV Episodes": "TV episodes",
+        "Music Albums": "music albums",
+        "Music Tracks": "music tracks",
+        "Other": "items",
     }
 
     # Friendly empty-state messages when no new media is found
@@ -130,7 +154,7 @@ class DiscordNotifier:
             grouped = self._group_items_by_type(media_items)
 
             # Category order for display
-            category_order = ["Movies", "TV Shows", "TV Seasons", "TV Episodes", "Music Albums", "Music Tracks"]
+            category_order = ["Movies", "TV Shows", "TV Seasons", "TV Episodes", "Music Albums", "Music Tracks", "Other"]
 
             total_messages = 0
             success_count = 0
@@ -252,9 +276,11 @@ class DiscordNotifier:
 
         # Build description - just show category count to avoid confusion
         if category_total == 1:
-            description = f"**{category_total} {category[:-1].lower()} added**"  # Singular
+            label = self.CATEGORY_SINGULAR.get(category, category.rstrip("s").lower())
+            description = f"**{category_total} {label} added**"
         else:
-            description = f"**{category_total} {category.lower()} added**"
+            label = self.CATEGORY_PLURAL.get(category, category.lower())
+            description = f"**{category_total} {label} added**"
 
         embed = DiscordEmbed(title=title, description=description, color=0x57F287)  # Green color
 
@@ -454,6 +480,7 @@ class DiscordNotifier:
             "TV Episodes": [],
             "Music Albums": [],
             "Music Tracks": [],
+            "Other": [],
         }
 
         for item in media_items:
@@ -472,7 +499,8 @@ class DiscordNotifier:
             elif media_type == "track":
                 grouped["Music Tracks"].append(item)
             else:
-                logger.warning("Unrecognized media type: %s — item will be skipped", media_type)
+                logger.warning("Unrecognized media type: %s — item placed in 'Other'", media_type)
+                grouped["Other"].append(item)
 
         return grouped
 
@@ -526,11 +554,10 @@ class DiscordNotifier:
             try:
                 # Try to set timeout explicitly if supported
                 execute_func = webhook.execute
-                execute_params = execute_func.__code__.co_varnames
                 if hasattr(webhook, "timeout"):
                     webhook.timeout = self.REQUEST_TIMEOUT_SECONDS
                     response = execute_func()
-                elif "timeout" in execute_params:
+                elif "timeout" in inspect.signature(execute_func).parameters:
                     response = execute_func(timeout=self.REQUEST_TIMEOUT_SECONDS)
                 else:
                     response = execute_func()
