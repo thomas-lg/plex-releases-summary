@@ -41,8 +41,11 @@ normalize_secret_path() {
     esac
 
     if [ -f "$value" ]; then
-        abs_path="$(cd "$(dirname "$value")" && pwd)/$(basename "$value")"
-        printf '%s' "$abs_path"
+        if abs_dir="$(cd "$(dirname "$value")" 2>/dev/null && pwd)"; then
+            printf '%s' "$abs_dir/$(basename "$value")"
+        else
+            printf '%s' "$value"
+        fi
     else
         printf '%s' "$value"
     fi
