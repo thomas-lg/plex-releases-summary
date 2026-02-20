@@ -342,7 +342,7 @@ class DiscordNotifier:
             estimated_parts = (len(all_items) + items_per_part - 1) // items_per_part if items_per_part > 0 else 1
 
             embed = self._create_category_embed(
-                category, current_items, days_back, total_count, part_num, estimated_parts
+                category, current_items, days_back, part_num, estimated_parts, category_total
             )
 
             size = self._calculate_embed_size(embed)
