@@ -238,3 +238,55 @@ class TestDiscordNotifier:
             assert category in DiscordNotifier.MEDIA_ICONS
             assert isinstance(DiscordNotifier.MEDIA_ICONS[category], str)
             assert len(DiscordNotifier.MEDIA_ICONS[category]) > 0
+
+    @pytest.mark.unit
+    def test_send_with_retry_passes_timeout_when_supported(self, notifier):
+        """Webhook execution should receive explicit timeout when supported."""
+
+        class StubResponse:
+            status_code = 204
+            text = ""
+
+            def json(self):
+                return {}
+
+        class StubWebhook:
+            def __init__(self):
+                self.timeout_seen = None
+
+            def execute(self, timeout=None):
+                self.timeout_seen = timeout
+                return StubResponse()
+
+        webhook = StubWebhook()
+        response = notifier._send_with_retry(webhook)
+
+        assert response.status_code == 204
+        assert webhook.timeout_seen == notifier.REQUEST_TIMEOUT_SECONDS
+
+    @pytest.mark.unit
+    def test_send_with_retry_falls_back_when_timeout_kwarg_unsupported(self, notifier):
+        """Webhook execution should use attribute fallback for older implementations."""
+
+        class StubResponse:
+            status_code = 204
+            text = ""
+
+            def json(self):
+                return {}
+
+        class StubWebhook:
+            def __init__(self):
+                self.timeout = None
+                self.call_count = 0
+
+            def execute(self):
+                self.call_count += 1
+                return StubResponse()
+
+        webhook = StubWebhook()
+        response = notifier._send_with_retry(webhook)
+
+        assert response.status_code == 204
+        assert webhook.call_count == 1
+        assert webhook.timeout == notifier.REQUEST_TIMEOUT_SECONDS

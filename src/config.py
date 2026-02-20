@@ -30,7 +30,7 @@ def _is_env_var_reference(value: str) -> bool:
     return isinstance(value, str) and bool(ENV_VAR_PATTERN.search(value))
 
 
-def _resolve_value(value: Any) -> Any:
+def _resolve_value(value: Any, required_field: str | None = None) -> Any:
     """
     Resolve a configuration value, reading from file if it's a file path.
 
@@ -39,6 +39,7 @@ def _resolve_value(value: Any) -> Any:
 
     Args:
         value: The value to resolve (can be any type)
+        required_field: Required field name for strict secret-file validation
 
     Returns:
         The resolved value - file contents if applicable, otherwise original value
@@ -73,18 +74,33 @@ def _resolve_value(value: Any) -> Any:
 
                 # Validate content is reasonable (printable ASCII or UTF-8)
                 if not content:
+                    if required_field:
+                        raise ValueError(
+                            f"Required field '{required_field}' references secret file '{value}', "
+                            "but the file is empty."
+                        )
                     logger.warning("Secret file %s is empty", value)
                     return value
 
                 logger.info("Successfully read secret from file: %s", value)
                 return content
             except OSError as e:
+                if required_field:
+                    raise ValueError(
+                        f"Required field '{required_field}' references secret file '{value}', "
+                        f"but it could not be read: {e}"
+                    ) from e
                 logger.warning("I/O error reading file %s: %s", value, e)
                 return value
             except UnicodeDecodeError as e:
                 logger.error("Secret file %s contains invalid UTF-8 data: %s", value, e)
                 raise ValueError(f"Secret file {value} is not valid text") from None
         else:
+            if required_field:
+                raise ValueError(
+                    f"Required field '{required_field}' references secret file '{value}', "
+                    "but the file does not exist or is not a regular file."
+                )
             logger.info("Path %s does not exist, treating as literal value", value)
             return value
     elif isinstance(value, dict):
@@ -134,7 +150,8 @@ def _expand_env_vars(data: dict[str, Any]) -> dict[str, Any]:
                         key,
                     )
             else:
-                expanded[key] = _resolve_value(expanded_value)
+                required_field = key if key in REQUIRED_FIELDS else None
+                expanded[key] = _resolve_value(expanded_value, required_field=required_field)
         elif isinstance(value, dict):
             expanded[key] = _expand_env_vars(value)
         elif isinstance(value, list):
@@ -144,7 +161,6 @@ def _expand_env_vars(data: dict[str, Any]) -> dict[str, Any]:
             expanded[key] = value
 
     return expanded
-
 
 class Config(BaseModel):
     """
@@ -263,7 +279,6 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
         with config_file.open("r") as f:
             raw_config = yaml.safe_load(f)
 
-        # Pre-validation: Check for unresolved env vars in required fields
         if raw_config is None:
             raise ValueError("Configuration file is empty")
         if not isinstance(raw_config, dict):
@@ -271,21 +286,6 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
                 "config.yml must contain a mapping/object at the root " "(not a list, string, or other type)"
             )
 
-        missing_vars = []
-        for field in ["tautulli_url", "tautulli_api_key"]:
-            value = raw_config.get(field)
-            if isinstance(value, str):
-                matches = ENV_VAR_PATTERN.findall(os.path.expandvars(value))
-                if matches:
-                    missing_vars.extend([f"{field}: {match}" for match in matches])
-
-        if missing_vars:
-            error_msg = (
-                "Unresolved environment variable placeholders found in required fields:\n"
-                + "\n".join(missing_vars)
-                + "\nPlease set the missing environment variables or update config.yml."
-            )
-            raise ValueError(error_msg)
         # Expand environment variables and resolve file paths
         expanded_config = _expand_env_vars(raw_config)
 
@@ -298,8 +298,6 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
         return config
 
     except yaml.YAMLError:
-        raise
-    except Exception:
         raise
 
 

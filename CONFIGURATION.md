@@ -98,6 +98,7 @@ environment:
 
 > **Timezone:** Container defaults to UTC. Set `TZ` environment variable for local timezone (e.g., `TZ=America/New_York`). CRON schedules run in configured timezone. Use [crontab.guru](https://crontab.guru) to validate expressions.
 > **Iteration Logs:** "iteration 1, 2, 3..." is normal. Tautulli API lacks date filtering, so app fetches batches until finding all matches within `days_back`.
+> **Safety limits:** Iterative fetching has guardrails (max iterations and max fetch count) to prevent runaway loops on unusual API behavior.
 
 ### Understanding Retry Logic
 
@@ -112,7 +113,7 @@ Both Tautulli and Discord API clients implement retry logic with exponential bac
 **Discord API Retries:**
 
 - **Attempts:** 3 retries with exponential backoff (1s, 2s, 4s)
-- **Timeout:** No explicit per-request timeout (uses `discord-webhook` library defaults)
+- **Timeout:** 15s per request (with compatibility fallback for older `discord-webhook` behavior)
 - **Rate limits:** Respects HTTP 429 with `retry_after` header
 - **No retry:** HTTP 400 errors (validation failures) fail immediately
 
@@ -382,7 +383,10 @@ environment:
   - DISCORD_WEBHOOK_URL=https://discord.com/api/... # Direct value → uses as-is
 ```
 
-**File handling:** Full file contents are read with surrounding whitespace stripped. Startup fails with a clear error if the file is unreadable.
+**File handling:** Full file contents are read with surrounding whitespace stripped.
+
+- For **required fields** (`tautulli_url`, `tautulli_api_key`) that use file paths, startup fails fast if the path is missing, not a regular file, unreadable, or empty.
+- For **optional fields**, file-path values keep existing fallback behavior.
 
 **Security considerations:**
 
@@ -641,6 +645,7 @@ extra_hosts:
 2. ✅ Webhook URL is valid (test with `curl -X POST -H "Content-Type: application/json" -d '{"content":"test"}' YOUR_WEBHOOK_URL`)
 3. ✅ If using file-based secret, verify file exists and is readable
 4. ✅ Check logs for warnings about undefined or empty environment variables
+5. ✅ Confirm outbound Discord access and account for 15s request timeout
 
 ---
 
@@ -683,6 +688,7 @@ environment:
 2. Check volume mount in `docker-compose.yml`: `- ./secrets:/run/secrets:ro`
 3. Ensure file path in env var matches: `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key`
 4. Check file permissions: `chmod 600 secrets/tautulli_api_key`
+5. Ensure required secret files are non-empty (empty required files fail startup)
 
 ---
 

@@ -329,3 +329,30 @@ class TestRunSummary:
         added_lines = [record.message for record in caplog.records if record.message.startswith("➕")]
         assert len(added_lines) == 20
         assert any("movie: 2" in record.message and "show: 1" in record.message for record in caplog.records)
+
+    @pytest.mark.unit
+    def test_run_summary_stops_when_max_fetch_count_reached(self, monkeypatch):
+        """Iterative fetching should stop once the max fetch count guardrail is reached."""
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                timestamp = int(datetime.now(UTC).timestamp())
+                return {
+                    "recently_added": [
+                        {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp}
+                        for i in range(count)
+                    ]
+                }
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+        monkeypatch.setattr("src.app.time.sleep", lambda _seconds: None)
+
+        config = Config(
+            tautulli_url="http://tautulli:8181",
+            tautulli_api_key="secret",
+            run_once=True,
+            discord_webhook_url=None,
+            initial_batch_size=9990,
+        )
+
+        assert run_summary(config) == 0

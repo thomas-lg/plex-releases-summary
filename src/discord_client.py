@@ -38,6 +38,7 @@ class DiscordNotifier:
     # Retry configuration
     MAX_SEND_RETRIES = 3
     RETRY_BACKOFF_BASE = 2  # Exponential backoff base (1s, 2s, 4s, ...)
+    REQUEST_TIMEOUT_SECONDS = 15
 
     # Embed trimming configuration
     MAX_TRIM_ATTEMPTS = 5
@@ -425,7 +426,7 @@ class DiscordNotifier:
         # Create clickable link to Plex if URL and server ID are available
         if self.plex_url and self.plex_server_id and rating_key:
             # URL encode the library path
-            encoded_key = "%2Flibrary%2Fmetadata%2F" + str(rating_key)
+            encoded_key = f"%2Flibrary%2Fmetadata%2F{rating_key}"
 
             # Check if using Plex.tv or local Plex server
             if "plex.tv" in self.plex_url.lower():
@@ -462,7 +463,12 @@ class DiscordNotifier:
         response = None
         for attempt in range(max_retries):
             try:
-                response = webhook.execute()
+                try:
+                    response = webhook.execute(timeout=self.REQUEST_TIMEOUT_SECONDS)
+                except TypeError:
+                    if hasattr(webhook, "timeout"):
+                        setattr(webhook, "timeout", self.REQUEST_TIMEOUT_SECONDS)
+                    response = webhook.execute()
 
                 # If validation error (bad request), don't retry - it won't help
                 if response.status_code == 400:

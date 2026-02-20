@@ -13,8 +13,8 @@ A lightweight Docker container that fetches recently added media from your Plex 
   - [Quick Start](#quick-start)
   - [Unraid Quick Start](#unraid-quick-start)
   - [Execution Modes](#execution-modes)
-    - [📅 Scheduled Mode (Default)](#-scheduled-mode-default)
-    - [▶️ One-Shot Mode](#️-one-shot-mode)
+    - [Scheduled Mode (Default)](#scheduled-mode-default)
+    - [One-Shot Mode](#one-shot-mode)
   - [Configuration](#configuration)
     - [Available Configuration](#available-configuration)
   - [PUID/PGID Configuration](#puidpgid-configuration)
@@ -114,11 +114,11 @@ That's it! On first run, the entrypoint automatically creates `config.yml` from 
 
 The application supports two execution modes:
 
-### 📅 Scheduled Mode (Default)
+### Scheduled Mode (Default)
 
 Runs on schedule (default: Sundays at 4 PM). Container stays running. See [CRON examples](CONFIGURATION.md#optional-field-overrides) for customization.
 
-### ▶️ One-Shot Mode
+### One-Shot Mode
 
 Run once and exit. Set `RUN_ONCE=true`. See [examples](CONFIGURATION.md#examples).
 
@@ -174,7 +174,7 @@ environment:
 2026-02-15 10:00:16 | INFO    | app | ➕ Succession - S04E01 - The Munsters | added: 2026-02-14 18:45
 ```
 
-> **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal behavior. See [Iteration Logs](CONFIGURATION.md#minimal-configuration) for explanation.
+> **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal behavior. Iterative fetch has safety guardrails to avoid runaway loops. See [Iteration Logs](CONFIGURATION.md#minimal-configuration) for details.
 
 ## Discord Notifications
 
@@ -237,25 +237,26 @@ Script reference: [scripts/README.md](scripts/README.md)
 │ ├── test_discord_client.py # Discord tests
 │ ├── test_discord_markdown.py # Markdown escaping tests
 │ ├── test_logging_config.py # Logging config tests
+│ ├── test_scheduler.py # Scheduler tests
 │ └── test_tautulli_client.py # Tautulli client tests
 ├── scripts/ # Helper scripts
 │ ├── clean.sh # Clean up caches
 │ ├── format.sh # Format Python code
-│ ├── [README.md](scripts/README.md) # Scripts documentation
+│ ├── README.md # Scripts documentation
 │ ├── test.sh # Run tests
 │ └── typecheck.sh # Type-check with mypy
 ├── configs/
-│ └── [config.yml](configs/config.yml) # User configuration file
-├── [CONFIGURATION.md](CONFIGURATION.md) # Complete configuration reference
+│ └── config.yml # User configuration file
+├── CONFIGURATION.md # Complete configuration reference
 ├── .devcontainer/
 │ ├── Dockerfile.dev # Devcontainer image
 │ └── devcontainer.json # Devcontainer definition
 ├── .github/
 │ └── workflows/ # CI/CD pipelines
 ├── assets/ # Project assets (screenshots, etc.)
-├── [CONTRIBUTING.md](CONTRIBUTING.md) # Contribution guidelines
-├── [Dockerfile](Dockerfile) # Production Docker image
-├── [docker-compose.yml](docker-compose.yml) # Production compose config
+├── CONTRIBUTING.md # Contribution guidelines
+├── Dockerfile # Production Docker image
+├── docker-compose.yml # Production compose config
 ├── entrypoint.sh # Container entrypoint script
 ├── my-plex-releases-summary.xml # Unraid template
 ├── pyproject.toml # Python project configuration
@@ -322,7 +323,7 @@ See [Configuration Troubleshooting](CONFIGURATION.md#troubleshooting) for compre
 
 ### Credentials
 
-Never commit credentials. Use file-based secrets: mount secrets directory and set `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key`. Application auto-reads files starting with `/`. See [Docker Secrets](CONFIGURATION.md#docker-secrets) for detailed setup.
+Never commit credentials. Use file-based secrets: mount secrets directory and set `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key`. Application auto-reads files starting with `/`, and required secret files fail fast if missing, unreadable, or empty. See [Docker Secrets](CONFIGURATION.md#docker-secrets) for detailed setup.
 
 ### Container Security
 

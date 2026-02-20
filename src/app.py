@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 # Constants
 DEFAULT_INFO_DISPLAY_LIMIT = 10  # Number of items to display in INFO log level
+MAX_FETCH_ITERATIONS = 50
+MAX_FETCH_COUNT = 10000
 
 
 def _get_config_path() -> str:
@@ -77,7 +79,7 @@ def _format_display_title(item: dict[str, Any]) -> str:
     elif media_type == "show":
         show = str(item.get("title", "Unknown Show"))
         year = item.get("year", "")
-        return show + (f" ({year})" if year else " (New Series)")
+        return f"{show} ({year})" if year else f"{show} (New Series)"
     elif media_type == "track":
         artist = item.get("grandparent_title", "Unknown Artist")
         album = item.get("parent_title", "Unknown Album")
@@ -90,7 +92,7 @@ def _format_display_title(item: dict[str, Any]) -> str:
     elif media_type == "movie":
         title = str(item.get("title", "Unknown Movie"))
         year = item.get("year", "")
-        return title + (f" ({year})" if year else "")
+        return f"{title} ({year})" if year else title
     else:
         title = item.get("title", "Unknown")
         return str(title)
@@ -133,6 +135,14 @@ def run_summary(config: Config) -> int:
     # Iteratively fetch items until we get items beyond the time range
     while True:
         iteration += 1
+
+        if iteration > MAX_FETCH_ITERATIONS:
+            logger.warning(
+                "Reached max fetch iterations (%d); proceeding with latest batch and date filtering",
+                MAX_FETCH_ITERATIONS,
+            )
+            break
+
         logger.debug("Iteration %d: Fetching batch with count=%d", iteration, current_count)
 
         # Add small delay between iterations to avoid hammering the API
@@ -174,12 +184,20 @@ def run_summary(config: Config) -> int:
 
         if oldest_timestamp >= cutoff_timestamp:
             # Oldest item is still in range, need to fetch more
+            next_count = current_count + increment
+            if next_count > MAX_FETCH_COUNT:
+                logger.warning(
+                    "Reached max fetch count limit (%d); proceeding with current results",
+                    MAX_FETCH_COUNT,
+                )
+                break
+
             logger.info(
                 "Oldest item still in range (iteration %d), fetching more items (next count: %d)",
                 iteration,
-                current_count + increment,
+                next_count,
             )
-            current_count += increment
+            current_count = next_count
         else:
             # We've fetched beyond the time range, we're done
             logger.debug("Fetched beyond time range after %d iteration(s)", iteration)

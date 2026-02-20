@@ -441,3 +441,41 @@ class TestLoadConfig:
                 load_config(temp_path)
         finally:
             Path(temp_path).unlink()
+
+    @pytest.mark.unit
+    def test_load_config_fails_for_missing_required_secret_file(self):
+        """Required fields pointing to missing secret files should fail fast."""
+        config_data = {
+            "tautulli_url": "http://localhost:8181",
+            "tautulli_api_key": "/nonexistent/path/to/secret",
+            "run_once": True,
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            yaml.dump(config_data, f)
+            temp_path = f.name
+
+        try:
+            with pytest.raises(ValueError, match="does not exist or is not a regular file"):
+                load_config(temp_path)
+        finally:
+            Path(temp_path).unlink()
+
+    @pytest.mark.unit
+    def test_load_config_fails_for_empty_required_secret_file(self):
+        """Required fields pointing to empty secret files should fail fast."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            empty_secret = Path(temp_dir) / "empty_secret"
+            empty_secret.write_text("\n")
+
+            config_data = {
+                "tautulli_url": "http://localhost:8181",
+                "tautulli_api_key": str(empty_secret),
+                "run_once": True,
+            }
+
+            config_file = Path(temp_dir) / "config.yml"
+            config_file.write_text(yaml.dump(config_data))
+
+            with pytest.raises(ValueError, match="file is empty"):
+                load_config(str(config_file))
