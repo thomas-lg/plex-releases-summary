@@ -1,6 +1,7 @@
 """Discord webhook client for sending Plex release summaries."""
 
 import logging
+import random
 import re
 import time
 from datetime import datetime
@@ -54,6 +55,21 @@ class DiscordNotifier:
         "Music Tracks": "🎵",
     }
 
+    # Friendly empty-state messages when no new media is found
+    NO_NEW_TITLES = [
+        "🛋️ Quiet Plex vibes",
+        "🍃 Nothing new this round",
+        "📭 No fresh arrivals",
+        "🌙 Calm library check-in",
+    ]
+
+    NO_NEW_MESSAGES = [
+        "No new releases in the last {days} {day_word}. Time to add something awesome to the library 🍿",
+        "Your Plex library stayed peaceful for {days} {day_word}. Maybe tonight is a perfect time to queue a new download ✨",
+        "Nothing new landed in the past {days} {day_word}. Give your future self a surprise and add something fun 🎬",
+        "No new content in {days} {day_word}. Friendly reminder: your watchlist won’t fill itself 😄",
+    ]
+
     def __init__(self, webhook_url: str, plex_url: str | None = None, plex_server_id: str | None = None):
         """
         Initialize Discord notifier.
@@ -81,6 +97,25 @@ class DiscordNotifier:
             bool: True if all messages sent successfully, False otherwise
         """
         try:
+            if not media_items or total_count == 0:
+                webhook = DiscordWebhook(url=self.webhook_url)
+                webhook.add_embed(self._create_no_new_items_embed(days_back))
+
+                response = self._send_with_retry(webhook)
+                if response.status_code in [200, 204]:
+                    logger.info("✅ Discord no-new-items notification sent")
+                    return True
+
+                if response.status_code == 400:
+                    logger.error("Discord rejected no-new-items message (invalid payload): %s", response.text)
+                else:
+                    logger.error(
+                        "Discord webhook failed with status %d for no-new-items message: %s",
+                        response.status_code,
+                        response.text,
+                    )
+                return False
+
             # Group items by type
             grouped = self._group_items_by_type(media_items)
 
@@ -174,6 +209,17 @@ class DiscordNotifier:
         except Exception as e:
             logger.exception("Unexpected error sending Discord notification: %s", e)
             return False
+
+    def _create_no_new_items_embed(self, days_back: int) -> DiscordEmbed:
+        """Create a friendly embed for periods with no new items."""
+        day_word = "day" if days_back == 1 else "days"
+        title = random.choice(self.NO_NEW_TITLES)
+        description = random.choice(self.NO_NEW_MESSAGES).format(days=days_back, day_word=day_word)
+
+        embed = DiscordEmbed(title=title, description=description, color=0x5865F2)
+        embed.set_footer(text=f"Checked on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        embed.set_timestamp()
+        return embed
 
     def _create_category_embed(
         self,

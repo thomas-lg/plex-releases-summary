@@ -22,6 +22,7 @@ Complete configuration guide for Plex Releases Summary. This document covers all
     - [Environment Variable to Field Mapping](#environment-variable-to-field-mapping)
   - [Optional Field Overrides](#optional-field-overrides)
     - [Discord Embed Limits](#discord-embed-limits)
+    - [No-New-Items Notification Behavior](#no-new-items-notification-behavior)
   - [Docker Secrets](#docker-secrets)
     - [Volume-Mounted Secrets (Recommended for Sensitive Values)](#volume-mounted-secrets-recommended-for-sensitive-values)
     - [Direct Values (Alternative)](#direct-values-alternative)
@@ -251,12 +252,12 @@ environment:
 environment:
   - TAUTULLI_URL=http://tautulli:8181
   - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
-  - CRON_SCHEDULE=0 0 * * * # Override default (was: 0 16 * * SUN)
+  - CRON_SCHEDULE=0 0 * * * # Override default: 0 16 * * SUN
 ```
 
 The `config.yml` already has `cron_schedule: ${CRON_SCHEDULE}`, so it will use your value.
 
-**Example 2: Enable Discord notifications (was disabled by default):**
+**Example 2: Enable Discord notifications:**
 
 ```yaml
 # deployment env file (example: docker-compose.yml)
@@ -279,6 +280,15 @@ Discord enforces the following limits on embeds:
 - **6000 characters** per embed (total)
 - **1024 characters** per field (enforced, no splitting)
 - **25 fields** maximum per embed
+
+### No-New-Items Notification Behavior
+
+When `discord_webhook_url` is configured and no media items are found for the configured `days_back` period:
+
+- The app sends a single friendly Discord embed instead of category summaries
+- The title and body text are randomized from a built-in message set
+- The message includes a light call-to-action (for example, suggesting you add something to Plex)
+- This empty-period notification still uses normal Discord retry and timeout behavior
 
 The application automatically handles these limits with a sophisticated dynamic trimming system:
 
@@ -456,6 +466,7 @@ services:
 - 🎬 Movies | 📺 TV Shows | 💿 Albums | 🎵 Tracks
 - Rich embeds per category with clickable Plex links
 - Items grouped by date range
+- A friendly randomized embed when no new items were added in the selected period
 
 ---
 
@@ -646,6 +657,8 @@ extra_hosts:
 3. ✅ If using file-based secret, verify file exists and is readable
 4. ✅ Check logs for warnings about undefined or empty environment variables
 5. ✅ Confirm outbound Discord access and account for 15s request timeout
+
+**Note:** If there are no new items for the period, the app sends a single friendly "nothing new" embed.
 
 ---
 

@@ -290,3 +290,68 @@ class TestDiscordNotifier:
         assert response.status_code == 204
         assert webhook.call_count == 1
         assert webhook.timeout == notifier.REQUEST_TIMEOUT_SECONDS
+
+    @pytest.mark.unit
+    def test_send_summary_no_items_sends_friendly_embed(self, notifier, monkeypatch):
+        """No items should trigger a friendly empty-state embed."""
+
+        class StubResponse:
+            status_code = 204
+            text = ""
+
+            def json(self):
+                return {}
+
+        sent_webhooks = []
+
+        class StubWebhook:
+            def __init__(self, url):
+                self.url = url
+                self.embeds = []
+                sent_webhooks.append(self)
+
+            def add_embed(self, embed):
+                self.embeds.append(embed)
+
+            def execute(self, timeout=None):
+                return StubResponse()
+
+        monkeypatch.setattr("src.discord_client.DiscordWebhook", StubWebhook)
+        monkeypatch.setattr("src.discord_client.random.choice", lambda choices: choices[0])
+
+        ok = notifier.send_summary(media_items=[], days_back=7, total_count=0)
+
+        assert ok is True
+        assert len(sent_webhooks) == 1
+        assert len(sent_webhooks[0].embeds) == 1
+        embed = sent_webhooks[0].embeds[0]
+        assert embed.title == DiscordNotifier.NO_NEW_TITLES[0]
+        assert "last 7 days" in embed.description
+        assert "add" in embed.description.lower()
+
+    @pytest.mark.unit
+    def test_send_summary_no_items_returns_false_on_webhook_failure(self, notifier, monkeypatch):
+        """No items empty-state notification should fail cleanly on webhook errors."""
+
+        class StubResponse:
+            status_code = 500
+            text = "internal error"
+
+            def json(self):
+                return {}
+
+        class StubWebhook:
+            def __init__(self, url):
+                self.url = url
+
+            def add_embed(self, embed):
+                pass
+
+            def execute(self, timeout=None):
+                return StubResponse()
+
+        monkeypatch.setattr("src.discord_client.DiscordWebhook", StubWebhook)
+
+        ok = notifier.send_summary(media_items=[], days_back=3, total_count=0)
+
+        assert ok is False
