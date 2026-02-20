@@ -303,7 +303,12 @@ def _send_discord_notification(
             except ValueError as e:
                 logger.warning("Invalid response from Tautulli: %s", e)
 
-        notifier = DiscordNotifier(config.discord_webhook_url, config.plex_url, plex_server_id)
+        webhook_url = config.discord_webhook_url
+        if webhook_url is None:
+            logger.debug("No Discord webhook URL configured, skipping Discord notification")
+            return 0
+
+        notifier = DiscordNotifier(webhook_url, config.plex_url, plex_server_id)
         notifier.send_summary(discord_items, days, total_count)
     except (ConnectionError, TimeoutError) as e:
         logger.error("Network error while sending Discord notification: %s", e)

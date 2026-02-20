@@ -154,7 +154,15 @@ class DiscordNotifier:
             grouped = self._group_items_by_type(media_items)
 
             # Category order for display
-            category_order = ["Movies", "TV Shows", "TV Seasons", "TV Episodes", "Music Albums", "Music Tracks", "Other"]
+            category_order = [
+                "Movies",
+                "TV Shows",
+                "TV Seasons",
+                "TV Episodes",
+                "Music Albums",
+                "Music Tracks",
+                "Other",
+            ]
 
             total_messages = 0
             success_count = 0
@@ -558,7 +566,7 @@ class DiscordNotifier:
                     webhook.timeout = self.REQUEST_TIMEOUT_SECONDS
                     response = execute_func()
                 elif "timeout" in inspect.signature(execute_func).parameters:
-                    response = execute_func(timeout=self.REQUEST_TIMEOUT_SECONDS)
+                    response = cast(Any, execute_func)(timeout=self.REQUEST_TIMEOUT_SECONDS)
                 else:
                     response = execute_func()
 
