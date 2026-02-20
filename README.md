@@ -90,7 +90,7 @@ That's it! On first run, the entrypoint automatically creates `config.yml` from 
 > - Config: `/app/configs/config.yml`
 > - Logs: `/app/logs`
 > - Examples: `./my-configs:/app/configs`, `./my-logs:/app/logs`
->   **For advanced configuration options**, see [CONFIGURATION.md](CONFIGURATION.md#optional-field-overrides)
+>   **For advanced configuration options**, see [CONFIGURATION.md](CONFIGURATION.md#environment-variable-behavior)
 
 ## Unraid Quick Start
 
@@ -116,7 +116,7 @@ The application supports two execution modes:
 
 ### Scheduled Mode (Default)
 
-Runs on schedule (default: Sundays at 4 PM). Container stays running. See [CRON examples](CONFIGURATION.md#optional-field-overrides) for customization.
+Runs on schedule (default: Sundays at 4 PM). Container stays running. See [Configuration Fields](CONFIGURATION.md#configuration-fields) for schedule customization.
 
 ### One-Shot Mode
 
@@ -193,7 +193,7 @@ Send release summaries to Discord with rich embeds.
 - When no items are found in the selected period, sends a friendly "nothing new" embed
 - Empty-period embed message is randomized from a built-in set to keep updates fresh
 
-See [Discord Configuration](CONFIGURATION.md#discord-embed-limits) for details.
+See [Discord Notification Notes](CONFIGURATION.md#discord-notification-notes) for details.
 
 **Troubleshooting:** Not receiving notifications? See [Discord Troubleshooting](CONFIGURATION.md#discord-notifications-not-sending).
 
