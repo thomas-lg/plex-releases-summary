@@ -209,7 +209,7 @@ Then run contributor checks:
 ./scripts/test.sh
 ```
 
-To run the app locally in the devcontainer:
+To run the app locally (devcontainer or optional host-native workflow):
 
 ```bash
 cp .env.example .env

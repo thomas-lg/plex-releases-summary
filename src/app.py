@@ -1,10 +1,11 @@
 import logging
+import os
 import sys
 import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from config import Config, get_bootstrap_log_level, load_config
+from config import DEFAULT_CONFIG_PATH, Config, get_bootstrap_log_level, load_config
 from discord_client import DiscordNotifier
 from logging_config import setup_logging
 from tautulli_client import TautulliClient
@@ -13,6 +14,11 @@ logger = logging.getLogger("plex-weekly")
 
 # Constants
 DEFAULT_INFO_DISPLAY_LIMIT = 10  # Number of items to display in INFO log level
+
+
+def _get_config_path() -> str:
+    """Resolve config file path from env var override or default container path."""
+    return os.getenv("CONFIG_PATH", DEFAULT_CONFIG_PATH)
 
 
 def _calculate_batch_params(days: int, override: int | None = None) -> tuple[int, int]:
@@ -287,10 +293,12 @@ def main():
       - set run_once: true to run once and exit
       - or provide cron_schedule to run as a persistent scheduled task
     """
+    config_path = _get_config_path()
+
     # Bootstrap logging level from raw config so load-time logs honor user verbosity
-    setup_logging(get_bootstrap_log_level())
+    setup_logging(get_bootstrap_log_level(config_path))
     try:
-        config = load_config()
+        config = load_config(config_path)
     except Exception as e:
         logger.exception("FATAL: Failed to load configuration: %s", e)
         return 1

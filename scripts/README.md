@@ -1,6 +1,8 @@
 # Scripts Directory
 
-These scripts are thin wrappers for contributor workflows and are intended to run inside the devcontainer.
+These scripts are thin wrappers for contributor workflows.
+
+`start.sh` is supported both inside the devcontainer and in optional host-native workflows.
 
 ## Available Scripts
 

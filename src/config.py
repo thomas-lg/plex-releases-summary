@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 # Constants
 ENV_VAR_PATTERN = re.compile(r"\$\{[^}]+\}")
 REQUIRED_FIELDS = {"tautulli_url", "tautulli_api_key"}
+DEFAULT_CONFIG_PATH = "/app/configs/config.yml"
 
 
 def _is_env_var_reference(value: str) -> bool:
@@ -220,7 +221,7 @@ class Config(BaseModel):
         return self
 
 
-def load_config(config_path: str = "/app/configs/config.yml") -> Config:
+def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
     """
     Load and validate configuration from YAML file.
 
@@ -304,7 +305,7 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
         raise
 
 
-def get_bootstrap_log_level(config_path: str = "/app/configs/config.yml") -> str:
+def get_bootstrap_log_level(config_path: str = DEFAULT_CONFIG_PATH) -> str:
     """
     Read log_level from config file before full validation.
 

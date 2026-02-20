@@ -62,6 +62,12 @@ PYTHONPATH=src pytest --cov=src --cov-report=xml --cov-report=term
 
 Host-native development is optional and not the primary workflow. If you use it, mirror the same Python/tool versions as the devcontainer.
 
+Use the same app start command as devcontainer:
+
+```bash
+./scripts/start.sh
+```
+
 ## Code Style
 
 - Python 3.12

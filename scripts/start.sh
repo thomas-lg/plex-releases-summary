@@ -21,6 +21,12 @@ if [ -f "$ENV_FILE" ]; then
     set +a
 fi
 
+CONFIG_PATH="$(pwd)/$CONFIG_FILE"
+export CONFIG_PATH
+
+LOG_DIR="$(pwd)/logs"
+export LOG_DIR
+
 # Start the app locally (devcontainer/host) with optional env file support
 
 normalize_secret_path() {
@@ -49,7 +55,7 @@ DISCORD_WEBHOOK_URL="$(normalize_secret_path "${DISCORD_WEBHOOK_URL:-}")"
 export TAUTULLI_API_KEY DISCORD_WEBHOOK_URL
 
 tautulli_host="$(printf '%s' "${TAUTULLI_URL:-}" | sed -n 's#^[a-zA-Z][a-zA-Z0-9+.-]*://\([^/:]*\).*#\1#p')"
-if [ "$tautulli_host" = "tautulli" ] && ! getent hosts tautulli >/dev/null 2>&1; then
+if [ "$tautulli_host" = "tautulli" ] && command -v getent >/dev/null 2>&1 && ! getent hosts tautulli >/dev/null 2>&1; then
     echo "⚠️  TAUTULLI_URL uses host 'tautulli', which usually only resolves inside Docker Compose networks."
     echo "   For local/devcontainer runs, use a host-reachable URL (e.g., http://localhost:8181 or http://host.docker.internal:8181)."
 fi
@@ -73,4 +79,13 @@ fi
 echo "🚀 Starting Plex Releases Summary"
 echo "   Config: $CONFIG_FILE"
 
-PYTHONPATH=src python src/app.py
+if command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="python"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+else
+    echo "❌ Python executable not found (tried: python, python3)"
+    exit 1
+fi
+
+PYTHONPATH=src "$PYTHON_BIN" src/app.py
