@@ -39,7 +39,16 @@ Open the project in the devcontainer:
 Command Palette → Dev Containers: Reopen in Container
 ```
 
-Dependencies are installed in the devcontainer image, so the environment is ready to use as soon as the container starts.
+Dependencies are installed in the devcontainer image (built from [.devcontainer/Dockerfile.dev](.devcontainer/Dockerfile.dev)), so the environment is ready to use as soon as the container starts.
+
+If Dev Containers is not available, [docker-compose.dev.yml](docker-compose.dev.yml) uses the same image and provides an equivalent environment:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.dev.yml exec app bash
+# or:
+./scripts/dev-shell.sh
+```
 
 Inside the devcontainer, run checks with either direct commands or helper scripts:
 

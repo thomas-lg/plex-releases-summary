@@ -209,6 +209,15 @@ Use the devcontainer for day-to-day work:
 Command Palette → Dev Containers: Reopen in Container
 ```
 
+If Dev Containers is not available, use the same dev environment via Docker Compose:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.dev.yml exec app bash
+# or:
+./scripts/dev-shell.sh
+```
+
 Then run contributor checks:
 
 ```bash
@@ -248,6 +257,7 @@ Script reference: [scripts/README.md](scripts/README.md)
 │ └── test_tautulli_client.py # Tautulli client tests
 ├── scripts/ # Helper scripts
 │ ├── clean.sh # Clean up caches
+│ ├── dev-shell.sh # Enter dev compose shell
 │ ├── format.sh # Format Python code
 │ ├── README.md # Scripts documentation
 │ ├── test.sh # Run tests
@@ -263,6 +273,7 @@ Script reference: [scripts/README.md](scripts/README.md)
 ├── assets/ # Project assets (screenshots, etc.)
 ├── CONTRIBUTING.md # Contribution guidelines
 ├── Dockerfile # Production Docker image
+├── docker-compose.dev.yml # Development compose config
 ├── docker-compose.yml # Production compose config
 ├── entrypoint.sh # Container entrypoint script
 ├── my-plex-releases-summary.xml # Unraid template

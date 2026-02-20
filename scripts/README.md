@@ -6,6 +6,15 @@ All scripts work both inside the devcontainer and on the host, provided the requ
 
 ## Available Scripts
 
+### 🐳 `dev-shell.sh` - Enter Dev Compose Environment
+
+Start the development compose stack and open a shell in the app container.
+
+```bash
+./scripts/dev-shell.sh
+./scripts/dev-shell.sh pytest -q
+```
+
 ### ▶️ `start.sh` - Start Application
 
 Run the app locally with optional `.env` loading.
@@ -64,6 +73,7 @@ Remove generated test/coverage/cache files.
 
 | Task       | Command                  |
 | ---------- | ------------------------ |
+| Dev shell  | `./scripts/dev-shell.sh` |
 | Start app  | `./scripts/start.sh`     |
 | Run tests  | `./scripts/test.sh`      |
 | Format     | `./scripts/format.sh`    |

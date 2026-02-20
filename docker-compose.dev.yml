@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile.dev
+    container_name: plex-releases-summary-dev
+    working_dir: /app
+    command: ["sleep", "infinity"]
+    init: true
+    tty: true
+    stdin_open: true
+    user: appuser
+    environment:
+      PYTHONPATH: src
+    volumes:
+      - .:/app:cached

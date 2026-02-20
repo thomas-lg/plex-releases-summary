@@ -524,18 +524,16 @@ class DiscordNotifier:
         response = None
         for attempt in range(max_retries):
             try:
-                try:
-                    # Prefer timeout attribute when available.
-                    if hasattr(webhook, "timeout"):
-                        webhook.timeout = self.REQUEST_TIMEOUT_SECONDS
-                        response = webhook.execute()
-                    else:
-                        # Fallback for implementations that support timeout as a kwarg.
-                        execute_with_timeout = cast(Any, webhook.execute)
-                        response = execute_with_timeout(timeout=self.REQUEST_TIMEOUT_SECONDS)
-                except TypeError:
-                    # Last fallback: execute without timeout if unsupported.
-                    response = webhook.execute()
+                # Try to set timeout explicitly if supported
+                execute_func = webhook.execute
+                execute_params = execute_func.__code__.co_varnames
+                if hasattr(webhook, "timeout"):
+                    webhook.timeout = self.REQUEST_TIMEOUT_SECONDS
+                    response = execute_func()
+                elif "timeout" in execute_params:
+                    response = execute_func(timeout=self.REQUEST_TIMEOUT_SECONDS)
+                else:
+                    response = execute_func()
 
                 # If validation error (bad request), don't retry - it won't help
                 if response.status_code == 400:

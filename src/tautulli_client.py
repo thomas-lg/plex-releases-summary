@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 # Type definitions for Tautulli API responses
 
+T = TypeVar("T", bound=BaseModel)
 
 class TautulliMediaItem(TypedDict, total=False):
     added_at: int | str
@@ -122,8 +123,6 @@ class TautulliClient:
         """
         safe_message = self._sanitize_error(error)
         return type(error)(safe_message)
-
-    T = TypeVar("T", bound=BaseModel)
 
     def _validate_response(self, data: dict[str, object], model: type[T]) -> T:
         """
