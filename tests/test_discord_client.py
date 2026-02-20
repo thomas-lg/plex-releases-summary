@@ -214,7 +214,7 @@ class TestDiscordNotifier:
         )
 
         # Some items should be trimmed
-        assert items_sent < len(items) or items_sent == len(items)
+        assert items_sent < len(items)
         assert embed is not None
 
         # Embed may still exceed limits if trimming hits minimum size

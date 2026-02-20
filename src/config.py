@@ -61,8 +61,11 @@ def _resolve_value(value: Any) -> Any:
                 file_size = file_path.stat().st_size
                 if file_size > max_secret_size:
                     logger.error(
-                        f"Secret file {value} exceeds maximum size ({file_size} bytes > {max_secret_size} bytes). "
-                        f"This may not be a valid secret file."
+                        "Secret file %s exceeds maximum size (%d bytes > %d bytes). "
+                        "This may not be a valid secret file.",
+                        value,
+                        file_size,
+                        max_secret_size,
                     )
                     raise ValueError(f"Secret file {value} too large: {file_size} bytes")
 
@@ -70,19 +73,19 @@ def _resolve_value(value: Any) -> Any:
 
                 # Validate content is reasonable (printable ASCII or UTF-8)
                 if not content:
-                    logger.warning(f"Secret file {value} is empty")
+                    logger.warning("Secret file %s is empty", value)
                     return value
 
-                logger.info(f"Successfully read secret from file: {value}")
+                logger.info("Successfully read secret from file: %s", value)
                 return content
             except OSError as e:
-                logger.warning(f"I/O error reading file {value}: {e}")
+                logger.warning("I/O error reading file %s: %s", value, e)
                 return value
             except UnicodeDecodeError as e:
-                logger.error(f"Secret file {value} contains invalid UTF-8 data: {e}")
+                logger.error("Secret file %s contains invalid UTF-8 data: %s", value, e)
                 raise ValueError(f"Secret file {value} is not valid text") from None
         else:
-            logger.info(f"Path {value} does not exist, treating as literal value")
+            logger.info("Path %s does not exist, treating as literal value", value)
             return value
     elif isinstance(value, dict):
         return {k: _resolve_value(v) for k, v in value.items()}
@@ -127,7 +130,8 @@ def _expand_env_vars(data: dict[str, Any]) -> dict[str, Any]:
                     expanded[key] = expanded_value
                 else:
                     logger.warning(
-                        f"Environment variable for field '{key}' is defined but empty. " f"Using default value instead."
+                        "Environment variable for field '%s' is defined but empty. Using default value instead.",
+                        key,
                     )
             else:
                 expanded[key] = _resolve_value(expanded_value)
@@ -252,11 +256,10 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
             f"Configuration file not found: {config_path}\n"
             "Please create a config.yml file based on configs/config.yml in the repository."
         )
-        logger.error(error_msg)
         raise FileNotFoundError(error_msg)
 
     try:
-        logger.info(f"Loading configuration from {config_path}")
+        logger.info("Loading configuration from %s", config_path)
         with config_file.open("r") as f:
             raw_config = yaml.safe_load(f)
 
@@ -282,7 +285,6 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
                 + "\n".join(missing_vars)
                 + "\nPlease set the missing environment variables or update config.yml."
             )
-            logger.error(error_msg)
             raise ValueError(error_msg)
         # Expand environment variables and resolve file paths
         expanded_config = _expand_env_vars(raw_config)
@@ -291,17 +293,13 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
         config = Config(**expanded_config)
 
         logger.info("Configuration loaded and validated successfully")
-        logger.info(f"Config: run_once={config.run_once}, log_level={config.log_level}")
+        logger.info("Config: run_once=%s, log_level=%s", config.run_once, config.log_level)
 
         return config
 
-    except yaml.YAMLError as e:
-        error_msg = f"Failed to parse YAML configuration: {e}"
-        logger.error(error_msg)
+    except yaml.YAMLError:
         raise
-    except Exception as e:
-        error_msg = f"Failed to load configuration: {e}"
-        logger.error(error_msg)
+    except Exception:
         raise
 
 

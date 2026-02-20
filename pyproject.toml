@@ -37,6 +37,7 @@ select = [
     "C4",  # flake8-comprehensions
     "SIM", # flake8-simplify
     "PTH", # flake8-use-pathlib
+    "G",   # flake8-logging-format (enforces %-style logging, disallows f-strings in log calls)
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
@@ -47,6 +48,8 @@ ignore = [
 
 [tool.black]
 # Black code formatter configuration
+# Note: Black is used as the formatter; ruff is used only as a linter (ruff check).
+# ruff format is intentionally not enabled to avoid conflicts with Black.
 line-length = 120
 target-version = ['py312']
 include = '\.pyi?$'

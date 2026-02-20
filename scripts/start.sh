@@ -27,8 +27,6 @@ export CONFIG_PATH
 LOG_DIR="$(pwd)/logs"
 export LOG_DIR
 
-# Start the app locally (devcontainer/host) with optional env file support
-
 normalize_secret_path() {
     value="$1"
     if [ -z "$value" ]; then

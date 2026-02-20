@@ -10,15 +10,9 @@ All scripts work both inside the devcontainer and on the host, provided the requ
 
 Run the app locally with optional `.env` loading.
 
-Quick setup:
-
 ```bash
 cp .env.example .env
 # Edit .env with your values, then:
-./scripts/start.sh
-```
-
-```bash
 ./scripts/start.sh                       # Load .env if present
 ENV_FILE=.env.local ./scripts/start.sh  # Use custom env file
 ```

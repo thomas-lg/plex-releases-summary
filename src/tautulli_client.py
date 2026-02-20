@@ -7,7 +7,7 @@ from typing import Any, cast
 
 import requests
 
-logger = logging.getLogger("plex-weekly.tautulli")
+logger = logging.getLogger(__name__)
 
 
 class TautulliClient:
@@ -125,7 +125,9 @@ class TautulliClient:
         retrieves a batch of items and the caller must filter them client-side by timestamp.
 
         Args:
-            days: Number of days to look back (used for logging; actual filtering happens in caller)
+            days: Number of days to look back. Used only for debug logging; the actual
+                date filtering is performed by the caller against each item's timestamp.
+                This value is NOT forwarded to the Tautulli API.
             count: Maximum number of items to retrieve from API
 
         Returns:

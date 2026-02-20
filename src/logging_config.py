@@ -1,3 +1,5 @@
+"""Logging configuration: sets up console and rotating file handlers for the application."""
+
 import logging
 import os
 import sys

@@ -1,3 +1,5 @@
+"""Main application entrypoint: orchestrates Tautulli fetching and Discord notification."""
+
 import logging
 import os
 import sys
@@ -8,9 +10,10 @@ from typing import Any
 from config import DEFAULT_CONFIG_PATH, Config, get_bootstrap_log_level, load_config
 from discord_client import DiscordNotifier
 from logging_config import setup_logging
+from scheduler import run_scheduled
 from tautulli_client import TautulliClient
 
-logger = logging.getLogger("plex-weekly")
+logger = logging.getLogger(__name__)
 
 # Constants
 DEFAULT_INFO_DISPLAY_LIMIT = 10  # Number of items to display in INFO log level
@@ -72,9 +75,9 @@ def _format_display_title(item: dict[str, Any]) -> str:
         season_num = item.get("media_index", "?")
         return f"{show} - Season {season_num}"
     elif media_type == "show":
-        show = item.get("title", "Unknown Show")
+        show = str(item.get("title", "Unknown Show"))
         year = item.get("year", "")
-        return f"{show}" + (f" ({year})" if year else " (New Series)")
+        return show + (f" ({year})" if year else " (New Series)")
     elif media_type == "track":
         artist = item.get("grandparent_title", "Unknown Artist")
         album = item.get("parent_title", "Unknown Album")
@@ -85,9 +88,9 @@ def _format_display_title(item: dict[str, Any]) -> str:
         album = item.get("title", "Unknown Album")
         return f"{artist} - {album}"
     elif media_type == "movie":
-        title = item.get("title", "Unknown Movie")
+        title = str(item.get("title", "Unknown Movie"))
         year = item.get("year", "")
-        return f"{title}" + (f" ({year})" if year else "")
+        return title + (f" ({year})" if year else "")
     else:
         title = item.get("title", "Unknown")
         return str(title)
@@ -208,7 +211,7 @@ def run_summary(config: Config) -> int:
     for item in items:
         added_at = int(item.get("added_at", 0))
         date_str = datetime.fromtimestamp(added_at, tz=UTC).strftime("%Y-%m-%d %H:%M")
-        date_str_short = datetime.fromtimestamp(added_at, tz=UTC).strftime("%m/%d")
+        date_str_short = datetime.fromtimestamp(added_at, tz=UTC).strftime("%Y-%m-%d")
         media_type = item.get("media_type", "unknown")
         display_title = _format_display_title(item)
 
@@ -314,12 +317,8 @@ def main():
     else:
         # Scheduled mode: run as daemon with CRON schedule
         logger.info("📅 Starting in SCHEDULED mode")
-        from scheduler import run_scheduled
-
-        if config.cron_schedule is None:
-            logger.error("Configuration error: 'cron_schedule' must be set when run_once is false.")
-            return 1
-
+        # Guaranteed non-None by Pydantic model validator (validate_cron_schedule_required)
+        assert config.cron_schedule is not None
         # Wrap run_summary to pass config
         return run_scheduled(lambda: run_summary(config), config.cron_schedule)
 

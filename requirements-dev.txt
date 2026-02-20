@@ -8,9 +8,8 @@ types-PyYAML>=6.0.12
 ruff>=0.1.0
 black>=24.0.0
 
-# Testing (install with: pip install -r requirements-test.txt)
+# Testing (install separately: pip install -r requirements-test.txt)
+# These are excluded here to keep dev and test dependency trees separate.
 # pytest>=8.0.0
 # pytest-cov>=4.1.0
 # pytest-mock>=3.12.0
-# responses>=0.24.0
-# freezegun>=1.4.0

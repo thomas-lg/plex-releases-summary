@@ -55,12 +55,26 @@ Equivalent direct commands:
 black src tests
 ruff check --fix src tests
 PYTHONPATH=src mypy src
-PYTHONPATH=src pytest --cov=src --cov-report=xml --cov-report=term
+PYTHONPATH=src pytest --cov=src --cov-branch --cov-report=xml --cov-report=term --cov-report=html
 ```
 
 ### Optional Host Workflow
 
 Host-native development is optional and not the primary workflow. If you use it, mirror the same Python/tool versions as the devcontainer.
+
+Install all dependencies:
+
+```bash
+pip install -r requirements-dev.txt
+pip install -r requirements-test.txt
+```
+
+Copy the example environment file and fill in your values:
+
+```bash
+cp .env.example .env
+# Edit .env with your Tautulli URL and API key
+```
 
 Use the same app start command as devcontainer:
 

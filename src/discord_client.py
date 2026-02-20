@@ -32,7 +32,7 @@ class DiscordNotifier:
 
     # Discord limits
     MAX_FIELD_VALUE = 1024
-    MAX_ITEMS_TOTAL = 25  # Conservative limit to stay under 6000 char limit with URLs
+    MAX_ITEMS_TOTAL = 25  # Discord embed hard limit: 25 fields per embed
     EMBED_SIZE_BUFFER = 5800  # Safety buffer below 6000 to account for JSON overhead
 
     # Retry configuration
@@ -367,22 +367,18 @@ class DiscordNotifier:
         first_date = items[0].get("added_at", "")
         last_date = items[-1].get("added_at", "")
 
-        # Convert from MM/DD (internal format) to DD/MM (display format)
+        # Parse ISO date format (YYYY-MM-DD) and format as DD/MM for display
         try:
-            # Parse MM/DD format
-            if "/" in first_date and "/" in last_date:
-                first_parts = first_date.split("/")
-                last_parts = last_date.split("/")
+            first_dt = datetime.strptime(first_date, "%Y-%m-%d")
+            last_dt = datetime.strptime(last_date, "%Y-%m-%d")
+            first_formatted = first_dt.strftime("%d/%m")
+            last_formatted = last_dt.strftime("%d/%m")
 
-                # Convert to DD/MM
-                first_formatted = f"{first_parts[1]}/{first_parts[0]}"
-                last_formatted = f"{last_parts[1]}/{last_parts[0]}"
-
-                if first_formatted == last_formatted:
-                    return first_formatted
-                else:
-                    return f"{first_formatted} - {last_formatted}"
-        except (IndexError, ValueError):
+            if first_formatted == last_formatted:
+                return first_formatted
+            else:
+                return f"{first_formatted} - {last_formatted}"
+        except (ValueError, AttributeError):
             logger.debug("Failed to parse date format for field name, using fallback")
 
         return f"Items ({chunk_num})" if chunk_num > 1 else "Items"
@@ -413,6 +409,8 @@ class DiscordNotifier:
                 grouped["Music Albums"].append(item)
             elif media_type == "track":
                 grouped["Music Tracks"].append(item)
+            else:
+                logger.warning("Unrecognized media type: %s — item will be skipped", media_type)
 
         return grouped
 
@@ -458,6 +456,9 @@ class DiscordNotifier:
         if max_retries is None:
             max_retries = self.MAX_SEND_RETRIES
 
+        if max_retries == 0:
+            raise ValueError("max_retries must be at least 1")
+
         response = None
         for attempt in range(max_retries):
             try:
@@ -492,4 +493,7 @@ class DiscordNotifier:
                 else:
                     raise
 
+        # This point is only reached if every attempt hit the rate-limit path
+        # without a successful response; callers should check for None.
+        assert response is not None, "_send_with_retry exhausted retries without raising"
         return response

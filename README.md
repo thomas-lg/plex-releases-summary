@@ -60,7 +60,7 @@ Minimal configuration required - just 2 fields!
 **Clone the repository:**
 
 ```bash
-git clone <https://github.com/thomas-lg/plex-releases-summary.git>
+git clone https://github.com/thomas-lg/plex-releases-summary.git
 cd plex-releases-summary
 ```
 
@@ -164,14 +164,14 @@ environment:
 ## Example Output
 
 ```text
-2026-02-15 10:00:15 - INFO - 🚀 Plex weekly summary starting
-2026-02-15 10:00:15 - INFO - Configuration: Looking back 7 days
-2026-02-15 10:00:15 - INFO - Querying recently added items...
-2026-02-15 10:00:16 - INFO - Retrieved 45 items, filtered to 23 items from last 7 days
-2026-02-15 10:00:16 - INFO - Found 23 recent items matching criteria
-2026-02-15 10:00:16 - INFO - ➕ The Last of Us - S01E03 - Long, Long Time | added: 2026-02-12 14:23
-2026-02-15 10:00:16 - INFO - ➕ Everything Everywhere All at Once (2022) | added: 2026-02-13 20:15
-2026-02-15 10:00:16 - INFO - ➕ Succession - S04E01 - The Munsters | added: 2026-02-14 18:45
+2026-02-15 10:00:15 | INFO    | app | 🚀 Plex weekly summary starting
+2026-02-15 10:00:15 | INFO    | app | Configuration: Looking back 7 days
+2026-02-15 10:00:15 | INFO    | app | Querying recently added items with iterative fetching...
+2026-02-15 10:00:16 | INFO    | app | Retrieved 45 items, filtered to 23 items from last 7 days
+2026-02-15 10:00:16 | INFO    | app | Found 23 recent items matching criteria
+2026-02-15 10:00:16 | INFO    | app | ➕ The Last of Us - S01E03 - Long, Long Time | added: 2026-02-12 14:23
+2026-02-15 10:00:16 | INFO    | app | ➕ Everything Everywhere All at Once (2022) | added: 2026-02-13 20:15
+2026-02-15 10:00:16 | INFO    | app | ➕ Succession - S04E01 - The Munsters | added: 2026-02-14 18:45
 ```
 
 > **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal behavior. See [Iteration Logs](docs/CONFIGURATION.md#minimal-configuration) for explanation.
@@ -235,7 +235,9 @@ Script reference: [scripts/README.md](scripts/README.md)
 │ ├── test_app.py # App logic tests
 │ ├── test_config.py # Configuration tests
 │ ├── test_discord_client.py # Discord tests
-│ └── test_discord_markdown.py # Markdown escaping tests
+│ ├── test_discord_markdown.py # Markdown escaping tests
+│ ├── test_logging_config.py # Logging config tests
+│ └── test_tautulli_client.py # Tautulli client tests
 ├── scripts/ # Helper scripts
 │ ├── clean.sh # Clean up caches
 │ ├── format.sh # Format Python code

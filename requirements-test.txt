@@ -2,5 +2,3 @@
 pytest>=8.0.0
 pytest-cov>=4.1.0
 pytest-mock>=3.12.0
-responses>=0.24.0  # HTTP mocking for requests library
-freezegun>=1.4.0  # Time mocking for date-based tests

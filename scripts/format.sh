@@ -1,5 +1,7 @@
 #!/bin/sh
 # Format and auto-fix Python code in the current environment
+# Note: Black is the formatter; ruff is used only as a linter (ruff check --fix).
+# ruff format is intentionally not enabled to avoid conflicts with Black.
 
 set -e
 

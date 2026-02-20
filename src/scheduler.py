@@ -1,3 +1,5 @@
+"""APScheduler-based daemon scheduler with graceful SIGTERM/SIGINT shutdown handling."""
+
 import logging
 import signal
 import sys
@@ -7,7 +9,7 @@ from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-logger = logging.getLogger("plex-weekly.scheduler")
+logger = logging.getLogger(__name__)
 
 
 class GracefulScheduler:
@@ -107,7 +109,8 @@ def run_scheduled(task_func: Callable, cron_schedule: str) -> int:
         cron_schedule: CRON expression (e.g., "0 9 * * MON" for Mondays at 9 AM)
 
     Returns:
-        Exit code (normally doesn't return, runs until shutdown signal)
+        Exit code: returns 0 only on graceful SIGTERM/SIGINT shutdown.
+        Under normal operation this function blocks indefinitely.
     """
     scheduler = GracefulScheduler(cron_schedule, task_func)
     scheduler.start()

@@ -11,7 +11,7 @@ echo ""
 if [ "$#" -gt 0 ]; then
 	PYTHONPATH=src pytest "$@"
 else
-	PYTHONPATH=src pytest --cov=src --cov-report=xml --cov-report=term --cov-report=html
+	PYTHONPATH=src pytest --cov=src --cov-branch --cov-report=xml --cov-report=term --cov-report=html
 fi
 
 echo ""
