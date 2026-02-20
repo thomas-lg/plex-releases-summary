@@ -3,11 +3,28 @@
 import logging
 import os
 import re
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import TypedDict, cast
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+# Type definitions for configuration
+
+
+class ConfigInput(TypedDict, total=False):
+    tautulli_url: str
+    tautulli_api_key: str
+    days_back: int
+    cron_schedule: str | None
+    discord_webhook_url: str | None
+    plex_url: str
+    plex_server_id: str | None
+    run_once: bool
+    log_level: str
+    initial_batch_size: int | None
+
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +32,9 @@ logger = logging.getLogger(__name__)
 ENV_VAR_PATTERN = re.compile(r"\$\{[^}]+\}")
 REQUIRED_FIELDS = {"tautulli_url", "tautulli_api_key"}
 DEFAULT_CONFIG_PATH = "/app/configs/config.yml"
+
+type ConfigScalar = str | int | float | bool | None
+type ConfigValue = ConfigScalar | list["ConfigValue"] | dict[str, "ConfigValue"]
 
 
 def _is_env_var_reference(value: str) -> bool:
@@ -30,7 +50,7 @@ def _is_env_var_reference(value: str) -> bool:
     return isinstance(value, str) and bool(ENV_VAR_PATTERN.search(value))
 
 
-def _resolve_value(value: Any, required_field: str | None = None) -> Any:
+def _resolve_value(value: ConfigValue, required_field: str | None = None) -> ConfigValue:
     """
     Resolve a configuration value, reading from file if it's a file path.
 
@@ -111,7 +131,7 @@ def _resolve_value(value: Any, required_field: str | None = None) -> Any:
     return value
 
 
-def _expand_env_vars(data: dict[str, Any]) -> dict[str, Any]:
+def _expand_env_vars(data: Mapping[str, ConfigValue]) -> dict[str, ConfigValue]:
     """
     Recursively expand environment variables in dictionary values.
 
@@ -129,7 +149,7 @@ def _expand_env_vars(data: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Dictionary with all environment variables expanded and files resolved
     """
-    expanded: dict[str, Any] = {}
+    expanded: dict[str, ConfigValue] = {}
     for key, value in data.items():
         if isinstance(value, str):
             is_env_var_ref = _is_env_var_reference(value)
@@ -155,12 +175,19 @@ def _expand_env_vars(data: dict[str, Any]) -> dict[str, Any]:
         elif isinstance(value, dict):
             expanded[key] = _expand_env_vars(value)
         elif isinstance(value, list):
-            expanded[key] = [os.path.expandvars(item) if isinstance(item, str) else item for item in value]
-            expanded[key] = [_resolve_value(item) for item in expanded[key]]
+            expanded_list: list[ConfigValue] = []
+            for item in value:
+                if isinstance(item, str):
+                    expanded_item: ConfigValue = os.path.expandvars(item)
+                else:
+                    expanded_item = item
+                expanded_list.append(_resolve_value(expanded_item))
+            expanded[key] = expanded_list
         else:
             expanded[key] = value
 
     return expanded
+
 
 class Config(BaseModel):
     """
@@ -287,10 +314,10 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
             )
 
         # Expand environment variables and resolve file paths
-        expanded_config = _expand_env_vars(raw_config)
+        expanded_config = cast(ConfigInput, _expand_env_vars(raw_config))
 
         # Validate and create Config instance
-        config = Config(**expanded_config)
+        config = Config.model_validate(expanded_config)
 
         logger.info("Configuration loaded and validated successfully")
         logger.info("Config: run_once=%s, log_level=%s", config.run_once, config.log_level)

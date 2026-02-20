@@ -1,8 +1,10 @@
 """Unit tests for scheduler module."""
 
 from datetime import UTC, datetime
+from typing import cast
 
 import pytest
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 from src.scheduler import GracefulScheduler, run_scheduled
 
@@ -29,7 +31,7 @@ class TestGracefulScheduler:
                 self.wait_arg = wait
 
         stub = StubBlockingScheduler()
-        scheduler.scheduler = stub
+        scheduler.scheduler = cast(BlockingScheduler, stub)
 
         scheduler._handle_shutdown(15, None)
 
@@ -103,7 +105,7 @@ class TestGracefulScheduler:
                 self.start_called = True
 
         stub = StubBlockingScheduler()
-        scheduler.scheduler = stub
+        scheduler.scheduler = cast(BlockingScheduler, stub)
 
         scheduler.start()
 

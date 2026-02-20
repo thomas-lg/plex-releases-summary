@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class GracefulScheduler:
     """Scheduler with graceful shutdown handling for containerized environments."""
 
-    def __init__(self, cron_schedule: str, task_func: Callable):
+    def __init__(self, cron_schedule: str, task_func: Callable[[], int]):
         """
         Initialize scheduler with CRON schedule and task function.
 
@@ -100,7 +100,7 @@ class GracefulScheduler:
                 logger.info("✅ Scheduler shutdown complete")
 
 
-def run_scheduled(task_func: Callable, cron_schedule: str) -> int:
+def run_scheduled(task_func: Callable[[], int], cron_schedule: str) -> int:
     """
     Run task function on a CRON schedule.
 

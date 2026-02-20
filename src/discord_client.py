@@ -5,9 +5,19 @@ import random
 import re
 import time
 from datetime import datetime
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
+
+# Type definitions for Discord payloads
+
+
+class DiscordMediaItem(TypedDict):
+    type: str
+    title: str
+    added_at: NotRequired[str]
+    rating_key: NotRequired[int | str]
+
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +93,7 @@ class DiscordNotifier:
         self.plex_url = plex_url.rstrip("/") if plex_url else None
         self.plex_server_id = plex_server_id
 
-    def send_summary(self, media_items: list[dict[str, Any]], days_back: int, total_count: int) -> bool:
+    def send_summary(self, media_items: list[DiscordMediaItem], days_back: int, total_count: int) -> bool:
         """
         Send media summary to Discord as rich embed(s), grouped by category.
         Sends separate messages for each media type (Movies, TV Shows, etc.).
@@ -224,7 +234,7 @@ class DiscordNotifier:
     def _create_category_embed(
         self,
         category: str,
-        items: list[dict[str, Any]],
+        items: list[DiscordMediaItem],
         days_back: int,
         total_count: int,
         part_num: int,
@@ -279,30 +289,36 @@ class DiscordNotifier:
 
         # Fields
         for field in embed.fields:
-            if field.get("name"):
-                total += len(field["name"])
-            if field.get("value"):
-                total += len(field["value"])
+            name = field.get("name")
+            if name:
+                total += len(str(name))
+            value = field.get("value")
+            if value:
+                total += len(str(value))
 
         # Footer
         if embed.footer:
-            total += len(embed.footer.get("text", ""))
+            footer_text = embed.footer.get("text")
+            if footer_text:
+                total += len(footer_text)
 
         # Author
         if embed.author:
-            total += len(embed.author.get("name", ""))
+            author_name = embed.author.get("name")
+            if author_name:
+                total += len(author_name)
 
         return total
 
     def _validate_and_trim_embed(
         self,
         category: str,
-        items: list[dict[str, Any]],
+        items: list[DiscordMediaItem],
         days_back: int,
         total_count: int,
         part_num: int,
         category_total: int,
-        all_items: list[dict[str, Any]],
+        all_items: list[DiscordMediaItem],
     ) -> tuple[DiscordEmbed, int]:
         """
         Create embed and validate size, trimming items if necessary to stay under Discord limits.
@@ -373,10 +389,10 @@ class DiscordNotifier:
         # Return the smallest version we managed to create
         return embed, len(current_items)
 
-    def _add_items_to_embed(self, embed: DiscordEmbed, items: list[dict[str, Any]], category: str) -> None:
+    def _add_items_to_embed(self, embed: DiscordEmbed, items: list[DiscordMediaItem], category: str) -> None:
         """Add items to embed, splitting into multiple fields if needed with date ranges."""
         current_chunk: list[str] = []
-        current_chunk_items: list[dict[str, Any]] = []  # Track items for date range
+        current_chunk_items: list[DiscordMediaItem] = []  # Track items for date range
         current_chars = 0
         chunk_num = 1
 
@@ -405,7 +421,7 @@ class DiscordNotifier:
             field_value = "\n".join(current_chunk)
             embed.add_embed_field(name=field_name, value=field_value, inline=False)
 
-    def _get_date_range_field_name(self, items: list[dict[str, Any]], chunk_num: int) -> str:
+    def _get_date_range_field_name(self, items: list[DiscordMediaItem], chunk_num: int) -> str:
         """Generate field name with date range in DD/MM - DD/MM format."""
         if not items:
             return f"Items ({chunk_num})" if chunk_num > 1 else "Items"
@@ -430,9 +446,9 @@ class DiscordNotifier:
 
         return f"Items ({chunk_num})" if chunk_num > 1 else "Items"
 
-    def _group_items_by_type(self, media_items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    def _group_items_by_type(self, media_items: list[DiscordMediaItem]) -> dict[str, list[DiscordMediaItem]]:
         """Group media items by type."""
-        grouped: dict[str, list[dict[str, Any]]] = {
+        grouped: dict[str, list[DiscordMediaItem]] = {
             "Movies": [],
             "TV Shows": [],
             "TV Seasons": [],
@@ -461,7 +477,7 @@ class DiscordNotifier:
 
         return grouped
 
-    def _format_media_item(self, item: dict[str, Any]) -> str:
+    def _format_media_item(self, item: DiscordMediaItem) -> str:
         """Format a single media item for display."""
         title = item.get("title", "Unknown")
         rating_key = item.get("rating_key")
@@ -509,12 +525,9 @@ class DiscordNotifier:
         response = None
         for attempt in range(max_retries):
             try:
-                try:
-                    response = webhook.execute(timeout=self.REQUEST_TIMEOUT_SECONDS)
-                except TypeError:
-                    if hasattr(webhook, "timeout"):
-                        setattr(webhook, "timeout", self.REQUEST_TIMEOUT_SECONDS)
-                    response = webhook.execute()
+                if hasattr(webhook, "timeout"):
+                    webhook.timeout = self.REQUEST_TIMEOUT_SECONDS
+                response = webhook.execute()
 
                 # If validation error (bad request), don't retry - it won't help
                 if response.status_code == 400:
