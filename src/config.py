@@ -200,7 +200,9 @@ class Config(BaseModel):
     """
 
     # Tautulli Configuration (Required)
-    tautulli_url: str = Field(..., min_length=1, description="Full URL to Tautulli instance (e.g., http://localhost:8181)")
+    tautulli_url: str = Field(
+        ..., min_length=1, description="Full URL to Tautulli instance (e.g., http://localhost:8181)"
+    )
     tautulli_api_key: str = Field(..., min_length=1, description="Tautulli API key for authentication")
 
     # Core Settings (Optional with defaults)
