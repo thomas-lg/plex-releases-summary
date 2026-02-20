@@ -2,7 +2,7 @@
 
 These scripts are thin wrappers for contributor workflows.
 
-`start.sh` is supported both inside the devcontainer and in optional host-native workflows.
+All scripts work both inside the devcontainer and on the host, provided the required dependencies are installed. The devcontainer is the recommended setup as it provides a ready-made environment.
 
 ## Available Scripts
 
@@ -68,13 +68,13 @@ Remove generated test/coverage/cache files.
 
 ## Quick Reference
 
-| Task       | Command                |
-| ---------- | ---------------------- |
-| Start app  | `./scripts/start.sh`   |
-| Run tests  | `./scripts/test.sh`    |
-| Format     | `./scripts/format.sh`  |
+| Task       | Command                  |
+| ---------- | ------------------------ |
+| Start app  | `./scripts/start.sh`     |
+| Run tests  | `./scripts/test.sh`      |
+| Format     | `./scripts/format.sh`    |
 | Type check | `./scripts/typecheck.sh` |
-| Clean      | `./scripts/clean.sh`   |
+| Clean      | `./scripts/clean.sh`     |
 
 ## Notes
 

@@ -57,26 +57,27 @@ A lightweight Docker container that fetches recently added media from your Plex 
 
 Minimal configuration required - just 2 fields!
 
-1. **Clone the repository:**
+**Clone the repository:**
 
 ```bash
-git clone https://github.com/thomas-lg/plex-releases-summary.git
+git clone <https://github.com/thomas-lg/plex-releases-summary.git>
 cd plex-releases-summary
 ```
 
-2. **Create Tautulli API key secret:**
+**Create Tautulli API key secret:**
 
 ```bash
 mkdir -p secrets
 echo "your_tautulli_api_key" > secrets/tautulli_api_key
 ```
 
-3. **Update docker-compose.yml:**
-   - Mount the secrets directory into the container (example: `./secrets:/run/secrets:ro`)
-   - Set `TAUTULLI_URL` to your Tautulli server URL (e.g., `http://tautulli:8181` or `http://192.168.1.100:8181`)
-  - Set `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key` to read the secret from the mounted path
+**Update docker-compose.yml:**
 
-4. **Run the container:**
+- Mount the secrets directory into the container (example: `./secrets:/run/secrets:ro`)
+- Set `TAUTULLI_URL` to your Tautulli server URL (e.g., `http://tautulli:8181` or `http://192.168.1.100:8181`)
+- Set `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key` to read the secret from the mounted path
+
+**Run the container:**
 
 ```bash
 docker compose up
@@ -85,10 +86,10 @@ docker compose up
 That's it! On first run, the entrypoint automatically creates `config.yml` from the template with environment variable references. The application will run weekly on Sundays at 4 PM UTC by default.
 
 > **Container path contract (Docker):** Keep container-side targets fixed and customize only host-side paths.
+>
 > - Config: `/app/configs/config.yml`
 > - Logs: `/app/logs`
 > - Examples: `./my-configs:/app/configs`, `./my-logs:/app/logs`
-
 > **For advanced configuration options**, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#optional-field-overrides)
 
 ## Unraid Quick Start
@@ -162,7 +163,7 @@ environment:
 
 ## Example Output
 
-```
+```text
 2026-02-15 10:00:15 - INFO - 🚀 Plex weekly summary starting
 2026-02-15 10:00:15 - INFO - Configuration: Looking back 7 days
 2026-02-15 10:00:15 - INFO - Querying recently added items...
@@ -221,7 +222,7 @@ Script reference: [scripts/README.md](scripts/README.md)
 
 ### Project Structure
 
-```
+```text
 .
 ├── src/
 │ ├── app.py # Main application logic

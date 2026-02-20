@@ -105,7 +105,6 @@ environment:
 ```
 
 > **Timezone:** Container defaults to UTC. Set `TZ` environment variable for local timezone (e.g., `TZ=America/New_York`). CRON schedules run in configured timezone. Use [crontab.guru](https://crontab.guru) to validate expressions.
-
 > **Iteration Logs:** "iteration 1, 2, 3..." is normal. Tautulli API lacks date filtering, so app fetches batches until finding all matches within `days_back`.
 
 ### Understanding Retry Logic
@@ -322,7 +321,7 @@ The application automatically handles these limits with a sophisticated dynamic 
 
 When trimming occurs, you'll see log messages like:
 
-```
+```text
 WARNING - Embed for Movies exceeds size limits, trimming attempt 1/5
 WARNING - Reduced field count from 30 to 24 items
 ```
@@ -503,11 +502,11 @@ Reset to defaults: `rm configs/config.yml && docker compose restart`
 
 ### Exit Codes
 
-| Code  | Meaning     | Cause                      |
-| ----- | ----------- | -------------------------- |
-| `0`   | Success     | Completed successfully     |
+| Code  | Meaning     | Cause                                                   |
+| ----- | ----------- | ------------------------------------------------------- |
+| `0`   | Success     | Completed successfully                                  |
 | `1`   | Error       | Config/API errors, plus Discord errors in one-shot mode |
-| `130` | Interrupted | KeyboardInterrupt (Ctrl+C) |
+| `130` | Interrupted | KeyboardInterrupt (Ctrl+C)                              |
 
 Use for monitoring: `docker run --rm app; [ $? -eq 0 ] || alert`
 
