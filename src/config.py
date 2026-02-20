@@ -200,8 +200,8 @@ class Config(BaseModel):
     """
 
     # Tautulli Configuration (Required)
-    tautulli_url: str = Field(..., description="Full URL to Tautulli instance (e.g., http://localhost:8181)")
-    tautulli_api_key: str = Field(..., description="Tautulli API key for authentication")
+    tautulli_url: str = Field(..., min_length=1, description="Full URL to Tautulli instance (e.g., http://localhost:8181)")
+    tautulli_api_key: str = Field(..., min_length=1, description="Tautulli API key for authentication")
 
     # Core Settings (Optional with defaults)
     days_back: int = Field(default=7, description="Number of days to look back for media releases (default: 7)", ge=1)
@@ -257,7 +257,7 @@ class Config(BaseModel):
         ]
 
         for field_name, field_value in required_fields:
-            if field_value and isinstance(field_value, str):
+            if isinstance(field_value, str):
                 match = ENV_VAR_PATTERN.search(field_value)
                 if match:
                     raise ValueError(
