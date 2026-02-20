@@ -201,6 +201,20 @@ class TestConfigModel:
         assert "tautulli_api_key" in str(exc_info.value)
 
     @pytest.mark.unit
+    @pytest.mark.parametrize("field", ["tautulli_url", "tautulli_api_key"])
+    def test_empty_required_field_rejected(self, field):
+        """Test that empty strings for required fields raise ValidationError."""
+        data = {
+            "tautulli_url": "http://localhost:8181",
+            "tautulli_api_key": "test_key",
+            "run_once": True,
+        }
+        data[field] = ""
+        with pytest.raises(ValidationError) as exc_info:
+            Config.model_validate(data)
+        assert field in str(exc_info.value)
+
+    @pytest.mark.unit
     def test_log_level_validation_valid(self):
         """Test that valid log levels are accepted."""
         for level in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
