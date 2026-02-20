@@ -9,7 +9,7 @@ services:
 
     # Environment variables for configuration
     # Only 2 required: TAUTULLI_URL and TAUTULLI_API_KEY
-    # For full configuration options, see: docs/CONFIGURATION.md#environment-variables-and-docker
+    # For full configuration options, see: CONFIGURATION.md#environment-variables-and-docker
     environment:
       # ========== REQUIRED ==========
       - TAUTULLI_URL=http://tautulli:8181

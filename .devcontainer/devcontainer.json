@@ -11,9 +11,27 @@
   "customizations": {
     "vscode": {
       "extensions": [
+        // AI assistance
+        "GitHub.copilot-chat",
+
+        // Python development
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "charliermarsh.ruff"
+        "ms-python.black-formatter",
+        "charliermarsh.ruff",
+
+        // Docker support
+        "ms-azuretools.vscode-docker",
+
+        // File format support
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+
+        // Git and collaboration
+        "github.vscode-pull-request-github",
+
+        // Markdown
+        "yzhang.markdown-all-in-one"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",

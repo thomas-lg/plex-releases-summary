@@ -9,7 +9,7 @@
 # All other fields have smart defaults and work out of the box.
 # Uncomment optional fields ONLY if you want to override defaults.
 #
-# For full configuration reference, see: docs/CONFIGURATION.md#configuration-fields
+# For full configuration reference, see: CONFIGURATION.md#configuration-fields
 #
 # =============================================================================
 # CONFIGURATION METHODS:
@@ -47,7 +47,7 @@ tautulli_api_key: ${TAUTULLI_API_KEY}
 # -----------------------------------------------------------------------------
 # OPTIONAL FIELDS
 # -----------------------------------------------------------------------------
-# For full descriptions and examples, see: docs/CONFIGURATION.md#optional-field-overrides
+# For full descriptions and examples, see: CONFIGURATION.md#optional-field-overrides
 #
 # NOTE: Optional fields below use environment variable references.
 #       If you don't set an environment variable:

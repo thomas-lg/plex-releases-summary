@@ -90,7 +90,7 @@ That's it! On first run, the entrypoint automatically creates `config.yml` from 
 > - Config: `/app/configs/config.yml`
 > - Logs: `/app/logs`
 > - Examples: `./my-configs:/app/configs`, `./my-logs:/app/logs`
-> **For advanced configuration options**, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#optional-field-overrides)
+>   **For advanced configuration options**, see [CONFIGURATION.md](CONFIGURATION.md#optional-field-overrides)
 
 ## Unraid Quick Start
 
@@ -116,15 +116,15 @@ The application supports two execution modes:
 
 ### 📅 Scheduled Mode (Default)
 
-Runs on schedule (default: Sundays at 4 PM). Container stays running. See [CRON examples](docs/CONFIGURATION.md#optional-field-overrides) for customization.
+Runs on schedule (default: Sundays at 4 PM). Container stays running. See [CRON examples](CONFIGURATION.md#optional-field-overrides) for customization.
 
 ### ▶️ One-Shot Mode
 
-Run once and exit. Set `RUN_ONCE=true`. See [examples](docs/CONFIGURATION.md#examples).
+Run once and exit. Set `RUN_ONCE=true`. See [examples](CONFIGURATION.md#examples).
 
 ## Configuration
 
-**Only 2 fields are required:** `tautulli_url` and `tautulli_api_key`. All other fields have working defaults.
+**Only 2 fields are required:** `tautulli_url` and `tautulli_api_key`. All other fields are optional and use the defaults shown below.
 
 ### Available Configuration
 
@@ -139,7 +139,7 @@ Run once and exit. Set `RUN_ONCE=true`. See [examples](docs/CONFIGURATION.md#exa
 | `log_level`            | No       | `INFO`         | Logging level               |
 | Other fields           | No       | See docs       | See full reference          |
 
-> **📖 For complete configuration documentation**, including configuration methods, Docker secrets, all fields, troubleshooting, and examples, see **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)**
+> **📖 For complete configuration documentation**, including configuration methods, Docker secrets, all fields, troubleshooting, and examples, see **[CONFIGURATION.md](CONFIGURATION.md)**
 
 ## PUID/PGID Configuration
 
@@ -159,7 +159,7 @@ environment:
 
 - Rejects root (UID/GID 0) for security
 - Entrypoint drops privileges before running app
-- Permission errors? Check [Configuration Troubleshooting](docs/CONFIGURATION.md#troubleshooting)
+- Permission errors? Check [Configuration Troubleshooting](CONFIGURATION.md#troubleshooting)
 
 ## Example Output
 
@@ -174,7 +174,7 @@ environment:
 2026-02-15 10:00:16 | INFO    | app | ➕ Succession - S04E01 - The Munsters | added: 2026-02-14 18:45
 ```
 
-> **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal behavior. See [Iteration Logs](docs/CONFIGURATION.md#minimal-configuration) for explanation.
+> **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal behavior. See [Iteration Logs](CONFIGURATION.md#minimal-configuration) for explanation.
 
 ## Discord Notifications
 
@@ -186,9 +186,9 @@ Send release summaries to Discord with rich embeds.
 2. Create secret: `echo "webhook-url" > secrets/discord_webhook`
 3. Set: `DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook`
 
-**Features:** Rich embeds, grouped media, clickable Plex links, auto-retry. See [Discord Configuration](docs/CONFIGURATION.md#discord-embed-limits) for details.
+**Features:** Rich embeds, grouped media, clickable Plex links, auto-retry. See [Discord Configuration](CONFIGURATION.md#discord-embed-limits) for details.
 
-**Troubleshooting:** Not receiving notifications? See [Discord Troubleshooting](docs/CONFIGURATION.md#discord-notifications-not-sending).
+**Troubleshooting:** Not receiving notifications? See [Discord Troubleshooting](CONFIGURATION.md#discord-notifications-not-sending).
 
 ## Development
 
@@ -246,8 +246,7 @@ Script reference: [scripts/README.md](scripts/README.md)
 │ └── typecheck.sh # Type-check with mypy
 ├── configs/
 │ └── [config.yml](configs/config.yml) # User configuration file
-├── docs/
-│ └── [CONFIGURATION.md](docs/CONFIGURATION.md) # Complete configuration reference
+├── [CONFIGURATION.md](CONFIGURATION.md) # Complete configuration reference
 ├── .devcontainer/
 │ ├── Dockerfile.dev # Devcontainer image
 │ └── devcontainer.json # Devcontainer definition
@@ -279,14 +278,14 @@ docker pull ghcr.io/thomas-lg/plex-releases-summary:latest
 
 ## Deployment Options
 
-See [docker-compose.yml](docker-compose.yml) for minimal production setup or [docs/CONFIGURATION.md](docs/CONFIGURATION.md#examples) for advanced configurations.
+See [docker-compose.yml](docker-compose.yml) for minimal production setup or [CONFIGURATION.md](CONFIGURATION.md#examples) for advanced configurations.
 
 ## Operational Notes
 
-- **Restart:** Safe anytime. Missed schedules don't run retroactively. See [Scheduler Behavior](docs/CONFIGURATION.md#scheduler-behavior).
+- **Restart:** Safe anytime. Missed schedules don't run retroactively. See [Scheduler Behavior](CONFIGURATION.md#scheduler-behavior).
 - **Shutdown:** Handles `SIGTERM`/`SIGINT` cleanly.
-- **Upgrades:** Pull new image, restart. See [Migration Guide](docs/CONFIGURATION.md#migration-and-updates).
-- **Exit codes:** `0` (success), `1` (error), `130` (interrupted). See [Exit Codes](docs/CONFIGURATION.md#exit-codes).
+- **Upgrades:** Pull new image, restart. See [Migration Guide](CONFIGURATION.md#migration-and-updates).
+- **Exit codes:** `0` (success), `1` (error), `130` (interrupted). See [Exit Codes](CONFIGURATION.md#exit-codes).
 - **Persistent logs:** Rotating log files are stored in host `./logs` (`5 MB` each, `5` backups + current), while `docker logs` remains available.
 
 ### Health Monitoring
@@ -304,7 +303,7 @@ docker run --rm plex-releases-summary; [ $? -eq 0 ] || alert
 docker logs container --since 24h | grep -q "✅ Summary complete"
 ```
 
-External tools: Uptime Kuma, Prometheus/Grafana, Healthchecks.io. See [Exit Codes](docs/CONFIGURATION.md#exit-codes) for monitoring integration.
+External tools: Uptime Kuma, Prometheus/Grafana, Healthchecks.io. See [Exit Codes](CONFIGURATION.md#exit-codes) for monitoring integration.
 
 ## Troubleshooting
 
@@ -313,17 +312,17 @@ Common issues:
 - **Connection errors**: Check Tautulli URL/API key and accessibility
 - **No items**: Increase `days_back` or verify media timing
 - **Config not working**: Verify environment variables in your deployment environment file (example: `docker-compose.yml`)
-- **"iteration 1, 2..." logs**: Normal - see [Iteration Logs](docs/CONFIGURATION.md#minimal-configuration)
+- **"iteration 1, 2..." logs**: Normal - see [Iteration Logs](CONFIGURATION.md#minimal-configuration)
 
 Enable debug: Set `LOG_LEVEL=DEBUG` in your deployment environment file (example: `docker-compose.yml`)
 
-See [Configuration Troubleshooting](docs/CONFIGURATION.md#troubleshooting) for comprehensive guidance.
+See [Configuration Troubleshooting](CONFIGURATION.md#troubleshooting) for comprehensive guidance.
 
 ## Security
 
 ### Credentials
 
-Never commit credentials. Use file-based secrets: mount secrets directory and set `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key`. Application auto-reads files starting with `/`. See [Docker Secrets](docs/CONFIGURATION.md#docker-secrets) for detailed setup.
+Never commit credentials. Use file-based secrets: mount secrets directory and set `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key`. Application auto-reads files starting with `/`. See [Docker Secrets](CONFIGURATION.md#docker-secrets) for detailed setup.
 
 ### Container Security
 

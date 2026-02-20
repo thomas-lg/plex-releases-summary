@@ -84,15 +84,7 @@ All configuration fields are defined in `src/config.py`. The table below shows a
 1. **`tautulli_url`** - Tautulli server URL
 2. **`tautulli_api_key`** - Tautulli API key
 
-**All other fields are optional** and have sensible defaults:
-
-- `days_back`: 7 days
-- `cron_schedule`: Weekly Sundays at 4 PM UTC (`0 16 * * SUN`)
-- `plex_url`: Plex web app (`https://app.plex.tv`)
-- `discord_webhook_url`: Disabled (no Discord notifications)
-- `run_once`: `false` (scheduled mode)
-- `log_level`: `INFO`
-- `initial_batch_size`: Adaptive (100-500 based on `days_back`)
+**All other fields are optional** and use the defaults shown in the [Configuration Fields](#configuration-fields) table above.
 
 **You don't need to set optional fields unless you want to change the defaults.**
 
@@ -225,21 +217,21 @@ environment:
 
 ### Environment Variable to Field Mapping
 
-| Environment Variable  | Config Field          | Purpose                                                                                            |
-| --------------------- | --------------------- | -------------------------------------------------------------------------------------------------- |
-| `TAUTULLI_URL`        | `tautulli_url`        | Tautulli server URL (required)                                                                     |
-| `TAUTULLI_API_KEY`    | `tautulli_api_key`    | Tautulli API key (required)                                                                        |
-| `DAYS_BACK`           | `days_back`           | Override default (7 days)                                                                          |
-| `CRON_SCHEDULE`       | `cron_schedule`       | Override default (Sunday 4 PM)                                                                     |
-| `DISCORD_WEBHOOK_URL` | `discord_webhook_url` | Enable Discord notifications                                                                       |
-| `PLEX_URL`            | `plex_url`            | Override default (app.plex.tv)                                                                     |
-| `PLEX_SERVER_ID`      | `plex_server_id`      | Override auto-detection                                                                            |
-| `RUN_ONCE`            | `run_once`            | Override default (false)                                                                           |
-| `LOG_LEVEL`           | `log_level`           | Override default (INFO)                                                                            |
-| `INITIAL_BATCH_SIZE`  | `initial_batch_size`  | Override adaptive batching                                                                         |
-| `TZ`                  | N/A                   | Container timezone (UTC default)                                                                   |
-| `PUID`                | N/A                   | User ID for file permissions - see [PUID/PGID Configuration](../README.md#puidpgid-configuration)  |
-| `PGID`                | N/A                   | Group ID for file permissions - see [PUID/PGID Configuration](../README.md#puidpgid-configuration) |
+| Environment Variable  | Config Field          | Purpose                                                                                         |
+| --------------------- | --------------------- | ----------------------------------------------------------------------------------------------- |
+| `TAUTULLI_URL`        | `tautulli_url`        | Tautulli server URL (required)                                                                  |
+| `TAUTULLI_API_KEY`    | `tautulli_api_key`    | Tautulli API key (required)                                                                     |
+| `DAYS_BACK`           | `days_back`           | Override default (7 days)                                                                       |
+| `CRON_SCHEDULE`       | `cron_schedule`       | Override default (Sunday 4 PM)                                                                  |
+| `DISCORD_WEBHOOK_URL` | `discord_webhook_url` | Enable Discord notifications                                                                    |
+| `PLEX_URL`            | `plex_url`            | Override default (app.plex.tv)                                                                  |
+| `PLEX_SERVER_ID`      | `plex_server_id`      | Override auto-detection                                                                         |
+| `RUN_ONCE`            | `run_once`            | Override default (false)                                                                        |
+| `LOG_LEVEL`           | `log_level`           | Override default (INFO)                                                                         |
+| `INITIAL_BATCH_SIZE`  | `initial_batch_size`  | Override adaptive batching                                                                      |
+| `TZ`                  | N/A                   | Container timezone (UTC default)                                                                |
+| `PUID`                | N/A                   | User ID for file permissions - see [PUID/PGID Configuration](README.md#puidpgid-configuration)  |
+| `PGID`                | N/A                   | Group ID for file permissions - see [PUID/PGID Configuration](README.md#puidpgid-configuration) |
 
 ---
 
@@ -277,23 +269,7 @@ environment:
 
 The `config.yml` already has `discord_webhook_url: ${DISCORD_WEBHOOK_URL}`, which defaults to `None` if not set.
 
-**Example 3: Using multiple optional overrides:**
-
-```yaml
-# deployment env file (example: docker-compose.yml)
-environment:
-  # Required
-  - TAUTULLI_URL=http://tautulli:8181
-  - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
-
-  # Optional customizations
-  - DAYS_BACK=14 # Override default (7)
-  - RUN_ONCE=true # Override default (false)
-  - LOG_LEVEL=DEBUG # Override default (INFO)
-
-
-  # Not setting CRON_SCHEDULE, PLEX_URL, etc. - they use defaults
-```
+You can combine multiple optional overrides in the same `environment` block using this same pattern.
 
 ### Discord Embed Limits
 
@@ -330,9 +306,9 @@ WARNING - Reduced field count from 30 to 24 items
 
 - Reduce `days_back` value (fewer days = fewer items)
 - Use more selective media type filtering in Tautulli settings
-- Accept that some older items may not appear in Discord (all items still logged)
+- Expect long result sets to be split across multiple Discord messages
 
-**Note:** All items are processed and logged regardless of Discord limits - trimming only affects Discord message content, not the actual functionality.
+**Note:** All items are processed and logged regardless of Discord limits. Trimming controls how many items fit per message, and remaining items are sent in subsequent message parts.
 
 ---
 
@@ -410,7 +386,7 @@ environment:
 
 **Security considerations:**
 
-See [Security](../README.md#security) for comprehensive security best practices including:
+See [Security](README.md#security) for comprehensive security best practices including:
 
 - File permissions and PUID/PGID considerations
 - Container privilege dropping
@@ -430,7 +406,7 @@ If file reading fails:
 
 ## Examples
 
-> **💡 New to the project?** See [Quick Start](../README.md#quick-start) in the main README for the simplest setup guide.
+> **💡 New to the project?** See [Quick Start](README.md#quick-start) in the main README for the simplest setup guide.
 
 ### Example 1: Minimal Production
 
@@ -486,7 +462,7 @@ services:
 Container auto-creates `config.yml` on first run if missing:
 
 1. Copies from built-in template (`config.yml.default`)
-2. Sets ownership via PUID/PGID (see [README](../README.md#puidpgid-configuration))
+2. Sets ownership via PUID/PGID (see [README](README.md#puidpgid-configuration))
 3. Pre-configured with `${VAR}` placeholders
 
 **Container path contract (Docker):**
@@ -774,6 +750,6 @@ When in doubt, refer to `src/config.py` for the authoritative field definitions 
 
 ## See Also
 
-- [Main README](../README.md) - Quick start guide
-- [config.yml](../configs/config.yml) - Configuration file template
-- [docker-compose.yml](../docker-compose.yml) - Production deployment example
+- [Main README](README.md) - Quick start guide
+- [config.yml](configs/config.yml) - Configuration file template
+- [docker-compose.yml](docker-compose.yml) - Production deployment example
