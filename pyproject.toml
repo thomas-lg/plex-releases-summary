@@ -1,6 +1,6 @@
 [project]
 name = "plex-releases-summary"
-version = "0.1.0"
+version = "1.0.7"
 description = "Fetches recently added Plex media via Tautulli and posts Discord summaries"
 readme = "README.md"
 license = { text = "MIT" }

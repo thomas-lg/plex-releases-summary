@@ -27,6 +27,10 @@ categories:
       - "deps"
 
 version-resolver:
+  major:
+    labels:
+      - "breaking"
+      - "breaking-change"
   minor:
     labels:
       - "feature"
