@@ -31,7 +31,7 @@ jobs:
 
       - name: Run tests (pytest)
         run: |
-          docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app -e PYTHONPATH=src prs-devcontainer pytest --cov=src --cov-report=xml --cov-report=term
+          docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app -e PYTHONPATH=src prs-devcontainer pytest
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

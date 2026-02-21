@@ -190,7 +190,7 @@ class DiscordNotifier:
 
                     # Create and validate embed - this may trim items if too large
                     embed, items_sent = self._validate_and_trim_embed(
-                        category, chunk, days_back, total_count, part_num, len(items), items_remaining
+                        category, chunk, days_back, part_num, len(items), items_remaining
                     )
                     webhook.add_embed(embed)
 
@@ -348,7 +348,6 @@ class DiscordNotifier:
         category: str,
         items: list[DiscordMediaItem],
         days_back: int,
-        total_count: int,
         part_num: int,
         category_total: int,
         all_items: list[DiscordMediaItem],
@@ -360,7 +359,6 @@ class DiscordNotifier:
             category: Media category name
             items: List of media items to attempt to include
             days_back: Number of days in the summary
-            total_count: Total count across all categories
             part_num: Current part number
             category_total: Total items in this category
             all_items: All remaining items (for calculating parts)

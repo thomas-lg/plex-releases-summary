@@ -153,7 +153,7 @@ class TautulliClient:
             sanitized_msg = self._sanitize_error(Exception(error_details))
             raise RuntimeError(f"Tautulli response validation failed: {sanitized_msg}") from None
 
-    def _request(self, cmd: str, max_retries: int | None = None, **params: Any) -> dict[str, object]:
+    def _request(self, cmd: str, max_retries: int | None = None, **params: Any) -> dict[str, object] | list[object]:
         """
         Make a request to Tautulli API with exponential backoff retry logic.
 
@@ -163,7 +163,8 @@ class TautulliClient:
             **params: Additional query parameters for the API request
 
         Returns:
-            Dict containing the API response data
+            Dict or list containing the API response data (list form occurs in older
+            Tautulli API versions where ``response['data']`` is returned as a bare list)
 
         Raises:
             requests.RequestException: If request fails after all retries
@@ -191,7 +192,7 @@ class TautulliClient:
                 if response.get("result") != "success":
                     message = response.get("message", "unknown error")
                     raise RuntimeError(f"Tautulli command '{cmd}' returned unsuccessful response: {message}")
-                response_payload = cast(dict[str, object], response.get("data", {}))
+                response_payload = cast(dict[str, object] | list[object], response.get("data", {}))
                 return response_payload
 
             except (requests.RequestException, RuntimeError) as e:
@@ -260,5 +261,9 @@ class TautulliClient:
         """
         logger.debug("Requesting Plex server identity")
         response_payload = self._request("get_server_identity")
+        if not isinstance(response_payload, dict):
+            raise RuntimeError(
+                f"Unexpected response format for get_server_identity: expected dict, got {type(response_payload).__name__}"
+            )
         validated = self._validate_response(response_payload, TautulliServerIdentityModel)
         return cast(TautulliServerIdentity, validated.model_dump())

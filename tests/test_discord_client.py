@@ -193,7 +193,7 @@ class TestDiscordNotifier:
         ]
 
         embed, items_sent = notifier._validate_and_trim_embed(
-            category="Movies", items=items, days_back=7, total_count=2, part_num=1, category_total=2, all_items=items
+            category="Movies", items=items, days_back=7, part_num=1, category_total=2, all_items=items
         )
 
         assert items_sent == 2  # All items should be included
@@ -209,7 +209,7 @@ class TestDiscordNotifier:
         ]
 
         embed, items_sent = notifier._validate_and_trim_embed(
-            category="Movies", items=items, days_back=7, total_count=25, part_num=1, category_total=25, all_items=items
+            category="Movies", items=items, days_back=7, part_num=1, category_total=25, all_items=items
         )
 
         # Some items should be trimmed

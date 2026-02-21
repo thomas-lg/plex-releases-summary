@@ -309,7 +309,10 @@ def _send_discord_notification(
             return 0
 
         notifier = DiscordNotifier(webhook_url, config.plex_url, plex_server_id)
-        notifier.send_summary(discord_items, days, total_count)
+        success = notifier.send_summary(discord_items, days, total_count)
+        if not success and config.run_once:
+            logger.error("Discord delivery failed")
+            return 1
     except (ConnectionError, TimeoutError) as e:
         logger.error("Network error while sending Discord notification: %s", e)
         if config.run_once:
