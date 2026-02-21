@@ -3,6 +3,7 @@
 import importlib.metadata
 import logging
 import os
+import re
 import sys
 import time
 from datetime import UTC, datetime, timedelta
@@ -393,6 +394,8 @@ def main():
         except importlib.metadata.PackageNotFoundError:
             version = "unknown"
 
+    version_display = f"v{version}" if re.match(r"^\d+\.\d+\.\d+(?:-.*)?$", version) else version
+
     print(rf"""
   ─────────────────────────────────
    ____  ____  ____
@@ -401,10 +404,10 @@ def main():
   |  __/|  _ < ___) |
   |_|   |_| \_\____/
 
-  Plex Releases Summary  ·  v{version}
+  Plex Releases Summary  ·  {version_display}
   ─────────────────────────────────
 """)
-    logger.info("Starting Plex Releases Summary v%s", version)
+    logger.info("Starting Plex Releases Summary %s", version_display)
 
     try:
         config = load_config(config_path)
