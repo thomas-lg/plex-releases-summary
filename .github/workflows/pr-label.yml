@@ -1,9 +1,8 @@
 # Automatically applies a label to a PR based on its conventional commit prefix (e.g. feat: → feature).
-# Runs on pull_request_target so it has write access without exposing secrets to fork code.
 name: Label PR from Conventional Commit
 
 on:
-    pull_request_target:
+    pull_request:
         types: [opened, edited, reopened]
 
 jobs:
