@@ -1,9 +1,11 @@
 # Blocks merging if no valid label is present on the PR.
 # Works in tandem with the 'Label PR from Conventional Commit' workflow which sets labels automatically.
 #
-# Two triggers are needed because GitHub's GITHUB_TOKEN cannot cascade pull_request events:
-#   - workflow_run: fires after auto-labeling; posts result to the PR head SHA via Checks API
-#     (workflow_run jobs run in the base-branch context, so job status alone never reaches the PR commit)
+# Three triggers are needed because GitHub's GITHUB_TOKEN cannot cascade pull_request events:
+#   - pull_request opened/reopened/synchronize: immediately posts an in_progress check so the
+#     PR never shows "Expected" (pending forever); workflow_run overwrites it with the real result
+#   - workflow_run: fires after auto-labeling; posts the final success/failure to the PR head SHA
+#     via Checks API (workflow_run jobs run in the base-branch context, so job status alone won't do)
 #   - pull_request labeled/unlabeled: handles manual label changes via normal job status
 name: Enforce PR Label
 
@@ -12,7 +14,7 @@ on:
     workflows: ["Label PR from Conventional Commit"]
     types: [completed]
   pull_request:
-    types: [labeled, unlabeled]
+    types: [opened, reopened, labeled, unlabeled, synchronize]
 
 jobs:
   check-labels:
@@ -38,8 +40,7 @@ jobs:
             let prNumber, headSha, useChecksApi;
 
             if (context.eventName === 'workflow_run') {
-              // Auto-labeling just finished — workflow_run jobs run in the base-branch context,
-              // so we must post the result manually to the PR head SHA via the Checks API.
+              // Auto-labeling just finished — post the final result to the PR head SHA via Checks API.
               const prs = context.payload.workflow_run.pull_requests;
               if (prs.length === 0) {
                 console.log('No PR associated with this workflow run, skipping.');
@@ -48,6 +49,22 @@ jobs:
               prNumber = prs[0].number;
               headSha = context.payload.workflow_run.head_sha;
               useChecksApi = true;
+            } else if (['opened', 'reopened', 'synchronize'].includes(context.payload.action)) {
+              // PR created or updated — post in_progress immediately so the check never shows
+              // "Expected" (pending forever). workflow_run overwrites this once auto-labeling finishes.
+              await github.rest.checks.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'check-labels',
+                head_sha: context.payload.pull_request.head.sha,
+                status: 'in_progress',
+                output: {
+                  title: '⏳ Waiting for auto-labeling',
+                  summary: 'Label PR from Conventional Commit is running. This check will update once it completes.',
+                },
+              });
+              console.log(`ℹ️ Event '${context.payload.action}' — posted in_progress check, waiting for auto-labeling.`);
+              return;
             } else {
               // Manual label change — job status is automatically posted to the correct commit SHA.
               prNumber = context.payload.pull_request.number;
