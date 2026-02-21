@@ -23,7 +23,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build devcontainer image
         run: docker build -f .devcontainer/Dockerfile.dev -t prs-devcontainer .
@@ -45,7 +45,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download image artifact
         uses: actions/download-artifact@v4
@@ -74,7 +74,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download image artifact
         uses: actions/download-artifact@v4
