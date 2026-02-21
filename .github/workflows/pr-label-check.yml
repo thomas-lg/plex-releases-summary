@@ -1,4 +1,6 @@
-name: PR Label Check
+# Blocks merging if no valid label is present on the PR.
+# Works in tandem with the 'Label PR from Conventional Commit' workflow which sets labels automatically.
+name: Enforce PR Label
 
 on:
     pull_request:
@@ -10,7 +12,7 @@ jobs:
         permissions:
             pull-requests: read
         steps:
-            - name: Check for required labels
+            - name: Fail if no valid label is set
               uses: actions/github-script@v8
               with:
                   script: |

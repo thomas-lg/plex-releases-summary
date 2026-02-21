@@ -141,7 +141,18 @@ Before submitting:
 PR expectations:
 
 - Keep PRs focused
-- Use descriptive commit messages
+- **Use a conventional commit prefix in the PR title** (e.g. `feat: ...`, `fix: ...`, `docs: ...`). A label is automatically applied from the prefix — this is required for the CI label check to pass.
+
+  | Prefix | Label applied |
+  |--------|--------------|
+  | `feat` | `feature` |
+  | `fix`, `revert` | `fix` |
+  | `docs` | `documentation` |
+  | `chore`, `refactor`, `style`, `test`, `ci`, `build` | `chore` |
+  | `perf` | `enhancement` |
+  | `deps` | `dependencies` |
+  | `feat!`, `fix!`, … (breaking) | above label + `breaking` |
+
 - Ensure CI passes
 
 ## Production Image and Deployment
