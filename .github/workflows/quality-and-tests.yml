@@ -34,7 +34,7 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app -e PYTHONPATH=src prs-devcontainer pytest
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
