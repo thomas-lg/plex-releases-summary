@@ -1,0 +1,40 @@
+# Blocks merging if the PR title does not follow the conventional commit format.
+# The prefix must match one of the types defined in the 'Label PR from Conventional Commit' workflow.
+name: Enforce Conventional Commit Title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  check-labels:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Fail if PR title does not follow conventional commit format
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const validTypes = [
+              'feat', 'fix', 'docs', 'chore', 'refactor',
+              'style', 'revert', 'perf', 'test', 'ci', 'build', 'deps', 'breaking'
+            ];
+
+            const titlePattern = new RegExp(
+              `^(${validTypes.join('|')})(\\(.+\\))?!?: .+`
+            );
+
+            const title = context.payload.pull_request.title;
+
+            if (!titlePattern.test(title)) {
+              core.setFailed(
+                `❌ PR title does not follow the conventional commit format.\n\n` +
+                `Expected: <type>[optional scope]: <description>\n` +
+                `Example: feat: add new feature\n\n` +
+                `Valid types: ${validTypes.join(', ')}\n\n` +
+                `Current title: "${title}"`
+              );
+            } else {
+              console.log(`✅ PR title is valid: "${title}"`);
+            }
