@@ -11,6 +11,10 @@ LABEL org.opencontainers.image.licenses="MIT"
 # Prevent Python from writing bytecode files
 ENV PYTHONDONTWRITEBYTECODE=1
 
+# Version injected at build time (e.g. --build-arg VERSION=1.2.3)
+ARG VERSION=unknown
+ENV APP_VERSION=$VERSION
+
 WORKDIR /app
 
 # Install gosu for privilege dropping
