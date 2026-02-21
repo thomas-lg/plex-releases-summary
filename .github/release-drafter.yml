@@ -4,6 +4,9 @@ change-template: "- $TITLE (#$NUMBER)"
 change-title-escapes: '\<*_&'
 
 categories:
+  - title: "💥 Breaking Changes"
+    labels:
+      - "breaking"
   - title: "🚀 Features"
     labels:
       - "feature"

@@ -3,32 +3,33 @@
 name: Label PR from Conventional Commit
 
 on:
-    pull_request:
-        types: [opened, edited, reopened]
+  pull_request:
+    types: [opened, edited, reopened]
 
 jobs:
-    apply-label:
-        runs-on: ubuntu-latest
-        permissions:
-            pull-requests: write
+  apply-label:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-            - name: Read conventional commit types config
-              id: type-config
-              run: |
-                if [ ! -f .github/conventional-commit-types.json ]; then
-                  echo "::error::Missing .github/conventional-commit-types.json" && exit 1
-                fi
-                jq -c . .github/conventional-commit-types.json > /dev/null \
-                  || { echo "::error::.github/conventional-commit-types.json is not valid JSON" && exit 1; }
-                echo "types=$(jq -c . .github/conventional-commit-types.json)" >> "$GITHUB_OUTPUT"
+      - name: Read conventional commit types config
+        id: type-config
+        run: |
+          if [ ! -f .github/conventional-commit-types.json ]; then
+            echo "::error::Missing .github/conventional-commit-types.json" && exit 1
+          fi
+          jq -c . .github/conventional-commit-types.json > /dev/null \
+            || { echo "::error::.github/conventional-commit-types.json is not valid JSON" && exit 1; }
+          echo "types=$(jq -c . .github/conventional-commit-types.json)" >> "$GITHUB_OUTPUT"
 
-            - name: Apply label from PR title prefix
-              uses: bcoe/conventional-release-labels@v1
-              with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  type_labels: ${{ steps.type-config.outputs.types }}
-                  ignored_types: "[]"
+      - name: Apply label from PR title prefix
+        uses: bcoe/conventional-release-labels@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          type_labels: ${{ steps.type-config.outputs.types }}
+          ignored_types: "[]"

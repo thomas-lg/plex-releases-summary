@@ -3,19 +3,57 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - "**.md"
+      - ".github/release-drafter.yml"
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - "**.md"
+      - ".github/release-drafter.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  quality:
+  build-image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Build devcontainer image
-        run: |
-          docker build -f .devcontainer/Dockerfile.dev -t prs-devcontainer .
+        run: docker build -f .devcontainer/Dockerfile.dev -t prs-devcontainer .
+
+      - name: Export image
+        run: docker save prs-devcontainer | gzip > prs-devcontainer.tar.gz
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prs-devcontainer
+          path: prs-devcontainer.tar.gz
+          retention-days: 1
+
+  quality:
+    needs: build-image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: prs-devcontainer
+
+      - name: Load image
+        run: docker load < prs-devcontainer.tar.gz
 
       - name: Run formatting checks (Black)
         run: |
@@ -30,14 +68,21 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app -e PYTHONPATH=src prs-devcontainer mypy src
 
   tests:
+    needs: build-image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build devcontainer image
-        run: |
-          docker build -f .devcontainer/Dockerfile.dev -t prs-devcontainer .
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: prs-devcontainer
+
+      - name: Load image
+        run: docker load < prs-devcontainer.tar.gz
 
       - name: Run tests (pytest)
         run: |
