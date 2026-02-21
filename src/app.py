@@ -1,5 +1,6 @@
 """Main application entrypoint: orchestrates Tautulli fetching and Discord notification."""
 
+import importlib.metadata
 import logging
 import os
 import sys
@@ -378,6 +379,23 @@ def main():
 
     # Bootstrap logging level from raw config so load-time logs honor user verbosity
     setup_logging(get_bootstrap_log_level(config_path))
+
+    try:
+        version = importlib.metadata.version("plex-releases-summary")
+    except importlib.metadata.PackageNotFoundError:
+        version = "unknown"
+
+    banner = f"""
+ ____  ____  ____
+|  _ \\|  _ \\/ ___|
+| |_) | |_) \\___ \\
+|  __/|  _ < ___) |
+|_|   |_| \\_\\____/
+
+Plex Releases Summary  v{version}
+"""
+    logger.info(banner)
+
     try:
         config = load_config(config_path)
     except Exception as e:
