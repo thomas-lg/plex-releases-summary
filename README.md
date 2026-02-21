@@ -1,11 +1,11 @@
-
 # Plex Releases Summary
+
 <p align="center">
   <img src="assets/plex_releases_summary.png" alt="Plex Releases Summary logo" width="180"/>
 </p>
 
 <p align="center">
-  <a href="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/quality-and-tests.yml"><img src="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/quality-and-tests.yml/badge.svg" alt="Quality and Tests"/></a>
+  <a href="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/ci.yml"><img src="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
   <a href="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/docker-publish.yml"><img src="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/docker-publish.yml/badge.svg" alt="Docker Build and Release"/></a>
   <a href="https://codecov.io/gh/thomas-lg/plex-releases-summary"><img src="https://codecov.io/gh/thomas-lg/plex-releases-summary/branch/main/graph/badge.svg" alt="Coverage"/></a>
   <a href="https://github.com/thomas-lg/plex-releases-summary/releases/latest"><img src="https://img.shields.io/github/v/release/thomas-lg/plex-releases-summary" alt="Latest Release"/></a>
