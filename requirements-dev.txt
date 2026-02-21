@@ -1,6 +1,9 @@
 -r requirements.txt
 # Development dependencies
 
+# Build tools
+setuptools-scm>=8
+
 # Static analysis and code quality
 mypy>=1.8.0
 types-requests>=2.32.0

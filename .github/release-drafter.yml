@@ -1,5 +1,5 @@
-name-template: "$RESOLVED_VERSION"
-tag-template: "$RESOLVED_VERSION"
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
 change-template: "- $TITLE (#$NUMBER)"
 change-title-escapes: '\<*_&'
 
@@ -27,6 +27,10 @@ categories:
       - "deps"
 
 version-resolver:
+  major:
+    labels:
+      - "breaking"
+      - "breaking-change"
   minor:
     labels:
       - "feature"
@@ -47,4 +51,4 @@ template: |
 
   $CHANGES
 
-  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...$RESOLVED_VERSION
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION

@@ -85,57 +85,9 @@ jobs:
       pull-requests: read
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Get latest tag
-        id: get_latest_tag
-        run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-          echo "Latest tag: $LATEST_TAG"
-
-      - name: Calculate next version
-        id: next_version
-        run: |
-          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
-          # Remove 'v' prefix if present
-          VERSION=${LATEST_TAG#v}
-          # Split version into major, minor, patch
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-          # Increment patch version
-          PATCH=$((PATCH + 1))
-          NEXT_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
-          echo "Next version: $NEXT_VERSION"
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
-          echo "## What's Changed" > changelog.md
-          echo "" >> changelog.md
-
-          if [ "$LATEST_TAG" != "v0.0.0" ]; then
-            git log ${LATEST_TAG}..HEAD --pretty=format:"* %s (%h)" --no-merges >> changelog.md
-          else
-            git log --pretty=format:"* %s (%h)" --no-merges >> changelog.md
-          fi
-
-          echo "" >> changelog.md
-          echo "" >> changelog.md
-          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${LATEST_TAG}...${{ steps.next_version.outputs.next_version }}" >> changelog.md
-
-          cat changelog.md
-
       - name: Create/Update Draft Release
         uses: release-drafter/release-drafter@v6
         with:
           config-name: release-drafter.yml
-          version: ${{ steps.next_version.outputs.next_version }}
-          tag: ${{ steps.next_version.outputs.next_version }}
-          name: ${{ steps.next_version.outputs.next_version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

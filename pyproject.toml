@@ -1,6 +1,15 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_scheme = "release-branch-semver"
+local_scheme = "no-local-version"
+fallback_version = "0.0.0"
+
 [project]
 name = "plex-releases-summary"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Fetches recently added Plex media via Tautulli and posts Discord summaries"
 readme = "README.md"
 license = { text = "MIT" }
