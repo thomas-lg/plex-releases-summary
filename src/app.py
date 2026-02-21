@@ -6,6 +6,8 @@ import sys
 import time
 from datetime import UTC, datetime, timedelta
 
+import requests
+
 from config import DEFAULT_CONFIG_PATH, Config, get_bootstrap_log_level, load_config
 from discord_client import DiscordMediaItem, DiscordNotifier
 from logging_config import setup_logging
@@ -298,9 +300,9 @@ def _send_discord_notification(
                     logger.info("Auto-detected Plex Server ID: %s", plex_server_id)
                 else:
                     logger.warning("Could not auto-detect Plex Server ID from Tautulli")
-            except (ConnectionError, TimeoutError) as e:
+            except requests.RequestException as e:
                 logger.warning("Network error while fetching Plex Server ID: %s", e)
-            except ValueError as e:
+            except (ValueError, RuntimeError) as e:
                 logger.warning("Invalid response from Tautulli: %s", e)
 
         webhook_url = config.discord_webhook_url
