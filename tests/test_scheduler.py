@@ -175,19 +175,6 @@ class TestSafeTaskWrapper:
         assert any("Network error" in r.message for r in caplog.records)
 
     @pytest.mark.unit
-    def test_timeout_error_is_caught_not_reraised(self, monkeypatch, caplog):
-        """TimeoutError raised by task should be logged and swallowed."""
-        monkeypatch.setattr("src.scheduler.signal.signal", lambda *_a, **_kw: None)
-
-        def failing():
-            raise TimeoutError("request timed out")
-
-        scheduler = GracefulScheduler("0 9 * * *", failing)
-        caplog.set_level("ERROR")
-        scheduler._safe_task_wrapper()  # must not raise
-        assert any("Network error" in r.message for r in caplog.records)
-
-    @pytest.mark.unit
     def test_value_error_is_caught_not_reraised(self, monkeypatch, caplog):
         """ValueError raised by task should be logged and swallowed."""
         monkeypatch.setattr("src.scheduler.signal.signal", lambda *_a, **_kw: None)

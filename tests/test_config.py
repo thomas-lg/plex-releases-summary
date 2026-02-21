@@ -173,6 +173,13 @@ class TestExpandEnvVars:
             result = _expand_env_vars(data)
             assert result["items"] == ["value1", "static", "value1"]
 
+    @pytest.mark.unit
+    def test_list_non_string_items_are_passed_through(self):
+        """Non-string list items (int, bool, None) should pass through unchanged."""
+        data = cast(dict[str, ConfigValue], {"items": [42, True, None]})
+        result = _expand_env_vars(data)
+        assert result["items"] == [42, True, None]
+
 
 class TestConfigModel:
     """Tests for Config Pydantic model validation."""
@@ -662,25 +669,6 @@ class TestResolveValueSecretEdgeCases:
 
         with pytest.raises(ValueError, match="file is empty"):
             _resolve_value(str(empty_file), required_field="tautulli_api_key")
-
-
-class TestExpandEnvVarsListExpansion:
-    """Tests for _expand_env_vars list-item expansion path."""
-
-    @pytest.mark.unit
-    def test_list_string_items_are_expanded(self):
-        """Env-var references inside list items should be expanded."""
-        with patch.dict(os.environ, {"MY_VAR": "expanded_value"}):
-            data = cast(dict, {"items": ["${MY_VAR}", "static"]})
-            result = _expand_env_vars(data)
-            assert result["items"] == ["expanded_value", "static"]
-
-    @pytest.mark.unit
-    def test_list_non_string_items_are_passed_through(self):
-        """Non-string list items should be kept as-is."""
-        data = cast(dict, {"items": [42, True, None]})
-        result = _expand_env_vars(data)
-        assert result["items"] == [42, True, None]
 
 
 class TestLoadConfigEdgeCases:

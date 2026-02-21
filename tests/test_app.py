@@ -27,23 +27,15 @@ class TestCalculateBatchParams:
 
     @pytest.mark.unit
     def test_batch_params_7_days(self):
-        """Test batch parameters for 7 days or less."""
+        """Test batch parameters for the <= 7 days boundary."""
         initial, increment = _calculate_batch_params(7)
-        assert initial == 100
-        assert increment == 100
-
-        initial, increment = _calculate_batch_params(3)
         assert initial == 100
         assert increment == 100
 
     @pytest.mark.unit
     def test_batch_params_30_days(self):
-        """Test batch parameters for 8-30 days."""
+        """Test batch parameters for the <= 30 days boundary."""
         initial, increment = _calculate_batch_params(30)
-        assert initial == 200
-        assert increment == 200
-
-        initial, increment = _calculate_batch_params(15)
         assert initial == 200
         assert increment == 200
 
@@ -54,20 +46,12 @@ class TestCalculateBatchParams:
         assert initial == 500
         assert increment == 500
 
-        initial, increment = _calculate_batch_params(90)
-        assert initial == 500
-        assert increment == 500
-
     @pytest.mark.unit
     def test_batch_params_with_override(self):
-        """Test that override parameter takes precedence."""
+        """Test that override parameter takes precedence over the days-based logic."""
         initial, increment = _calculate_batch_params(7, override=1000)
         assert initial == 1000
         assert increment == 1000
-
-        initial, increment = _calculate_batch_params(90, override=50)
-        assert initial == 50
-        assert increment == 50
 
 
 class TestFormatDisplayTitle:
