@@ -1,39 +1,30 @@
 # Blocks merging if no valid label is present on the PR.
 # Works in tandem with the 'Label PR from Conventional Commit' workflow which sets labels automatically.
-# Enforcement only triggers on label change events; opened/synchronize/reopened pass through
-# so auto-labeling has a chance to fire a 'labeled' event before enforcement kicks in.
+#
+# Two triggers are needed because GitHub's GITHUB_TOKEN cannot cascade pull_request events:
+#   - workflow_run: fires after auto-labeling; posts result to the PR head SHA via Checks API
+#     (workflow_run jobs run in the base-branch context, so job status alone never reaches the PR commit)
+#   - pull_request labeled/unlabeled: handles manual label changes via normal job status
 name: Enforce PR Label
 
 on:
+  workflow_run:
+    workflows: ["Label PR from Conventional Commit"]
+    types: [completed]
   pull_request:
-    types: [opened, reopened, labeled, unlabeled, synchronize]
+    types: [labeled, unlabeled]
 
 jobs:
   check-labels:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
+      checks: write
     steps:
       - name: Fail if no valid label is set
         uses: actions/github-script@v8
         with:
           script: |
-            // Only enforce on label change events; other events (opened, synchronize, etc.)
-            // pass through since auto-labeling will fire a 'labeled' event shortly after.
-            if (!['labeled', 'unlabeled'].includes(context.payload.action)) {
-              console.log(`ℹ️ Event '${context.payload.action}' — skipping label check, waiting for auto-labeling.`);
-              return;
-            }
-
-            const prNumber = context.payload.pull_request.number;
-
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-            });
-            const labels = pr.labels.map(label => label.name);
-
             const validLabels = [
               'feature',
               'enhancement',
@@ -44,14 +35,58 @@ jobs:
               'breaking'
             ];
 
+            let prNumber, headSha, useChecksApi;
+
+            if (context.eventName === 'workflow_run') {
+              // Auto-labeling just finished — workflow_run jobs run in the base-branch context,
+              // so we must post the result manually to the PR head SHA via the Checks API.
+              const prs = context.payload.workflow_run.pull_requests;
+              if (prs.length === 0) {
+                console.log('No PR associated with this workflow run, skipping.');
+                return;
+              }
+              prNumber = prs[0].number;
+              headSha = context.payload.workflow_run.head_sha;
+              useChecksApi = true;
+            } else {
+              // Manual label change — job status is automatically posted to the correct commit SHA.
+              prNumber = context.payload.pull_request.number;
+              headSha = context.payload.pull_request.head.sha;
+              useChecksApi = false;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+            const labels = pr.labels.map(label => label.name);
             const hasValidLabel = labels.some(label => validLabels.includes(label));
 
-            if (!hasValidLabel) {
-              core.setFailed(
-                `❌ This PR must have at least one label before merging.\n\n` +
-                `Valid labels: ${validLabels.join(', ')}\n\n` +
-                `Current labels: ${labels.length > 0 ? labels.join(', ') : 'none'}`
-              );
+            if (useChecksApi) {
+              await github.rest.checks.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'check-labels',
+                head_sha: headSha,
+                status: 'completed',
+                conclusion: hasValidLabel ? 'success' : 'failure',
+                output: {
+                  title: hasValidLabel ? '✅ Valid label found' : '❌ No valid label',
+                  summary: hasValidLabel
+                    ? `PR has valid label(s): ${labels.filter(l => validLabels.includes(l)).join(', ')}`
+                    : `This PR must have at least one label before merging.\n\nValid labels: ${validLabels.join(', ')}\n\nCurrent labels: ${labels.length > 0 ? labels.join(', ') : 'none'}`,
+                },
+              });
+              console.log(hasValidLabel ? '✅ Check posted: success' : '❌ Check posted: failure');
             } else {
-              console.log(`✅ PR has valid label(s): ${labels.filter(l => validLabels.includes(l)).join(', ')}`);
+              if (!hasValidLabel) {
+                core.setFailed(
+                  `❌ This PR must have at least one label before merging.\n\n` +
+                  `Valid labels: ${validLabels.join(', ')}\n\n` +
+                  `Current labels: ${labels.length > 0 ? labels.join(', ') : 'none'}`
+                );
+              } else {
+                console.log(`✅ PR has valid label(s): ${labels.filter(l => validLabels.includes(l)).join(', ')}`);
+              }
             }
