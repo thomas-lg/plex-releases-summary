@@ -9,9 +9,9 @@ on:
   workflow_run:
     workflows: ["Label PR from Conventional Commit"]
     types: [completed]
-  # Still runs on manual label changes and new pushes so the check stays current.
+  # Still runs on manual label changes, new pushes, and when a PR is opened/reopened.
   pull_request:
-    types: [labeled, unlabeled, synchronize]
+    types: [opened, reopened, labeled, unlabeled, synchronize]
 
 jobs:
   check-labels:
