@@ -80,22 +80,21 @@ class GracefulScheduler:
             )
 
             logger.info("🕐 Scheduler started - waiting for scheduled executions")
-            logger.info("Press Ctrl+C or send SIGTERM to stop")
 
             # Start blocking scheduler
             self.scheduler.start()
 
         except ValueError as e:
             logger.error("Invalid CRON schedule '%s': %s", self.cron_schedule, e)
-            logger.error("CRON format: 'minute hour day month day_of_week'")
-            logger.error("Examples: '0 9 * * *' (daily at 9 AM), '0 9 * * MON' (Mondays at 9 AM)")
+            logger.info("CRON format: 'minute hour day month day_of_week'")
+            logger.info("Example: '0 9 * * *' (daily at 9 AM), '0 9 * * MON' (Mondays at 9 AM)")
             sys.exit(1)
         except Exception as e:
             logger.exception("Failed to start scheduler: %s", e)
             sys.exit(1)
         finally:
             if not self._shutdown_requested:
-                logger.info("Scheduler stopped unexpectedly")
+                logger.warning("⚠️ Scheduler stopped unexpectedly")
             else:
                 logger.info("✅ Scheduler shutdown complete")
 

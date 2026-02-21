@@ -123,7 +123,7 @@ def _resolve_value(value: ConfigValue, required_field: str | None = None) -> Con
                     logger.warning("Secret file %s is empty", value)
                     return value
 
-                logger.info("Successfully read secret from file: %s", value)
+                logger.debug("Successfully read secret from file: %s", value)
                 return content
             except OSError as e:
                 if required_field:
@@ -142,7 +142,7 @@ def _resolve_value(value: ConfigValue, required_field: str | None = None) -> Con
                     f"Required field '{required_field}' references secret file '{value}', "
                     "but the file does not exist or is not a regular file."
                 )
-            logger.info("Path %s does not exist, treating as literal value", value)
+            logger.debug("Path %s does not exist, treating as literal value", value)
             return value
     elif isinstance(value, dict):
         return {k: _resolve_value(v) for k, v in value.items()}
@@ -338,8 +338,15 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
         # Validate and create Config instance
         config = Config.model_validate(expanded_config)
 
-        logger.info("Configuration loaded and validated successfully")
-        logger.info("Config: run_once=%s, log_level=%s", config.run_once, config.log_level)
+        logger.info("✅ Configuration loaded and validated successfully")
+        logger.info(
+            "Config: days_back=%d, log_level=%s, run_once=%s, discord=%s, cron=%s",
+            config.days_back,
+            config.log_level,
+            config.run_once,
+            "configured" if config.discord_webhook_url else "not configured",
+            config.cron_schedule if not config.run_once else "N/A (run_once)",
+        )
 
         return config
 

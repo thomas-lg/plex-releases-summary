@@ -176,7 +176,7 @@ def _fetch_items(
                     MAX_FETCH_COUNT,
                 )
                 break
-            logger.info(
+            logger.debug(
                 "Oldest item still in range (iteration %d), fetching more items (next count: %d)",
                 iteration,
                 next_count,
@@ -231,7 +231,7 @@ def _build_discord_payload(items: list[TautulliMediaItem]) -> list[DiscordMediaI
         display_title = _format_display_title(item)
 
         if debug_enabled:
-            logger.info("➕ %s | added: %s", display_title, date_str)
+            logger.debug("➕ %s | added: %s", display_title, date_str)
         else:
             shown_count = displayed_by_type.get(media_type, 0)
             if shown_count < DEFAULT_INFO_DISPLAY_LIMIT:
@@ -304,14 +304,11 @@ def _send_discord_notification(
                 logger.warning("Invalid response from Tautulli: %s", e)
 
         webhook_url = config.discord_webhook_url
-        if webhook_url is None:
-            logger.debug("No Discord webhook URL configured, skipping Discord notification")
-            return 0
+        assert webhook_url is not None  # caller guarantees this
 
         notifier = DiscordNotifier(webhook_url, config.plex_url, plex_server_id)
         success = notifier.send_summary(discord_items, days, total_count)
         if not success and config.run_once:
-            logger.error("Discord delivery failed")
             return 1
     except (ConnectionError, TimeoutError) as e:
         logger.error("Network error while sending Discord notification: %s", e)
@@ -338,8 +335,7 @@ def run_summary(config: Config) -> int:
     Returns:
         Exit code: 0 for success, 1 for error
     """
-    logger.info("🚀 Plex weekly summary starting")
-    logger.info("Configuration: Looking back %d days", config.days_back)
+    logger.info("🚀 Starting Plex summary (last %d days)", config.days_back)
 
     tautulli = TautulliClient(base_url=config.tautulli_url, api_key=config.tautulli_api_key)
 
@@ -356,17 +352,16 @@ def run_summary(config: Config) -> int:
         logger.exception("Unexpected error while fetching recently added items: %s", e)
         return 1
 
-    logger.info("Found %d recent items matching criteria", len(items))
-
     discord_items = _build_discord_payload(items)
 
-    logger.info("✅ Summary complete: Found %d items in the last %d days", len(items), config.days_back)
-
     if config.discord_webhook_url:
-        return _send_discord_notification(config, tautulli, discord_items, config.days_back, len(items))
+        exit_code = _send_discord_notification(config, tautulli, discord_items, config.days_back, len(items))
+    else:
+        logger.debug("No Discord webhook URL configured, skipping Discord notification")
+        exit_code = 0
 
-    logger.debug("No Discord webhook URL configured, skipping Discord notification")
-    return 0
+    logger.info("✅ Run complete: %d items in the last %d days", len(items), config.days_back)
+    return exit_code
 
 
 def main():
@@ -389,7 +384,6 @@ def main():
 
     # Now setup logging with config
     setup_logging(config.log_level)
-    logger.info("Configuration loaded successfully")
 
     if config.run_once:
         # One-shot mode: run once and exit

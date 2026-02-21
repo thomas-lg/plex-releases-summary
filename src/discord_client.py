@@ -239,7 +239,14 @@ class DiscordNotifier:
                         )
                         break  # Stop trying to send this category
 
-            logger.info("✅ All Discord notifications sent (%d/%d messages)", success_count, total_messages)
+            if success_count == total_messages:
+                logger.info("✅ All Discord notifications sent (%d/%d messages)", success_count, total_messages)
+            else:
+                logger.warning(
+                    "⚠️  Partial Discord send: only %d/%d messages succeeded",
+                    success_count,
+                    total_messages,
+                )
             return success_count == total_messages
 
         except (ConnectionError, TimeoutError) as e:
@@ -473,7 +480,9 @@ class DiscordNotifier:
             else:
                 return f"{first_formatted} - {last_formatted}"
         except (ValueError, AttributeError):
-            logger.debug("Failed to parse date format for field name, using fallback")
+            logger.debug(
+                "Failed to parse date format '%s' or '%s' for field name, using fallback", first_date, last_date
+            )
 
         return f"Items ({chunk_num})" if chunk_num > 1 else "Items"
 
