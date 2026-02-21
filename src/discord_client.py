@@ -480,7 +480,7 @@ class DiscordNotifier:
                 return first_formatted
             else:
                 return f"{first_formatted} - {last_formatted}"
-        except ValueError, AttributeError:
+        except (ValueError, AttributeError):  # fmt: skip
             logger.debug(
                 "Failed to parse date format '%s' or '%s' for field name, using fallback", first_date, last_date
             )

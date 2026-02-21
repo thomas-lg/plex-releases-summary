@@ -77,7 +77,7 @@ def _format_display_title(item: TautulliMediaItem) -> str:
             s_num = int(season_num) if season_num != "?" else 0
             e_num = int(episode_num) if episode_num != "?" else 0
             return f"{show} - S{s_num:02d}E{e_num:02d} - {episode_title}"
-        except ValueError, TypeError:
+        except (ValueError, TypeError):  # fmt: skip
             return f"{show} - S{season_num}E{episode_num} - {episode_title}"
     elif media_type == "season":
         show = item.get("parent_title", "Unknown Show")
