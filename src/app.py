@@ -120,7 +120,7 @@ def _fetch_items(
         List of media items added within the last ``days`` days
 
     Raises:
-        ConnectionError, TimeoutError: On network failures
+        requests.RequestException: On network failures
         ValueError: On invalid API responses
         RuntimeError: On unexpected Tautulli errors
     """
@@ -312,7 +312,7 @@ def _send_discord_notification(
         success = notifier.send_summary(discord_items, days, total_count)
         if not success and config.run_once:
             return 1
-    except (ConnectionError, TimeoutError) as e:
+    except requests.RequestException as e:
         logger.error("Network error while sending Discord notification: %s", e)
         if config.run_once:
             return 1
@@ -344,7 +344,7 @@ def run_summary(config: Config) -> int:
     logger.info("Querying recently added items with iterative fetching...")
     try:
         items = _fetch_items(tautulli, config.days_back, config.initial_batch_size)
-    except (ConnectionError, TimeoutError) as e:
+    except requests.RequestException as e:
         logger.error("Network error while fetching recently added items: %s", e)
         return 1
     except ValueError as e:
