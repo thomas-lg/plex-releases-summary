@@ -407,7 +407,7 @@ def main():
   Plex Releases Summary  ·  {version_display}
   ─────────────────────────────────
 """)
-    logger.info("Starting Plex Releases Summary v%s", version)
+    logger.info("Starting Plex Releases Summary %s", version_display)
 
     try:
         config = load_config(config_path)

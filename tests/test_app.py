@@ -521,7 +521,7 @@ class TestMain:
 
         log_records = [r.message for r in caplog.records if "Plex Releases Summary" in r.message]
         assert log_records, "Expected version log line"
-        assert "vunknown" in log_records[0]
+        assert "unknown" in log_records[0]
 
 
 class TestBuildDiscordPayloadDebugPath:
