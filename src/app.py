@@ -385,7 +385,7 @@ def main():
     except importlib.metadata.PackageNotFoundError:
         version = "unknown"
 
-    banner = f"""
+    banner = f"""\
  ____  ____  ____
 |  _ \\|  _ \\/ ___|
 | |_) | |_) \\___ \\
