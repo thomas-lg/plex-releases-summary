@@ -3,6 +3,21 @@
 </p>
 
 # Plex Releases Summary
+<p align="center">
+  <img src="assets/plex_releases_summary.png" alt="Plex Releases Summary logo" width="180"/>
+</p>
+
+
+<p align="center">
+  <a href="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/quality-and-tests.yml"><img src="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/quality-and-tests.yml/badge.svg" alt="Quality and Tests"/></a>
+  <a href="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/docker-publish.yml"><img src="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/docker-publish.yml/badge.svg" alt="Docker Build and Release"/></a>
+  <a href="https://codecov.io/gh/thomas-lg/plex-releases-summary"><img src="https://codecov.io/gh/thomas-lg/plex-releases-summary/branch/main/graph/badge.svg" alt="Coverage"/></a>
+  <a href="https://github.com/thomas-lg/plex-releases-summary/releases/latest"><img src="https://img.shields.io/github/v/release/thomas-lg/plex-releases-summary" alt="Latest Release"/></a>
+  <a href="https://ghcr.io/thomas-lg/plex-releases-summary"><img src="https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker" alt="Docker Image"/></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12+-3776ab?logo=python&logoColor=white" alt="Python 3.12+"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"/></a>
+</p>
+
 
 <p align="center">
   <a href="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/quality-and-tests.yml"><img src="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/quality-and-tests.yml/badge.svg" alt="Quality and Tests"/></a>
