@@ -326,12 +326,9 @@ class TestBootstrapLogLevel:
         """File that cannot be read (permissions) falls back to INFO gracefully."""
         secret_file = tmp_path / "config.yml"
         secret_file.write_text("log_level: DEBUG\n")
-        secret_file.chmod(0o000)
 
-        try:
+        with patch.object(Path, "open", side_effect=OSError("Permission denied")):
             assert get_bootstrap_log_level(str(secret_file)) == "INFO"
-        finally:
-            secret_file.chmod(0o644)
 
     @pytest.mark.unit
     def test_bootstrap_log_level_integer_value_falls_back_to_info(self):
@@ -616,15 +613,12 @@ class TestResolveValueOptionalSecretEdgeCases:
         """OSError reading an optional field secret file should warn and return original path."""
         secret_file = tmp_path / "secret_opt"
         secret_file.write_text("value")
-        secret_file.chmod(0o000)
 
-        try:
+        with patch.object(Path, "read_text", side_effect=OSError("Permission denied")):
             caplog.set_level("WARNING")
             result = _resolve_value(str(secret_file))  # no required_field
             assert result == str(secret_file)
             assert any("I/O error" in r.message for r in caplog.records)
-        finally:
-            secret_file.chmod(0o644)
 
     @pytest.mark.unit
     def test_unicode_decode_error_in_secret_file_raises_value_error(self, tmp_path):
@@ -653,13 +647,12 @@ class TestResolveValueSecretEdgeCases:
         """OSError reading a required-field secret file should raise ValueError."""
         secret_file = tmp_path / "secret"
         secret_file.write_text("some-secret")
-        secret_file.chmod(0o000)
 
-        try:
-            with pytest.raises(ValueError, match="could not be read"):
-                _resolve_value(str(secret_file), required_field="tautulli_api_key")
-        finally:
-            secret_file.chmod(0o644)
+        with (
+            patch.object(Path, "read_text", side_effect=OSError("Permission denied")),
+            pytest.raises(ValueError, match="could not be read"),
+        ):
+            _resolve_value(str(secret_file), required_field="tautulli_api_key")
 
     @pytest.mark.unit
     def test_empty_required_field_secret_raises_value_error(self, tmp_path):
