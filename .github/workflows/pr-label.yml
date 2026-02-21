@@ -1,4 +1,5 @@
 # Automatically applies a label to a PR based on its conventional commit prefix (e.g. feat: → feature).
+# Type→label mapping is defined in .github/conventional-commit-types.json (shared with the title-check workflow).
 name: Label PR from Conventional Commit
 
 on:
@@ -12,24 +13,22 @@ jobs:
             pull-requests: write
 
         steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Read conventional commit types config
+              id: type-config
+              run: |
+                if [ ! -f .github/conventional-commit-types.json ]; then
+                  echo "::error::Missing .github/conventional-commit-types.json" && exit 1
+                fi
+                jq -c . .github/conventional-commit-types.json > /dev/null \
+                  || { echo "::error::.github/conventional-commit-types.json is not valid JSON" && exit 1; }
+                echo "types=$(jq -c . .github/conventional-commit-types.json)" >> "$GITHUB_OUTPUT"
+
             - name: Apply label from PR title prefix
               uses: bcoe/conventional-release-labels@v1
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
-                  type_labels: |
-                      {
-                        "feat": "feature",
-                        "fix": "fix",
-                        "docs": "documentation",
-                        "chore": "chore",
-                        "refactor": "chore",
-                        "style": "chore",
-                        "revert": "fix",
-                        "perf": "enhancement",
-                        "test": "chore",
-                        "ci": "chore",
-                        "build": "chore",
-                        "deps": "dependencies",
-                        "breaking": "breaking"
-                      }
+                  type_labels: ${{ steps.type-config.outputs.types }}
                   ignored_types: "[]"

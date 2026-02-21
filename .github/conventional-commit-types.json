@@ -1,0 +1,15 @@
+{
+  "feat": "feature",
+  "fix": "fix",
+  "docs": "documentation",
+  "chore": "chore",
+  "refactor": "chore",
+  "style": "chore",
+  "revert": "fix",
+  "perf": "enhancement",
+  "test": "chore",
+  "ci": "chore",
+  "build": "chore",
+  "deps": "dependencies",
+  "breaking": "breaking"
+}
