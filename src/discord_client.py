@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 from typing import Any, NotRequired, TypedDict, cast
 
+import requests
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
 # Type definitions for Discord payloads
@@ -249,7 +250,7 @@ class DiscordNotifier:
                 )
             return success_count == total_messages
 
-        except (ConnectionError, TimeoutError) as e:
+        except requests.RequestException as e:
             logger.error("Network error sending Discord notification: %s", e)
             return False
         except ValueError as e:

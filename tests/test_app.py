@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 import pytest
+import requests
 
 from src.app import _calculate_batch_params, _format_display_title, run_summary
 from src.config import Config
@@ -261,7 +262,7 @@ class TestRunSummary:
                 self.plex_server_id = plex_server_id
 
             def send_summary(self, media_items, days_back, total_count):
-                raise TimeoutError("network timeout")
+                raise requests.RequestException("network timeout")
 
         monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
         monkeypatch.setattr("src.app.DiscordNotifier", StubDiscordNotifier)
@@ -296,7 +297,7 @@ class TestRunSummary:
                 self.plex_server_id = plex_server_id
 
             def send_summary(self, media_items, days_back, total_count):
-                raise TimeoutError("network timeout")
+                raise requests.RequestException("network timeout")
 
         monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
         monkeypatch.setattr("src.app.DiscordNotifier", StubDiscordNotifier)

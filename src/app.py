@@ -6,6 +6,8 @@ import sys
 import time
 from datetime import UTC, datetime, timedelta
 
+import requests
+
 from config import DEFAULT_CONFIG_PATH, Config, get_bootstrap_log_level, load_config
 from discord_client import DiscordMediaItem, DiscordNotifier
 from logging_config import setup_logging
@@ -118,7 +120,7 @@ def _fetch_items(
         List of media items added within the last ``days`` days
 
     Raises:
-        ConnectionError, TimeoutError: On network failures
+        requests.RequestException: On network failures
         ValueError: On invalid API responses
         RuntimeError: On unexpected Tautulli errors
     """
@@ -298,7 +300,7 @@ def _send_discord_notification(
                     logger.info("Auto-detected Plex Server ID: %s", plex_server_id)
                 else:
                     logger.warning("Could not auto-detect Plex Server ID from Tautulli")
-            except (ConnectionError, TimeoutError) as e:
+            except requests.RequestException as e:
                 logger.warning("Network error while fetching Plex Server ID: %s", e)
             except ValueError as e:
                 logger.warning("Invalid response from Tautulli: %s", e)
@@ -310,7 +312,7 @@ def _send_discord_notification(
         success = notifier.send_summary(discord_items, days, total_count)
         if not success and config.run_once:
             return 1
-    except (ConnectionError, TimeoutError) as e:
+    except requests.RequestException as e:
         logger.error("Network error while sending Discord notification: %s", e)
         if config.run_once:
             return 1
@@ -342,7 +344,7 @@ def run_summary(config: Config) -> int:
     logger.info("Querying recently added items with iterative fetching...")
     try:
         items = _fetch_items(tautulli, config.days_back, config.initial_batch_size)
-    except (ConnectionError, TimeoutError) as e:
+    except requests.RequestException as e:
         logger.error("Network error while fetching recently added items: %s", e)
         return 1
     except ValueError as e:
