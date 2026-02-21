@@ -488,8 +488,8 @@ class TestMain:
         )
 
     @pytest.mark.unit
-    def test_main_logs_banner_with_resolved_version(self, monkeypatch, caplog):
-        """main() logs the banner with the package version when importlib resolves it."""
+    def test_main_prints_banner_and_logs_version(self, monkeypatch, caplog, capsys):
+        """main() prints the ASCII banner to stdout and logs the version."""
         monkeypatch.setattr("src.app._get_config_path", lambda: "/config.yml")
         monkeypatch.setattr("src.app.setup_logging", lambda *a, **kw: None)
         monkeypatch.setattr("src.app.get_bootstrap_log_level", lambda _: "INFO")
@@ -500,13 +500,17 @@ class TestMain:
         caplog.set_level("INFO", logger="app")
         main()
 
-        banner_records = [r.message for r in caplog.records if "Plex Releases Summary" in r.message]
-        assert banner_records, "Expected banner to be logged"
-        assert "v1.2.3" in banner_records[0]
+        stdout = capsys.readouterr().out
+        assert "PRS" in stdout or "Plex Releases Summary" in stdout, "Expected banner in stdout"
+        assert "v1.2.3" in stdout
+
+        log_records = [r.message for r in caplog.records if "Plex Releases Summary" in r.message]
+        assert log_records, "Expected version log line"
+        assert "v1.2.3" in log_records[0]
 
     @pytest.mark.unit
-    def test_main_logs_banner_with_unknown_version_on_package_not_found(self, monkeypatch, caplog):
-        """main() falls back to 'unknown' version when the package is not installed."""
+    def test_main_falls_back_to_unknown_version_when_package_not_installed(self, monkeypatch, caplog, capsys):
+        """main() falls back to 'unknown' in both banner and log when package is not installed."""
         monkeypatch.setattr("src.app._get_config_path", lambda: "/config.yml")
         monkeypatch.setattr("src.app.setup_logging", lambda *a, **kw: None)
         monkeypatch.setattr("src.app.get_bootstrap_log_level", lambda _: "INFO")
@@ -521,6 +525,9 @@ class TestMain:
         caplog.set_level("INFO", logger="app")
         main()
 
-        banner_records = [r.message for r in caplog.records if "Plex Releases Summary" in r.message]
-        assert banner_records, "Expected banner to be logged"
-        assert "vunknown" in banner_records[0]
+        stdout = capsys.readouterr().out
+        assert "unknown" in stdout, "Expected 'unknown' version in printed banner"
+
+        log_records = [r.message for r in caplog.records if "Plex Releases Summary" in r.message]
+        assert log_records, "Expected version log line"
+        assert "vunknown" in log_records[0]

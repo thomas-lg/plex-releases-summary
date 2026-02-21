@@ -385,16 +385,18 @@ def main():
     except importlib.metadata.PackageNotFoundError:
         version = "unknown"
 
-    banner = f"""\
- ____  ____  ____
-|  _ \\|  _ \\/ ___|
-| |_) | |_) \\___ \\
-|  __/|  _ < ___) |
-|_|   |_| \\_\\____/
+    print(rf"""
+  ─────────────────────────────────
+   ____  ____  ____
+  |  _ \|  _ \/ ___|
+  | |_) | |_) \___ \
+  |  __/|  _ < ___) |
+  |_|   |_| \_\____/
 
-Plex Releases Summary  v{version}
-"""
-    logger.info(banner)
+  Plex Releases Summary  ·  v{version}
+  ─────────────────────────────────
+""")
+    logger.info("Starting Plex Releases Summary v%s", version)
 
     try:
         config = load_config(config_path)
