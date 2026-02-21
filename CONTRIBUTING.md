@@ -141,7 +141,11 @@ Before submitting:
 PR expectations:
 
 - Keep PRs focused
-- **Use a conventional commit prefix in the PR title** (e.g. `feat: ...`, `fix: ...`, `docs: ...`). A label is automatically applied from the prefix — this is required for the CI label check to pass.
+- **Use a conventional commit prefix in the PR title** (e.g. `feat: ...`, `fix: ...`, `docs: ...`, `feat!: ...`). The CI title check validates the prefix directly — the PR will be blocked if the title doesn't match the format `<type>[optional scope][optional !]: <description>`, where the optional `!` (after the type or scoped type) marks a breaking change.
+
+  Valid types: `feat`, `fix`, `docs`, `chore`, `refactor`, `style`, `revert`, `perf`, `test`, `ci`, `build`, `deps`, `breaking`
+
+  A label is also automatically applied from the prefix by a separate workflow:
 
   | Prefix                                              | Label applied            |
   | --------------------------------------------------- | ------------------------ |
