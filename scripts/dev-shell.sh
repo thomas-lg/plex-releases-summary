@@ -5,6 +5,10 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+# Derive Python version from Dockerfile so dev and prod always match
+PYTHON_VERSION=$(grep -m1 '^FROM python:' Dockerfile | sed 's/FROM python://')
+export PYTHON_VERSION
+
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.dev.yml}"
 SERVICE="${SERVICE:-app}"
 
