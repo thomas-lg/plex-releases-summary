@@ -3,43 +3,48 @@
 name: Enforce PR Label
 
 on:
-    pull_request:
-        types: [opened, reopened, labeled, unlabeled, synchronize]
+  pull_request:
+    types: [opened, reopened, labeled, unlabeled, synchronize]
 
 jobs:
-    check-labels:
-        runs-on: ubuntu-latest
-        permissions:
-            pull-requests: read
-        steps:
-            - name: Fail if no valid label is set
-              uses: actions/github-script@v8
-              with:
-                  script: |
-                      const labels = context.payload.pull_request.labels.map(label => label.name);
+  check-labels:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Fail if no valid label is set
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+            const labels = pr.labels.map(label => label.name);
 
-                      const validLabels = [
-                        'feature',
-                        'enhancement',
-                        'fix',
-                        'bugfix',
-                        'bug',
-                        'documentation',
-                        'docs',
-                        'chore',
-                        'maintenance',
-                        'dependencies',
-                        'deps'
-                      ];
+            const validLabels = [
+              'feature',
+              'enhancement',
+              'fix',
+              'bugfix',
+              'bug',
+              'documentation',
+              'docs',
+              'chore',
+              'maintenance',
+              'dependencies',
+              'deps'
+            ];
 
-                      const hasValidLabel = labels.some(label => validLabels.includes(label));
+            const hasValidLabel = labels.some(label => validLabels.includes(label));
 
-                      if (!hasValidLabel) {
-                        core.setFailed(
-                          `❌ This PR must have at least one label before merging.\n\n` +
-                          `Valid labels: ${validLabels.join(', ')}\n\n` +
-                          `Current labels: ${labels.length > 0 ? labels.join(', ') : 'none'}`
-                        );
-                      } else {
-                        console.log(`✅ PR has valid label(s): ${labels.filter(l => validLabels.includes(l)).join(', ')}`);
-                      }
+            if (!hasValidLabel) {
+              core.setFailed(
+                `❌ This PR must have at least one label before merging.\n\n` +
+                `Valid labels: ${validLabels.join(', ')}\n\n` +
+                `Current labels: ${labels.length > 0 ? labels.join(', ') : 'none'}`
+              );
+            } else {
+              console.log(`✅ PR has valid label(s): ${labels.filter(l => validLabels.includes(l)).join(', ')}`);
+            }
