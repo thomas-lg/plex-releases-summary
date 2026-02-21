@@ -39,9 +39,9 @@ TautulliRecentlyAddedPayload = TautulliRecentlyAdded | list[TautulliMediaItem]
 class TautulliClientProtocol(Protocol):
     """Structural interface for the Tautulli client, enabling test stubs without subclassing."""
 
-    def get_recently_added(self, days: int = 7, count: int = 100) -> TautulliRecentlyAddedPayload: ...
+    def get_recently_added(self, days: int = 7, count: int = 100) -> TautulliRecentlyAddedPayload: ...  # pragma: no cover
 
-    def get_server_identity(self) -> TautulliServerIdentity: ...
+    def get_server_identity(self) -> TautulliServerIdentity: ...  # pragma: no cover
 
 
 # Pydantic models for runtime validation

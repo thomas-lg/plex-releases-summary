@@ -40,6 +40,31 @@ class TestGracefulScheduler:
         assert stub.wait_arg is False
 
     @pytest.mark.unit
+    def test_handle_shutdown_skips_stop_when_scheduler_not_running(self, monkeypatch):
+        """Shutdown handler should not call scheduler.shutdown() if it is not running."""
+
+        monkeypatch.setattr("src.scheduler.signal.signal", lambda *_args, **_kwargs: None)
+
+        scheduler = GracefulScheduler("0 9 * * *", lambda: 0)
+
+        class StubBlockingScheduler:
+            running = False  # not started yet
+
+            def __init__(self):
+                self.shutdown_called = False
+
+            def shutdown(self, wait=False):
+                self.shutdown_called = True
+
+        stub = StubBlockingScheduler()
+        scheduler.scheduler = cast(BlockingScheduler, stub)
+
+        scheduler._handle_shutdown(15, None)
+
+        assert scheduler._shutdown_requested is True
+        assert stub.shutdown_called is False  # should NOT call shutdown
+
+    @pytest.mark.unit
     def test_start_invalid_cron_exits_with_code_1(self, monkeypatch):
         """Invalid cron schedule should cause controlled process exit."""
 

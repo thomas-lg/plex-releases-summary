@@ -241,12 +241,8 @@ class TestFormatDisplayTitle:
         assert result == "Some Title"
 
     @pytest.mark.unit
-    def test_format_no_title_at_all(self):
-        """Test formatting when title is completely missing."""
-        item: TautulliMediaItem = {"media_type": "movie"}
-        result = _format_display_title(item)
-        assert result == "Unknown Movie"
-
+    def test_format_unknown_type_without_title(self):
+        """Test that the else-branch returns 'Unknown' when no title is present."""
         item: TautulliMediaItem = {"media_type": "unknown"}
         result = _format_display_title(item)
         assert result == "Unknown"

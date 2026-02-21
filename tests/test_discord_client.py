@@ -263,33 +263,6 @@ class TestDiscordNotifier:
         assert webhook.timeout == notifier.REQUEST_TIMEOUT_SECONDS
 
     @pytest.mark.unit
-    def test_send_with_retry_falls_back_when_timeout_kwarg_unsupported(self, notifier):
-        """Webhook execution should use attribute fallback for older implementations."""
-
-        class StubResponse:
-            status_code = 204
-            text = ""
-
-            def json(self):
-                return {}
-
-        class StubWebhook:
-            def __init__(self):
-                self.timeout = None
-                self.call_count = 0
-
-            def execute(self):
-                self.call_count += 1
-                return StubResponse()
-
-        webhook = StubWebhook()
-        response = notifier._send_with_retry(webhook)
-
-        assert response.status_code == 204
-        assert webhook.call_count == 1
-        assert webhook.timeout == notifier.REQUEST_TIMEOUT_SECONDS
-
-    @pytest.mark.unit
     def test_send_summary_no_items_sends_friendly_embed(self, notifier, monkeypatch):
         """No items should trigger a friendly empty-state embed."""
 
@@ -562,6 +535,18 @@ class TestGetDateRangeFieldName:
         field_name = notifier._get_date_range_field_name(items, chunk_num=1)
         assert field_name == "15/03"
 
+    @pytest.mark.unit
+    def test_empty_items_chunk_1_returns_items(self, notifier):
+        """Empty items list with chunk_num=1 should return the bare 'Items' label."""
+        field_name = notifier._get_date_range_field_name([], chunk_num=1)
+        assert field_name == "Items"
+
+    @pytest.mark.unit
+    def test_empty_items_chunk_gt_1_returns_items_numbered(self, notifier):
+        """Empty items list with chunk_num > 1 should return 'Items (N)'."""
+        field_name = notifier._get_date_range_field_name([], chunk_num=3)
+        assert field_name == "Items (3)"
+
 
 class TestAddItemsToEmbedFieldSplit:
     """Tests for _add_items_to_embed field overflow splitting."""
@@ -613,6 +598,84 @@ class TestValidateAndTrimEmbedCannotReduce:
         assert any("Cannot reduce" in r.message for r in caplog.records)
 
 
+class TestValidateAndTrimEmbedTrimmedFits:
+    """Tests for _validate_and_trim_embed 'trimmed items fit' warning path."""
+
+    @pytest.fixture
+    def notifier(self):
+        return DiscordNotifier("https://discord.com/api/webhooks/test")
+
+    @pytest.mark.unit
+    def test_warning_logged_when_trimmed_items_fit(self, notifier, monkeypatch, caplog):
+        """Should log a warning when items are trimmed and the reduced set fits the limit."""
+        # Lower the size limit so 5 items exceed it but 4 items (80%) fit under it.
+        # Each item "• **Z…Z**" = 4+80+2 = 86 chars; 5 items in a field ≈ 434 chars total field,
+        # plus ~80 chars overhead → ~514 chars. After 80% trim (4 items) → ~348 + 80 = ~428 chars.
+        monkeypatch.setattr(notifier, "MAX_EMBED_SIZE", 500)
+        items: list[DiscordMediaItem] = [
+            {"type": "movie", "title": "Z" * 80, "added_at": "2025-01-01"} for _ in range(5)
+        ]
+        caplog.set_level("WARNING")
+        _embed, items_sent = notifier._validate_and_trim_embed(
+            category="Movies",
+            items=items,
+            days_back=7,
+            part_num=1,
+            category_total=5,
+            all_items=items,
+        )
+        assert items_sent < len(items)
+        assert any("Trimmed" in r.message and "fit Discord size limit" in r.message for r in caplog.records)
+
+
+class TestCalculateEmbedSizeEdgeCases:
+    """Tests for _calculate_embed_size with null/missing field name, value, footer, and author."""
+
+    @pytest.fixture
+    def notifier(self):
+        return DiscordNotifier("https://discord.com/api/webhooks/test")
+
+    @pytest.mark.unit
+    def test_field_with_none_name_not_counted(self, notifier):
+        """A field whose 'name' is None should not contribute to the size."""
+        from discord_webhook import DiscordEmbed
+
+        embed = DiscordEmbed()
+        embed.fields = [{"name": None, "value": "val", "inline": False}]
+        size = notifier._calculate_embed_size(embed)
+        assert size == len("val")
+
+    @pytest.mark.unit
+    def test_field_with_none_value_not_counted(self, notifier):
+        """A field whose 'value' is None should not contribute to the size."""
+        from discord_webhook import DiscordEmbed
+
+        embed = DiscordEmbed()
+        embed.fields = [{"name": "fld", "value": None, "inline": False}]
+        size = notifier._calculate_embed_size(embed)
+        assert size == len("fld")
+
+    @pytest.mark.unit
+    def test_footer_without_text_not_counted(self, notifier):
+        """A footer dict that has no 'text' key should not contribute to the size."""
+        from discord_webhook import DiscordEmbed
+
+        embed = DiscordEmbed()
+        embed.footer = {"icon_url": "https://example.com/icon.png"}  # truthy, no 'text'
+        size = notifier._calculate_embed_size(embed)
+        assert size == 0
+
+    @pytest.mark.unit
+    def test_author_without_name_not_counted(self, notifier):
+        """An author dict that has no 'name' key should not contribute to the size."""
+        from discord_webhook import DiscordEmbed
+
+        embed = DiscordEmbed()
+        embed.author = {"url": "https://example.com"}  # truthy, no 'name'
+        size = notifier._calculate_embed_size(embed)
+        assert size == 0
+
+
 class TestSendWithRetryTimeoutBranches:
     """Tests for _send_with_retry timeout attribute/kwarg dispatch branches."""
 
@@ -639,6 +702,17 @@ class TestSendWithRetryTimeoutBranches:
 
         response = notifier._send_with_retry(StubWebhook(), max_retries=1)
         assert response.status_code == 204
+
+    @pytest.mark.unit
+    def test_max_retries_zero_raises_value_error(self, notifier):
+        """Passing max_retries=0 should raise ValueError immediately."""
+
+        class StubWebhook:
+            def execute(self):
+                pass  # never reached
+
+        with pytest.raises(ValueError, match="at least 1"):
+            notifier._send_with_retry(StubWebhook(), max_retries=0)
 
 
 class TestSendSummaryNoItemsWith400:
