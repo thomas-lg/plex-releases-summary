@@ -394,7 +394,7 @@ def main():
         except importlib.metadata.PackageNotFoundError:
             version = "unknown"
 
-    version_display = f"v{version}" if re.match(r"^\d+\.\d+\.\d+", version) else version
+    version_display = f"v{version}" if re.match(r"^\d+\.\d+\.\d+(?:-.*)?$", version) else version
 
     print(rf"""
   ─────────────────────────────────
