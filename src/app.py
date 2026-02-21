@@ -380,10 +380,12 @@ def main():
     # Bootstrap logging level from raw config so load-time logs honor user verbosity
     setup_logging(get_bootstrap_log_level(config_path))
 
-    try:
-        version = importlib.metadata.version("plex-releases-summary")
-    except importlib.metadata.PackageNotFoundError:
-        version = "unknown"
+    version = os.getenv("APP_VERSION") or None
+    if not version:
+        try:
+            version = importlib.metadata.version("plex-releases-summary")
+        except importlib.metadata.PackageNotFoundError:
+            version = "unknown"
 
     print(rf"""
   ─────────────────────────────────
