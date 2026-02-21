@@ -7,7 +7,8 @@ on:
     types: [opened, edited, reopened, synchronize]
 
 jobs:
-  check-labels:
+  check-pr-title:
+    name: Check PR title format
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
