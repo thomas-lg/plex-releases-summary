@@ -11,5 +11,10 @@
   "ci": "chore",
   "build": "chore",
   "deps": "dependencies",
-  "breaking": "breaking"
+  "breaking": "breaking",
+  "security": "security",
+  "hotfix": "fix",
+  "deprecate": "deprecated",
+  "release": "release",
+  "wip": "wip"
 }

@@ -25,6 +25,15 @@ categories:
     labels:
       - "dependencies"
       - "deps"
+  - title: "🔒 Security"
+    labels:
+      - "security"
+  - title: "⚠️ Deprecations"
+    labels:
+      - "deprecated"
+  - title: "🚀 Release"
+    labels:
+      - "release"
 
 version-resolver:
   major:
@@ -44,6 +53,8 @@ version-resolver:
       - "chore"
       - "maintenance"
       - "dependencies"
+      - "security"
+      - "deprecated"
   default: patch
 
 template: |
