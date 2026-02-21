@@ -258,7 +258,7 @@ class Config(BaseModel):
         return _validate_log_level_str(v)
 
     @model_validator(mode="after")
-    def validate_cron_schedule_required(self) -> "Config":
+    def validate_cron_schedule_required(self) -> Config:
         """Validate that cron_schedule is provided when run_once is False."""
         if not self.run_once and not self.cron_schedule:
             raise ValueError(
@@ -268,7 +268,7 @@ class Config(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def validate_no_unresolved_env_vars(self) -> "Config":
+    def validate_no_unresolved_env_vars(self) -> Config:
         """Detect unresolved environment variable references in required fields."""
         required_fields = [
             ("tautulli_url", self.tautulli_url),
@@ -320,38 +320,32 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
         )
         raise FileNotFoundError(error_msg)
 
-    try:
-        logger.info("Loading configuration from %s", config_path)
-        with config_file.open("r") as f:
-            raw_config = yaml.safe_load(f)
+    logger.info("Loading configuration from %s", config_path)
+    with config_file.open("r") as f:
+        raw_config = yaml.safe_load(f)
 
-        if raw_config is None:
-            raise ValueError("Configuration file is empty")
-        if not isinstance(raw_config, dict):
-            raise ValueError(
-                "config.yml must contain a mapping/object at the root " "(not a list, string, or other type)"
-            )
+    if raw_config is None:
+        raise ValueError("Configuration file is empty")
+    if not isinstance(raw_config, dict):
+        raise ValueError("config.yml must contain a mapping/object at the root " "(not a list, string, or other type)")
 
-        # Expand environment variables and resolve file paths
-        expanded_config = cast(ConfigInput, _expand_env_vars(raw_config))
+    # Expand environment variables and resolve file paths
+    expanded_config = cast(ConfigInput, _expand_env_vars(raw_config))
 
-        # Validate and create Config instance
-        config = Config.model_validate(expanded_config)
+    # Validate and create Config instance
+    config = Config.model_validate(expanded_config)
 
-        logger.info("✅ Configuration loaded and validated successfully")
-        logger.info(
-            "Config: days_back=%d, log_level=%s, run_once=%s, discord=%s, cron=%s",
-            config.days_back,
-            config.log_level,
-            config.run_once,
-            "configured" if config.discord_webhook_url else "not configured",
-            config.cron_schedule if not config.run_once else "N/A (run_once)",
-        )
+    logger.info("✅ Configuration loaded and validated successfully")
+    logger.info(
+        "Config: days_back=%d, log_level=%s, run_once=%s, discord=%s, cron=%s",
+        config.days_back,
+        config.log_level,
+        config.run_once,
+        "configured" if config.discord_webhook_url else "not configured",
+        config.cron_schedule if not config.run_once else "N/A (run_once)",
+    )
 
-        return config
-
-    except yaml.YAMLError:
-        raise
+    return config
 
 
 def get_bootstrap_log_level(config_path: str = DEFAULT_CONFIG_PATH) -> str:

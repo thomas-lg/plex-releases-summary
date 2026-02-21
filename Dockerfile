@@ -18,8 +18,9 @@ ENV APP_VERSION=$VERSION
 WORKDIR /app
 
 # Install gosu for privilege dropping
+# NOTE: procps is installed to provide the `pgrep` command used in the HEALTHCHECK below.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gosu && \
+    apt-get install -y --no-install-recommends gosu procps && \
     rm -rf /var/lib/apt/lists/* && \
     gosu nobody true
 
@@ -42,5 +43,8 @@ RUN useradd -m -u 1000 appuser
 # briefly increases the attack surface during initialization, so the logic in
 # entrypoint.sh must remain minimal, well-audited, and should drop privileges
 # with gosu to the unprivileged user (appuser) as early as possible.
+HEALTHCHECK --interval=5m --timeout=10s --start-period=30s --retries=3 \
+    CMD pgrep -f "python.*app.py" || exit 1
+
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["python", "src/app.py"]

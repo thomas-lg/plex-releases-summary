@@ -13,7 +13,12 @@ from config import DEFAULT_CONFIG_PATH, Config, get_bootstrap_log_level, load_co
 from discord_client import DiscordMediaItem, DiscordNotifier
 from logging_config import setup_logging
 from scheduler import run_scheduled
-from tautulli_client import TautulliClient, TautulliMediaItem, TautulliRecentlyAddedPayload, TautulliServerIdentity
+from tautulli_client import (
+    TautulliClient,
+    TautulliMediaItem,
+    TautulliRecentlyAddedPayload,
+    TautulliServerIdentity,
+)
 
 logger = logging.getLogger("app")
 
@@ -72,7 +77,7 @@ def _format_display_title(item: TautulliMediaItem) -> str:
             s_num = int(season_num) if season_num != "?" else 0
             e_num = int(episode_num) if episode_num != "?" else 0
             return f"{show} - S{s_num:02d}E{e_num:02d} - {episode_title}"
-        except (ValueError, TypeError):
+        except (ValueError, TypeError):  # fmt: skip
             return f"{show} - S{season_num}E{episode_num} - {episode_title}"
     elif media_type == "season":
         show = item.get("parent_title", "Unknown Show")
@@ -307,7 +312,8 @@ def _send_discord_notification(
                 logger.warning("Invalid response from Tautulli: %s", e)
 
         webhook_url = config.discord_webhook_url
-        assert webhook_url is not None  # caller guarantees this
+        if webhook_url is None:
+            raise RuntimeError("discord_webhook_url must not be None — ensure it is set in config.yml")
 
         notifier = DiscordNotifier(webhook_url, config.plex_url, plex_server_id)
         success = notifier.send_summary(discord_items, days, total_count)
@@ -417,7 +423,7 @@ def main():
         # Scheduled mode: run as daemon with CRON schedule
         logger.info("📅 Starting in SCHEDULED mode")
         # Guaranteed non-None by Pydantic model validator (validate_cron_schedule_required)
-        if config.cron_schedule is None:
+        if config.cron_schedule is None:  # pragma: no cover
             raise RuntimeError("cron_schedule must not be None when run_once is False")
         # Wrap run_summary to pass config
         return run_scheduled(lambda: run_summary(config), config.cron_schedule)

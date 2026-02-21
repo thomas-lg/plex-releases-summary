@@ -173,6 +173,13 @@ class TestExpandEnvVars:
             result = _expand_env_vars(data)
             assert result["items"] == ["value1", "static", "value1"]
 
+    @pytest.mark.unit
+    def test_list_non_string_items_are_passed_through(self):
+        """Non-string list items (int, bool, None) should pass through unchanged."""
+        data = cast(dict[str, ConfigValue], {"items": [42, True, None]})
+        result = _expand_env_vars(data)
+        assert result["items"] == [42, True, None]
+
 
 class TestConfigModel:
     """Tests for Config Pydantic model validation."""
@@ -319,12 +326,9 @@ class TestBootstrapLogLevel:
         """File that cannot be read (permissions) falls back to INFO gracefully."""
         secret_file = tmp_path / "config.yml"
         secret_file.write_text("log_level: DEBUG\n")
-        secret_file.chmod(0o000)
 
-        try:
+        with patch.object(Path, "open", side_effect=OSError("Permission denied")):
             assert get_bootstrap_log_level(str(secret_file)) == "INFO"
-        finally:
-            secret_file.chmod(0o644)
 
     @pytest.mark.unit
     def test_bootstrap_log_level_integer_value_falls_back_to_info(self):
@@ -587,3 +591,96 @@ class TestLoadConfig:
 
             with pytest.raises(ValueError, match="file is empty"):
                 load_config(str(config_file))
+
+
+class TestResolveValueOptionalSecretEdgeCases:
+    """Tests for _resolve_value when optional (non-required) secret files have issues."""
+
+    @pytest.mark.unit
+    def test_empty_optional_secret_logs_warning_and_returns_path(self, tmp_path, caplog):
+        """Empty file for an optional (non-required) field should warn and return original path."""
+        empty_file = tmp_path / "empty_opt"
+        empty_file.write_text("   \n")
+
+        caplog.set_level("WARNING")
+        result = _resolve_value(str(empty_file))  # no required_field
+        # Should return the original path unchanged (not raise)
+        assert result == str(empty_file)
+        assert any("empty" in r.message for r in caplog.records)
+
+    @pytest.mark.unit
+    def test_os_error_on_optional_secret_logs_warning_and_returns_path(self, tmp_path, caplog):
+        """OSError reading an optional field secret file should warn and return original path."""
+        secret_file = tmp_path / "secret_opt"
+        secret_file.write_text("value")
+
+        with patch.object(Path, "read_text", side_effect=OSError("Permission denied")):
+            caplog.set_level("WARNING")
+            result = _resolve_value(str(secret_file))  # no required_field
+            assert result == str(secret_file)
+            assert any("I/O error" in r.message for r in caplog.records)
+
+    @pytest.mark.unit
+    def test_unicode_decode_error_in_secret_file_raises_value_error(self, tmp_path):
+        """Binary (non-UTF-8) secret file should raise ValueError with helpful message."""
+        binary_file = tmp_path / "binary_secret"
+        binary_file.write_bytes(b"\xff\xfe\x00")
+
+        with pytest.raises(ValueError, match="not valid text"):
+            _resolve_value(str(binary_file))
+
+
+class TestResolveValueSecretEdgeCases:
+    """Tests for _resolve_value edge cases with secret files."""
+
+    @pytest.mark.unit
+    def test_oversized_secret_file_raises_value_error(self, tmp_path):
+        """Secret file exceeding 10 KB should raise ValueError."""
+        large_file = tmp_path / "large_secret"
+        large_file.write_bytes(b"x" * (10 * 1024 + 1))  # 10241 bytes
+
+        with pytest.raises(ValueError, match="too large"):
+            _resolve_value(str(large_file))
+
+    @pytest.mark.unit
+    def test_os_error_on_required_field_raises_value_error(self, tmp_path):
+        """OSError reading a required-field secret file should raise ValueError."""
+        secret_file = tmp_path / "secret"
+        secret_file.write_text("some-secret")
+
+        with (
+            patch.object(Path, "read_text", side_effect=OSError("Permission denied")),
+            pytest.raises(ValueError, match="could not be read"),
+        ):
+            _resolve_value(str(secret_file), required_field="tautulli_api_key")
+
+    @pytest.mark.unit
+    def test_empty_required_field_secret_raises_value_error(self, tmp_path):
+        """Empty secret file for a required field should raise ValueError."""
+        empty_file = tmp_path / "empty_secret"
+        empty_file.write_text("   \n  ")  # Only whitespace → stripped to ''
+
+        with pytest.raises(ValueError, match="file is empty"):
+            _resolve_value(str(empty_file), required_field="tautulli_api_key")
+
+
+class TestLoadConfigEdgeCases:
+    """Tests for load_config edge cases with degenerate YAML inputs."""
+
+    @pytest.mark.unit
+    def test_empty_yaml_file_raises_value_error(self, tmp_path):
+        """Empty YAML file should raise ValueError (yaml.safe_load returns None)."""
+        config_file = tmp_path / "empty.yml"
+        config_file.write_text("")
+
+        with pytest.raises(ValueError, match="empty"):
+            load_config(str(config_file))
+
+    @pytest.mark.unit
+    def test_non_dict_yaml_root_raises_value_error(self, tmp_path):
+        """YAML with a list (not mapping) at root should raise ValueError."""
+        config_file = tmp_path / "list.yml"
+        config_file.write_text(yaml.dump(["item1", "item2"]))
+
+        with pytest.raises(ValueError, match="mapping"):
+            load_config(str(config_file))

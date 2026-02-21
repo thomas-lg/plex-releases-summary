@@ -46,25 +46,31 @@ ignore_missing_imports = true
 
 [tool.ruff]
 # Ruff configuration for linting and formatting
-target-version = "py312"
+target-version = "py314"
 line-length = 120
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "N",   # pep8-naming
-    "UP",  # pyupgrade
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "SIM", # flake8-simplify
-    "PTH", # flake8-use-pathlib
-    "G",   # flake8-logging-format (enforces %-style logging, disallows f-strings in log calls)
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "PTH",  # flake8-use-pathlib
+    "G",    # flake8-logging-format (enforces %-style logging, disallows f-strings in log calls)
+    "RUF",  # Ruff-native rules (catches misc Python anti-patterns)
+    "FURB", # refurb rules (modernisation checks)
 ]
 ignore = [
-    "E501",  # line too long (handled by formatter)
+    "E501",    # line too long (handled by formatter)
+    "RUF001",  # ambiguous unicode in strings (intentional emoji / smart quotes in user-visible messages)
+    "RUF002",  # ambiguous unicode in docstrings (same reason)
+    "RUF003",  # ambiguous unicode in comments (e.g. × as multiplication sign)
+    "RUF012",  # mutable class variable should use ClassVar (not always appropriate)
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -75,7 +81,7 @@ ignore = [
 # Note: Black is used as the formatter; ruff is used only as a linter (ruff check).
 # ruff format is intentionally not enabled to avoid conflicts with Black.
 line-length = 120
-target-version = ['py312']
+target-version = ['py314']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -123,8 +129,6 @@ skip_covered = false
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]
