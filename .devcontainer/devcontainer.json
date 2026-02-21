@@ -6,8 +6,6 @@
   },
   "workspaceFolder": "/app",
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
-  "remoteUser": "appuser",
-  "updateRemoteUserUID": true,
   "customizations": {
     "vscode": {
       "extensions": [

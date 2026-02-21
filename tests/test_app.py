@@ -1,14 +1,25 @@
 """Unit tests for app module formatting logic."""
 
 import importlib.metadata
+import logging
 from datetime import UTC, datetime
+from typing import cast
 
 import pytest
 import requests
 
-from src.app import _calculate_batch_params, _format_display_title, main, run_summary
+from src.app import (
+    _build_discord_payload,
+    _calculate_batch_params,
+    _fetch_items,
+    _format_display_title,
+    _get_config_path,
+    _send_discord_notification,
+    main,
+    run_summary,
+)
 from src.config import Config
-from src.tautulli_client import TautulliMediaItem
+from src.tautulli_client import TautulliClient, TautulliMediaItem
 
 
 class TestCalculateBatchParams:
@@ -531,3 +542,466 @@ class TestMain:
         log_records = [r.message for r in caplog.records if "Plex Releases Summary" in r.message]
         assert log_records, "Expected version log line"
         assert "vunknown" in log_records[0]
+
+
+class TestBuildDiscordPayloadDebugPath:
+    """Tests for _build_discord_payload debug-enabled path and rating_key assignment."""
+
+    @pytest.mark.unit
+    def test_debug_path_logs_each_item(self, caplog):
+        """When the app logger is at DEBUG level, each item should be debug-logged."""
+        from src.app import _build_discord_payload
+
+        timestamp = int(datetime.now(UTC).timestamp())
+        items: list[TautulliMediaItem] = [
+            {"media_type": "movie", "title": "Movie X", "added_at": timestamp},
+        ]
+        # Enable DEBUG on the 'app' logger so debug_enabled = True inside _build_discord_payload
+        app_logger = logging.getLogger("app")
+        orig = app_logger.level
+        app_logger.setLevel(logging.DEBUG)
+        caplog.set_level(logging.DEBUG, logger="app")
+        try:
+            result = _build_discord_payload(items)
+        finally:
+            app_logger.setLevel(orig)
+
+        assert len(result) == 1
+        debug_msgs = [r.message for r in caplog.records if r.levelno == logging.DEBUG and "Movie X" in r.message]
+        assert debug_msgs
+
+    @pytest.mark.unit
+    def test_rating_key_included_in_discord_item_when_present(self):
+        """Items with rating_key should have it transferred to the DiscordMediaItem."""
+        from src.app import _build_discord_payload
+
+        timestamp = int(datetime.now(UTC).timestamp())
+        items: list[TautulliMediaItem] = [
+            {"media_type": "movie", "title": "Movie With Key", "added_at": timestamp, "rating_key": 42},
+        ]
+        result = _build_discord_payload(items)
+        assert len(result) == 1
+        assert result[0].get("rating_key") == 42
+
+
+class TestGetConfigPath:
+    """Tests for _get_config_path env var resolution."""
+
+    @pytest.mark.unit
+    def test_returns_env_var_when_set(self, monkeypatch):
+        """Should return CONFIG_PATH env var value when it is set."""
+        monkeypatch.setenv("CONFIG_PATH", "/custom/path/config.yml")
+        assert _get_config_path() == "/custom/path/config.yml"
+
+    @pytest.mark.unit
+    def test_returns_default_when_env_var_absent(self, monkeypatch):
+        """Should return DEFAULT_CONFIG_PATH when CONFIG_PATH is not set."""
+        monkeypatch.delenv("CONFIG_PATH", raising=False)
+        from src.config import DEFAULT_CONFIG_PATH
+
+        assert _get_config_path() == DEFAULT_CONFIG_PATH
+
+
+class TestFetchItemsEdgeCases:
+    """Tests for _fetch_items handling of different API response formats."""
+
+    @pytest.mark.unit
+    def test_list_format_response_is_handled(self):
+        """Older Tautulli API returning a bare list should be filtered and returned."""
+        timestamp = int(datetime.now(UTC).timestamp())
+
+        class StubTautulli:
+            def get_recently_added(self, days, count):
+                return [{"media_type": "movie", "title": "Movie A", "added_at": timestamp}]
+
+        result = _fetch_items(cast(TautulliClient, StubTautulli()), days=7, initial_batch_size=100)
+        assert len(result) == 1
+        assert result[0].get("title") == "Movie A"
+
+    @pytest.mark.unit
+    def test_unexpected_format_yields_empty_list(self):
+        """Response without 'recently_added' key and not a list should yield empty results."""
+
+        class StubTautulli:
+            def get_recently_added(self, days, count):
+                return {"other_key": "unexpected"}
+
+        result = _fetch_items(cast(TautulliClient, StubTautulli()), days=7, initial_batch_size=100)
+        assert result == []
+
+    @pytest.mark.unit
+    def test_empty_recently_added_stops_after_first_call(self):
+        """Empty 'recently_added' list should stop iteration immediately."""
+        call_count = {"n": 0}
+
+        class StubTautulli:
+            def get_recently_added(self, days, count):
+                call_count["n"] += 1
+                return {"recently_added": []}
+
+        result = _fetch_items(cast(TautulliClient, StubTautulli()), days=7, initial_batch_size=100)
+        assert result == []
+        assert call_count["n"] == 1
+
+
+class TestBuildDiscordPayloadSuppression:
+    """Tests for _build_discord_payload suppression log when >10 items per type."""
+
+    @pytest.mark.unit
+    def test_suppression_log_fired_for_overflow_items(self, caplog):
+        """Items exceeding DEFAULT_INFO_DISPLAY_LIMIT per type should log a suppression summary."""
+        from src.app import DEFAULT_INFO_DISPLAY_LIMIT
+
+        timestamp = int(datetime.now(UTC).timestamp())
+        items: list[TautulliMediaItem] = [
+            {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp}
+            for i in range(DEFAULT_INFO_DISPLAY_LIMIT + 3)  # 3 over the limit → suppressed count = 3
+        ]
+
+        # Force the "app" logger to INFO so debug_enabled is False inside _build_discord_payload
+        app_logger = logging.getLogger("app")
+        old_level = app_logger.level
+        app_logger.setLevel(logging.INFO)
+        caplog.set_level("INFO", logger="app")
+        try:
+            result = _build_discord_payload(items)
+        finally:
+            app_logger.setLevel(old_level)
+
+        assert len(result) == DEFAULT_INFO_DISPLAY_LIMIT + 3
+        suppression_msgs = [r.message for r in caplog.records if "additional items hidden" in r.message]
+        assert suppression_msgs, "Expected suppression summary log line"
+        assert "movie: 3" in suppression_msgs[0]
+
+
+class TestSendDiscordNotification:
+    """Tests for _send_discord_notification error-handling paths."""
+
+    def _make_config(self, *, plex_server_id=None, run_once=True):
+        return Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": run_once,
+                "discord_webhook_url": "https://discord.example/webhook",
+                "plex_server_id": plex_server_id,
+            }
+        )
+
+    @pytest.mark.unit
+    def test_request_exception_fetching_server_id_warns_and_continues(self, monkeypatch, caplog):
+        """RequestException during server ID auto-fetch should warn and not abort."""
+
+        class StubTautulli:
+            def get_server_identity(self):
+                raise requests.RequestException("timeout")
+
+        class StubNotifier:
+            def __init__(self, *a, **kw):
+                pass
+
+            def send_summary(self, *a, **kw):
+                return True
+
+        monkeypatch.setattr("src.app.DiscordNotifier", StubNotifier)
+        caplog.set_level("WARNING", logger="app")
+        result = _send_discord_notification(
+            self._make_config(plex_server_id=None, run_once=False), cast(TautulliClient, StubTautulli()), [], 7, 0
+        )
+        assert result == 0
+        assert any("Network error while fetching" in r.message for r in caplog.records)
+
+    @pytest.mark.unit
+    def test_value_error_fetching_server_id_warns_and_continues(self, monkeypatch, caplog):
+        """ValueError during server ID auto-fetch should warn and not abort."""
+
+        class StubTautulli:
+            def get_server_identity(self):
+                raise ValueError("bad response")
+
+        class StubNotifier:
+            def __init__(self, *a, **kw):
+                pass
+
+            def send_summary(self, *a, **kw):
+                return True
+
+        monkeypatch.setattr("src.app.DiscordNotifier", StubNotifier)
+        caplog.set_level("WARNING", logger="app")
+        result = _send_discord_notification(
+            self._make_config(plex_server_id=None, run_once=False), cast(TautulliClient, StubTautulli()), [], 7, 0
+        )
+        assert result == 0
+        assert any("Invalid response from Tautulli" in r.message for r in caplog.records)
+
+    @pytest.mark.unit
+    def test_empty_machine_identifier_logs_warning(self, monkeypatch, caplog):
+        """Empty machine_identifier in auto-detected identity should log a warning."""
+
+        class StubTautulli:
+            def get_server_identity(self):
+                return {"machine_identifier": ""}
+
+        class StubNotifier:
+            def __init__(self, *a, **kw):
+                pass
+
+            def send_summary(self, *a, **kw):
+                return True
+
+        monkeypatch.setattr("src.app.DiscordNotifier", StubNotifier)
+        caplog.set_level("WARNING", logger="app")
+        result = _send_discord_notification(
+            self._make_config(plex_server_id=None), cast(TautulliClient, StubTautulli()), [], 7, 0
+        )
+        assert result == 0
+        assert any("Could not auto-detect" in r.message for r in caplog.records)
+
+    @pytest.mark.unit
+    def test_discord_request_exception_run_once_returns_1(self, monkeypatch):
+        """RequestException from Discord send should return 1 in run_once mode."""
+
+        class StubTautulli:
+            pass
+
+        class StubNotifier:
+            def __init__(self, *a, **kw):
+                pass
+
+            def send_summary(self, *a, **kw):
+                raise requests.RequestException("net error")
+
+        monkeypatch.setattr("src.app.DiscordNotifier", StubNotifier)
+        result = _send_discord_notification(
+            self._make_config(plex_server_id="srv", run_once=True), cast(TautulliClient, StubTautulli()), [], 7, 0
+        )
+        assert result == 1
+
+    @pytest.mark.unit
+    def test_discord_value_error_run_once_returns_1(self, monkeypatch):
+        """ValueError from Discord send should return 1 in run_once mode."""
+
+        class StubTautulli:
+            pass
+
+        class StubNotifier:
+            def __init__(self, *a, **kw):
+                pass
+
+            def send_summary(self, *a, **kw):
+                raise ValueError("invalid config")
+
+        monkeypatch.setattr("src.app.DiscordNotifier", StubNotifier)
+        result = _send_discord_notification(
+            self._make_config(plex_server_id="srv", run_once=True), cast(TautulliClient, StubTautulli()), [], 7, 0
+        )
+        assert result == 1
+
+    @pytest.mark.unit
+    def test_discord_generic_exception_run_once_returns_1(self, monkeypatch):
+        """Unhandled exception from Discord send should return 1 in run_once mode."""
+
+        class StubTautulli:
+            pass
+
+        class StubNotifier:
+            def __init__(self, *a, **kw):
+                pass
+
+            def send_summary(self, *a, **kw):
+                raise RuntimeError("unexpected boom")
+
+        monkeypatch.setattr("src.app.DiscordNotifier", StubNotifier)
+        result = _send_discord_notification(
+            self._make_config(plex_server_id="srv", run_once=True), cast(TautulliClient, StubTautulli()), [], 7, 0
+        )
+        assert result == 1
+
+    @pytest.mark.unit
+    def test_send_summary_false_run_once_returns_1(self, monkeypatch):
+        """send_summary returning False in run_once mode should return 1."""
+
+        class StubTautulli:
+            pass
+
+        class StubNotifier:
+            def __init__(self, *a, **kw):
+                pass
+
+            def send_summary(self, *a, **kw):
+                return False
+
+        monkeypatch.setattr("src.app.DiscordNotifier", StubNotifier)
+        result = _send_discord_notification(
+            self._make_config(plex_server_id="srv", run_once=True), cast(TautulliClient, StubTautulli()), [], 7, 0
+        )
+        assert result == 1
+
+    @pytest.mark.unit
+    def test_discord_errors_non_fatal_in_scheduled_mode(self, monkeypatch):
+        """All Discord errors should return 0 (non-fatal) in scheduled mode."""
+        for exc in [requests.RequestException("e"), ValueError("v"), RuntimeError("r")]:
+            the_exc = exc
+
+            class StubTautulli:
+                pass
+
+            class StubNotifier:
+                def __init__(self, *a, **kw):
+                    pass
+
+                def send_summary(self, *a, _exc=the_exc, **kw):
+                    raise _exc
+
+            monkeypatch.setattr("src.app.DiscordNotifier", StubNotifier)
+            result = _send_discord_notification(
+                self._make_config(plex_server_id="srv", run_once=False), cast(TautulliClient, StubTautulli()), [], 7, 0
+            )
+            assert result == 0
+
+
+class TestRunSummaryFetchErrors:
+    """Tests for run_summary exception handling from _fetch_items."""
+
+    def _base_config(self):
+        return Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+            }
+        )
+
+    @pytest.mark.unit
+    def test_network_error_in_fetch_returns_1(self, monkeypatch):
+        """RequestException from _fetch_items should cause run_summary to return 1."""
+
+        def raise_net_error(*a, **kw):
+            raise requests.RequestException("timeout")
+
+        monkeypatch.setattr("src.app._fetch_items", raise_net_error)
+        monkeypatch.setattr("src.app.TautulliClient", lambda *a, **kw: None)
+        assert run_summary(self._base_config()) == 1
+
+    @pytest.mark.unit
+    def test_value_error_in_fetch_returns_1(self, monkeypatch):
+        """ValueError from _fetch_items should cause run_summary to return 1."""
+
+        def raise_val_error(*a, **kw):
+            raise ValueError("bad data")
+
+        monkeypatch.setattr("src.app._fetch_items", raise_val_error)
+        monkeypatch.setattr("src.app.TautulliClient", lambda *a, **kw: None)
+        assert run_summary(self._base_config()) == 1
+
+    @pytest.mark.unit
+    def test_unexpected_exception_in_fetch_returns_1(self, monkeypatch):
+        """Unexpected exception from _fetch_items should cause run_summary to return 1."""
+
+        def raise_unexpected(*a, **kw):
+            raise RuntimeError("something broke")
+
+        monkeypatch.setattr("src.app._fetch_items", raise_unexpected)
+        monkeypatch.setattr("src.app.TautulliClient", lambda *a, **kw: None)
+        assert run_summary(self._base_config()) == 1
+
+
+class TestMainAppVersionFromEnv:
+    """Test main() when APP_VERSION env var is set."""
+
+    @pytest.mark.unit
+    def test_main_uses_app_version_env_var_when_set(self, monkeypatch, capsys):
+        """main() should use APP_VERSION env var instead of importlib.metadata."""
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+            }
+        )
+        monkeypatch.setattr("src.app._get_config_path", lambda: "/config.yml")
+        monkeypatch.setattr("src.app.setup_logging", lambda *a, **kw: None)
+        monkeypatch.setattr("src.app.get_bootstrap_log_level", lambda _: "INFO")
+        monkeypatch.setenv("APP_VERSION", "9.9.9")
+        monkeypatch.setattr("src.app.load_config", lambda _: config)
+        monkeypatch.setattr("src.app.run_summary", lambda _: 0)
+
+        main()
+
+        stdout = capsys.readouterr().out
+        assert "v9.9.9" in stdout
+
+
+class TestSendDiscordNotificationDefensiveRaise:
+    """Test _send_discord_notification defensive guard when webhook_url is None."""
+
+    @pytest.mark.unit
+    def test_none_webhook_url_config_raises_and_returns_1(self, monkeypatch):
+        """Passing a config whose discord_webhook_url is None should hit the guard and return 1."""
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                # discord_webhook_url intentionally NOT set → None
+            }
+        )
+
+        class StubTautulli:
+            pass
+
+        # Manually set plex_server_id to skip the auto-detect block
+        config_with_sid = config.model_copy(update={"plex_server_id": "srv"})
+        result = _send_discord_notification(config_with_sid, cast(TautulliClient, StubTautulli()), [], 7, 0)
+        assert result == 1
+
+
+class TestMainScheduledAndFatalPaths:
+    """Tests for main() scheduled mode dispatch and fatal load_config failure."""
+
+    @pytest.mark.unit
+    def test_scheduled_mode_calls_run_scheduled_with_cron(self, monkeypatch, capsys):
+        """main() with run_once=False should call run_scheduled with the cron_schedule."""
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": False,
+                "cron_schedule": "0 9 * * *",
+            }
+        )
+        scheduled_calls: list[str] = []
+
+        monkeypatch.setattr("src.app._get_config_path", lambda: "/config.yml")
+        monkeypatch.setattr("src.app.setup_logging", lambda *a, **kw: None)
+        monkeypatch.setattr("src.app.get_bootstrap_log_level", lambda _: "INFO")
+        monkeypatch.setattr("importlib.metadata.version", lambda _: "1.0.0")
+        monkeypatch.setattr("src.app.load_config", lambda _: config)
+        monkeypatch.setattr(
+            "src.app.run_scheduled",
+            lambda task_func, cron: scheduled_calls.append(cron) or 0,
+        )
+
+        result = main()
+
+        assert result == 0
+        assert scheduled_calls == ["0 9 * * *"]
+
+    @pytest.mark.unit
+    def test_load_config_exception_returns_1(self, monkeypatch, capsys):
+        """main() should return 1 and log a fatal error when load_config raises."""
+
+        def raise_config_error(_path):
+            raise ValueError("broken YAML")
+
+        monkeypatch.setattr("src.app._get_config_path", lambda: "/config.yml")
+        monkeypatch.setattr("src.app.setup_logging", lambda *a, **kw: None)
+        monkeypatch.setattr("src.app.get_bootstrap_log_level", lambda _: "INFO")
+        monkeypatch.setattr("importlib.metadata.version", lambda _: "1.0.0")
+        monkeypatch.setattr("src.app.load_config", raise_config_error)
+
+        result = main()
+
+        assert result == 1

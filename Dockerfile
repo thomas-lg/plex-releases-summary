@@ -19,7 +19,7 @@ WORKDIR /app
 
 # Install gosu for privilege dropping
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gosu && \
+    apt-get install -y --no-install-recommends gosu procps && \
     rm -rf /var/lib/apt/lists/* && \
     gosu nobody true
 

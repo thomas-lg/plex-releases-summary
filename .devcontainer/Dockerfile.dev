@@ -11,7 +11,3 @@ COPY requirements.txt requirements-dev.txt requirements-test.txt ./
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt -r requirements-test.txt
-
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-
-USER appuser

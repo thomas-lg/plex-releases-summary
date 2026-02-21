@@ -9,17 +9,6 @@ cd "$(dirname "$0")/.."
 PYTHON_VERSION=$(grep -m1 '^FROM python:' Dockerfile | sed 's/FROM python://')
 export PYTHON_VERSION
 
-# Export host UID/GID so docker-compose.dev.yml runs the container as the host user,
-# ensuring files written inside the container are owned by the same user on the host.
-# If the calling user is root (uid=0), fall back to 1000 to avoid running the container as root.
-HOST_UID=$(id -u)
-HOST_GID=$(id -g)
-if [ "$HOST_UID" = "0" ]; then
-    HOST_UID=1000
-    HOST_GID=1000
-fi
-export HOST_UID HOST_GID
-
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.dev.yml}"
 SERVICE="${SERVICE:-app}"
 

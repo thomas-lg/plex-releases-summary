@@ -3,7 +3,7 @@
 import logging
 import re
 import time
-from typing import Any, TypedDict, TypeVar, cast
+from typing import Any, Protocol, TypedDict, TypeVar, cast
 
 import requests
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -34,6 +34,14 @@ class TautulliServerIdentity(TypedDict, total=False):
 
 
 TautulliRecentlyAddedPayload = TautulliRecentlyAdded | list[TautulliMediaItem]
+
+
+class TautulliClientProtocol(Protocol):
+    """Structural interface for the Tautulli client, enabling test stubs without subclassing."""
+
+    def get_recently_added(self, days: int = 7, count: int = 100) -> TautulliRecentlyAddedPayload: ...
+
+    def get_server_identity(self) -> TautulliServerIdentity: ...
 
 
 # Pydantic models for runtime validation

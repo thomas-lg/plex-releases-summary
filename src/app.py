@@ -13,7 +13,12 @@ from config import DEFAULT_CONFIG_PATH, Config, get_bootstrap_log_level, load_co
 from discord_client import DiscordMediaItem, DiscordNotifier
 from logging_config import setup_logging
 from scheduler import run_scheduled
-from tautulli_client import TautulliClient, TautulliMediaItem, TautulliRecentlyAddedPayload, TautulliServerIdentity
+from tautulli_client import (
+    TautulliClient,
+    TautulliMediaItem,
+    TautulliRecentlyAddedPayload,
+    TautulliServerIdentity,
+)
 
 logger = logging.getLogger("app")
 
