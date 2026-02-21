@@ -1,5 +1,6 @@
 # Blocks merging if the PR title does not follow the conventional commit format.
-# The prefix must match one of the types defined in the 'Label PR from Conventional Commit' workflow.
+# The prefix must match one of the types defined in .github/conventional-commit-types.json,
+# which is also the source of truth for the 'Label PR from Conventional Commit' workflow.
 name: Enforce Conventional Commit Title
 
 on:
@@ -13,14 +14,22 @@ jobs:
     permissions:
       pull-requests: read
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Fail if PR title does not follow conventional commit format
         uses: actions/github-script@v8
         with:
           script: |
-            const validTypes = [
-              'feat', 'fix', 'docs', 'chore', 'refactor',
-              'style', 'revert', 'perf', 'test', 'ci', 'build', 'deps', 'breaking'
-            ];
+            const fs = require('fs');
+            let typeMap;
+            try {
+              typeMap = JSON.parse(fs.readFileSync('.github/conventional-commit-types.json', 'utf8'));
+            } catch (e) {
+              core.setFailed(`❌ Failed to load .github/conventional-commit-types.json: ${e.message}`);
+              return;
+            }
+            const validTypes = Object.keys(typeMap);
 
             const titlePattern = new RegExp(
               `^(${validTypes.join('|')})(\\(.+\\))?!?: .+`
