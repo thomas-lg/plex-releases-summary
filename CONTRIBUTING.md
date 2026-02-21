@@ -93,7 +93,7 @@ Use the same app start command as devcontainer:
 
 ## Code Style
 
-- Python 3.12
+- Python 3.14
 - Black for formatting
 - Ruff for linting
 - mypy for type checking

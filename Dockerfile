@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Metadata labels
 LABEL org.opencontainers.image.title="Plex Releases Summary"

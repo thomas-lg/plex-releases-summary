@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: .devcontainer/Dockerfile.dev
+      args:
+        PYTHON_VERSION: "${PYTHON_VERSION:-3.14-slim}"
     container_name: plex-releases-summary-dev
     working_dir: /app
     command: ["sleep", "infinity"]
