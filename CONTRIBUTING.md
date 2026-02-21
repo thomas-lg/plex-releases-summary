@@ -141,7 +141,7 @@ Before submitting:
 PR expectations:
 
 - Keep PRs focused
-- **Use a conventional commit prefix in the PR title** (e.g. `feat: ...`, `fix: ...`, `docs: ...`). The CI title check validates the prefix directly — the PR will be blocked if the title doesn't match the format `<type>[optional scope]: <description>`.
+- **Use a conventional commit prefix in the PR title** (e.g. `feat: ...`, `fix: ...`, `docs: ...`, `feat!: ...`). The CI title check validates the prefix directly — the PR will be blocked if the title doesn't match the format `<type>[optional scope][optional !]: <description>`, where the optional `!` (after the type or scoped type) marks a breaking change.
 
   Valid types: `feat`, `fix`, `docs`, `chore`, `refactor`, `style`, `revert`, `perf`, `test`, `ci`, `build`, `deps`, `breaking`
 
