@@ -1,6 +1,6 @@
 # Blocks merging if no valid label is present on the PR.
 # Works in tandem with the 'Label PR from Conventional Commit' workflow which sets labels automatically.
-# Triggered by workflow_run (after auto-labeling completes) and by manual label changes.
+# Enforcement only triggers on label changes; other events pass through so auto-labeling can run first.
 name: Enforce PR Label
 
 on:
@@ -17,6 +17,13 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
+            // Only enforce on label change events; other events (opened, synchronize, etc.)
+            // pass through since auto-labeling will fire a 'labeled' event shortly after.
+            if (!['labeled', 'unlabeled'].includes(context.payload.action)) {
+              console.log(`ℹ️ Event '${context.payload.action}' — skipping label check, waiting for auto-labeling.`);
+              return;
+            }
+
             const prNumber = context.payload.pull_request.number;
 
             const { data: pr } = await github.rest.pulls.get({
