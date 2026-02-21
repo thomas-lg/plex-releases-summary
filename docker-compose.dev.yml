@@ -2,33 +2,15 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: .devcontainer/Dockerfile.dev
     container_name: plex-releases-summary-dev
+    working_dir: /app
+    command: ["sleep", "infinity"]
+    init: true
+    tty: true
+    stdin_open: true
+    user: appuser
+    environment:
+      PYTHONPATH: src
     volumes:
-      # Source code for hot reload
-      - ./src:/app/src
-      # Configuration - read/write for live editing
-      - ./configs:/app/configs:rw
-      # Persistent rotating log files
-      - ./logs:/app/logs:rw
-      # Override with development config
-      - ./configs/config-dev.yml:/app/configs/config.yml:ro
-      # Secrets - read-only
-      - ./secrets:/run/secrets:ro
-
-    # Set environment variables in docker-compose.dev.local.yml
-    # See docker-compose.dev.local.yml.example for reference
-    command: >
-      sh -c "echo 'Watching for file changes...' &&
-      watchmedo shell-command
-      --command='python -u src/app.py'
-      --patterns='*.py'
-      --recursive
-      --wait
-      src"
-
-    logging:
-      driver: json-file
-      options:
-        max-size: "5m"
-        max-file: "5"
+      - .:/app:cached

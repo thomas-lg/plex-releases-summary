@@ -9,20 +9,22 @@
 # All other fields have smart defaults and work out of the box.
 # Uncomment optional fields ONLY if you want to override defaults.
 #
-# For full configuration reference, see: docs/CONFIGURATION.md#configuration-fields
+# For full configuration reference, see: CONFIGURATION.md#configuration-fields
 #
 # =============================================================================
 # CONFIGURATION METHODS:
 #
-# 1. Environment Variables (Recommended for Docker):
-#    Set in docker-compose.yml: TAUTULLI_URL=http://tautulli:8181
+# 1. Environment Variables (Recommended for container deployments):
+#    Set in your deployment environment file (example: docker-compose.yml):
+#    TAUTULLI_URL=http://tautulli:8181
 #    Reference in config.yml: tautulli_url: ${TAUTULLI_URL}
 #
 # 2. Hardcoded Values (Simple for testing):
 #    tautulli_url: http://192.168.1.100:8181
 #
 # 3. Docker Secrets (Best for production):
-#    Set in docker-compose.yml: TAUTULLI_API_KEY=/run/secrets/tautulli_key
+#    Set in your deployment environment file (example: docker-compose.yml):
+#    TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
 #    Reference in config.yml: tautulli_api_key: ${TAUTULLI_API_KEY}
 #    The file content is automatically read.
 #
@@ -45,14 +47,15 @@ tautulli_api_key: ${TAUTULLI_API_KEY}
 # -----------------------------------------------------------------------------
 # OPTIONAL FIELDS
 # -----------------------------------------------------------------------------
-# For full descriptions and examples, see: docs/CONFIGURATION.md#optional-field-overrides
+# For full descriptions and examples, see: CONFIGURATION.md#optional-field-overrides
 #
 # NOTE: Optional fields below use environment variable references.
 #       If you don't set an environment variable:
 #       - Undefined: silently uses default value (clean logs)
 #       - Empty string (e.g., DAYS_BACK=""): logs WARNING, uses default (possible mistake)
 #
-#       To override: Just set the environment variable in docker-compose.yml.
+#       To override: Just set the environment variable in your deployment environment file
+#       (example: docker-compose.yml).
 #       No need to edit this file for typical use.
 
 # Number of days to look back for new media releases

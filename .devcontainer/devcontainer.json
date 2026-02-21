@@ -1,0 +1,42 @@
+{
+  "name": "plex-releases-summary",
+  "build": {
+    "dockerfile": "Dockerfile.dev",
+    "context": ".."
+  },
+  "workspaceFolder": "/app",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
+  "remoteUser": "appuser",
+  "updateRemoteUserUID": true,
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // AI assistance
+        "GitHub.copilot-chat",
+
+        // Python development
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "charliermarsh.ruff",
+
+        // Docker support
+        "ms-azuretools.vscode-docker",
+
+        // File format support
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+
+        // Git and collaboration
+        "github.vscode-pull-request-github",
+
+        // Markdown
+        "yzhang.markdown-all-in-one"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.typeCheckingMode": "basic"
+      }
+    }
+  }
+}

@@ -9,11 +9,29 @@ services:
 
     # Environment variables for configuration
     # Only 2 required: TAUTULLI_URL and TAUTULLI_API_KEY
-    # For full configuration options, see: docs/CONFIGURATION.md#environment-variables-and-docker
+    # For full configuration options, see: CONFIGURATION.md#environment-variables-and-docker
     environment:
       # ========== REQUIRED ==========
       - TAUTULLI_URL=http://tautulli:8181
-      - TAUTULLI_API_KEY=/run/secrets/tautulli_key
+      - TAUTULLI_API_KEY=/run/secrets/tautulli_api_key
+
+    # -------------------------------------------------------------------------
+    # NETWORKING
+    # -------------------------------------------------------------------------
+    # This container must reach the Tautulli service by hostname.
+    # If Tautulli runs in a separate Compose project, attach this container to
+    # its network.  Example (replace <tautulli_project> with the actual name):
+    #
+    #   networks:
+    #     - <tautulli_project>_default
+    #
+    # networks:
+    #   <tautulli_project>_default:
+    #     external: true
+    #
+    # If Tautulli is in the SAME Compose file, add both services to a shared
+    # network instead and remove the block above.
+    # -------------------------------------------------------------------------
 
     logging:
       driver: json-file
@@ -25,7 +43,7 @@ services:
 # Optional: Docker Compose secrets (alternative to volume-mounted secrets)
 # Uncomment to use Docker secrets instead of volume-mounted files
 # secrets:
-#   tautulli_key:
-#     file: ./secrets/tautulli_key
+#   tautulli_api_key:
+#     file: ./secrets/tautulli_api_key
 #   discord_webhook:
 #     file: ./secrets/discord_webhook

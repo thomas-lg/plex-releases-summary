@@ -10,7 +10,7 @@
   <Support>https://github.com/thomas-lg/plex-releases-summary</Support>
   <Project>https://github.com/thomas-lg/plex-releases-summary</Project>
   <ReadMe>https://github.com/thomas-lg/plex-releases-summary/blob/main/README.md</ReadMe>
-  <Overview>A lightweight container that fetches recently added media from your Plex server via Tautulli and sends summaries to Discord. Minimal configuration required - just 2 fields (Tautulli URL and API key). Smart defaults: checks last 7 days, runs weekly on Sundays at 4 PM. Supports scheduled (daemon) or one-shot mode. Discord notifications optional. For complete documentation, see https://github.com/thomas-lg/plex-releases-summary/blob/main/README.md - For configuration guide, see https://github.com/thomas-lg/plex-releases-summary/blob/main/docs/CONFIGURATION.md</Overview>
+  <Overview>A lightweight container that fetches recently added media from your Plex server via Tautulli and sends summaries to Discord. Minimal configuration required - just 2 fields (Tautulli URL and API key). Smart defaults: checks last 7 days, runs weekly on Sundays at 4 PM. Supports scheduled (daemon) or one-shot mode. Discord notifications optional. For complete documentation, see https://github.com/thomas-lg/plex-releases-summary/blob/main/README.md - For configuration guide, see https://github.com/thomas-lg/plex-releases-summary/blob/main/CONFIGURATION.md</Overview>
   <Category>MediaServer:Video Tools:Utilities</Category>
   <WebUI/>
   <TemplateURL/>
@@ -21,7 +21,7 @@
   <DateInstalled>1771059298</DateInstalled>
   <DonateText/>
   <DonateLink/>
-  <Requires>Minimal setup: Tautulli v2.1.0+ running and accessible with API enabled. On first run, config.yml is auto-created from template with environment variable references. Just set the required variables below (Tautulli URL and API key). For advanced configuration options and troubleshooting, see https://github.com/thomas-lg/plex-releases-summary/blob/main/docs/CONFIGURATION.md</Requires>
+  <Requires>Minimal setup: Tautulli v2.1.0+ running and accessible with API enabled. On first run, config.yml is auto-created from template with environment variable references. Just set the required variables below (Tautulli URL and API key). For advanced configuration options and troubleshooting, see https://github.com/thomas-lg/plex-releases-summary/blob/main/CONFIGURATION.md</Requires>
   <Config Name="AppData Config Path" Target="/app/configs" Default="/mnt/user/appdata/plex-releases-summary" Mode="rw" Description="Host path for config files. Container target is fixed to /app/configs (do not change). On first run, config.yml is auto-created." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/plex-releases-summary</Config>
   <Config Name="AppData Logs Path" Target="/app/logs" Default="/mnt/user/appdata/plex-releases-summary/logs" Mode="rw" Description="Host path for persistent logs. Container target is fixed to /app/logs (do not change)." Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/plex-releases-summary/logs</Config>
   <Config Name="Tautulli URL" Target="TAUTULLI_URL" Default="http://tautulli:8181" Mode="" Description="Tautulli server URL (required). Example: http://tautulli:8181 or http://192.168.1.100:8181" Type="Variable" Display="always" Required="true" Mask="false">http://tautulli:8181</Config>

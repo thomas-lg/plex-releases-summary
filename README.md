@@ -13,8 +13,8 @@ A lightweight Docker container that fetches recently added media from your Plex 
   - [Quick Start](#quick-start)
   - [Unraid Quick Start](#unraid-quick-start)
   - [Execution Modes](#execution-modes)
-    - [📅 Scheduled Mode (Default)](#-scheduled-mode-default)
-    - [▶️ One-Shot Mode](#️-one-shot-mode)
+    - [Scheduled Mode (Default)](#scheduled-mode-default)
+    - [One-Shot Mode](#one-shot-mode)
   - [Configuration](#configuration)
     - [Available Configuration](#available-configuration)
   - [PUID/PGID Configuration](#puidpgid-configuration)
@@ -40,7 +40,7 @@ A lightweight Docker container that fetches recently added media from your Plex 
 - ▶️ **One-shot mode** for external cron jobs or manual runs (`RUN_ONCE=true`)
 - 📺 Fetches recently added movies, TV shows, episodes, music, and more
 - 🎯 Configurable time range (e.g., last 7 days)
-- 💬 **Optional Discord notifications** with rich embed formatting
+- 💬 **Optional Discord notifications** with rich embed formatting (including friendly "nothing new" updates)
 - 🐳 Docker-ready with minimal footprint
 - 📊 Clean, formatted output with media type detection
 - ⚡ Graceful shutdown handling for containerized environments
@@ -57,26 +57,27 @@ A lightweight Docker container that fetches recently added media from your Plex 
 
 Minimal configuration required - just 2 fields!
 
-1. **Clone the repository:**
+**Clone the repository:**
 
 ```bash
 git clone https://github.com/thomas-lg/plex-releases-summary.git
 cd plex-releases-summary
 ```
 
-2. **Create Tautulli API key secret:**
+**Create Tautulli API key secret:**
 
 ```bash
 mkdir -p secrets
-echo "your_tautulli_api_key" > secrets/tautulli_key
+echo "your_tautulli_api_key" > secrets/tautulli_api_key
 ```
 
-3. **Update docker-compose.yml:**
-   - Mount the secrets directory into the container (example: `./secrets:/run/secrets:ro`)
-   - Set `TAUTULLI_URL` to your Tautulli server URL (e.g., `http://tautulli:8181` or `http://192.168.1.100:8181`)
-   - Set `TAUTULLI_API_KEY=/run/secrets/tautulli_key` to read the secret from the mounted path
+**Update docker-compose.yml:**
 
-4. **Run the container:**
+- Mount the secrets directory into the container (example: `./secrets:/run/secrets:ro`)
+- Set `TAUTULLI_URL` to your Tautulli server URL (e.g., `http://tautulli:8181` or `http://192.168.1.100:8181`)
+- Set `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key` to read the secret from the mounted path
+
+**Run the container:**
 
 ```bash
 docker compose up
@@ -85,11 +86,11 @@ docker compose up
 That's it! On first run, the entrypoint automatically creates `config.yml` from the template with environment variable references. The application will run weekly on Sundays at 4 PM UTC by default.
 
 > **Container path contract (Docker):** Keep container-side targets fixed and customize only host-side paths.
+>
 > - Config: `/app/configs/config.yml`
 > - Logs: `/app/logs`
 > - Examples: `./my-configs:/app/configs`, `./my-logs:/app/logs`
-
-> **For advanced configuration options**, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md#optional-field-overrides)
+>   **For advanced configuration options**, see [CONFIGURATION.md](CONFIGURATION.md#environment-variable-behavior)
 
 ## Unraid Quick Start
 
@@ -113,17 +114,17 @@ That's it! On first run, the entrypoint automatically creates `config.yml` from 
 
 The application supports two execution modes:
 
-### 📅 Scheduled Mode (Default)
+### Scheduled Mode (Default)
 
-Runs on schedule (default: Sundays at 4 PM). Container stays running. See [CRON examples](docs/CONFIGURATION.md#optional-field-overrides) for customization.
+Runs on schedule (default: Sundays at 4 PM). Container stays running. See [Configuration Fields](CONFIGURATION.md#configuration-fields) for schedule customization.
 
-### ▶️ One-Shot Mode
+### One-Shot Mode
 
-Run once and exit. Set `RUN_ONCE=true`. See [examples](docs/CONFIGURATION.md#examples).
+Run once and exit. Set `RUN_ONCE=true`. See [examples](CONFIGURATION.md#examples).
 
 ## Configuration
 
-**Only 2 fields are required:** `tautulli_url` and `tautulli_api_key`. All other fields have working defaults.
+**Only 2 fields are required:** `tautulli_url` and `tautulli_api_key`. All other fields are optional and use the defaults shown below.
 
 ### Available Configuration
 
@@ -138,7 +139,7 @@ Run once and exit. Set `RUN_ONCE=true`. See [examples](docs/CONFIGURATION.md#exa
 | `log_level`            | No       | `INFO`         | Logging level               |
 | Other fields           | No       | See docs       | See full reference          |
 
-> **📖 For complete configuration documentation**, including configuration methods, Docker secrets, all fields, troubleshooting, and examples, see **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)**
+> **📖 For complete configuration documentation**, including configuration methods, Docker secrets, all fields, troubleshooting, and examples, see **[CONFIGURATION.md](CONFIGURATION.md)**
 
 ## PUID/PGID Configuration
 
@@ -158,22 +159,22 @@ environment:
 
 - Rejects root (UID/GID 0) for security
 - Entrypoint drops privileges before running app
-- Permission errors? Check [Configuration Troubleshooting](docs/CONFIGURATION.md#troubleshooting)
+- Permission errors? Check [Configuration Troubleshooting](CONFIGURATION.md#troubleshooting)
 
 ## Example Output
 
-```
-2026-02-15 10:00:15 - INFO - 🚀 Plex weekly summary starting
-2026-02-15 10:00:15 - INFO - Configuration: Looking back 7 days
-2026-02-15 10:00:15 - INFO - Querying recently added items...
-2026-02-15 10:00:16 - INFO - Retrieved 45 items, filtered to 23 items from last 7 days
-2026-02-15 10:00:16 - INFO - Found 23 recent items matching criteria
-2026-02-15 10:00:16 - INFO - ➕ The Last of Us - S01E03 - Long, Long Time | added: 2026-02-12 14:23
-2026-02-15 10:00:16 - INFO - ➕ Everything Everywhere All at Once (2022) | added: 2026-02-13 20:15
-2026-02-15 10:00:16 - INFO - ➕ Succession - S04E01 - The Munsters | added: 2026-02-14 18:45
+```text
+2026-02-15 10:00:15 | INFO    | app | 🚀 Plex weekly summary starting
+2026-02-15 10:00:15 | INFO    | app | Configuration: Looking back 7 days
+2026-02-15 10:00:15 | INFO    | app | Querying recently added items with iterative fetching...
+2026-02-15 10:00:16 | INFO    | app | Retrieved 45 items, filtered to 23 items from last 7 days
+2026-02-15 10:00:16 | INFO    | app | Found 23 recent items matching criteria
+2026-02-15 10:00:16 | INFO    | app | ➕ The Last of Us - S01E03 - Long, Long Time | added: 2026-02-12 14:23
+2026-02-15 10:00:16 | INFO    | app | ➕ Everything Everywhere All at Once (2022) | added: 2026-02-13 20:15
+2026-02-15 10:00:16 | INFO    | app | ➕ Succession - S04E01 - The Munsters | added: 2026-02-14 18:45
 ```
 
-> **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal behavior. See [Iteration Logs](docs/CONFIGURATION.md#minimal-configuration) for explanation.
+> **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal behavior. Iterative fetch has safety guardrails to avoid runaway loops. See [Iteration Logs](CONFIGURATION.md#minimal-configuration) for details.
 
 ## Discord Notifications
 
@@ -185,86 +186,59 @@ Send release summaries to Discord with rich embeds.
 2. Create secret: `echo "webhook-url" > secrets/discord_webhook`
 3. Set: `DISCORD_WEBHOOK_URL=/run/secrets/discord_webhook`
 
-**Features:** Rich embeds, grouped media, clickable Plex links, auto-retry. See [Discord Configuration](docs/CONFIGURATION.md#discord-embed-limits) for details.
+**Features:**
 
-**Troubleshooting:** Not receiving notifications? See [Discord Troubleshooting](docs/CONFIGURATION.md#discord-notifications-not-sending).
+- Rich embeds grouped by media category with clickable Plex links
+- Auto-retry with rate-limit handling
+- When no items are found in the selected period, sends a friendly "nothing new" embed
+- Empty-period embed message is randomized from a built-in set to keep updates fresh
+
+See [Discord Notification Notes](CONFIGURATION.md#discord-notification-notes) for details.
+
+**Troubleshooting:** Not receiving notifications? See [Discord Troubleshooting](CONFIGURATION.md#discord-notifications-not-sending).
 
 ## Development
 
 ### For Contributors
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development setup, code style guidelines, testing, and contribution process.
+Contributor setup and all development commands are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Quick Start:**
+Use the devcontainer for day-to-day work:
+
+```text
+Command Palette → Dev Containers: Reopen in Container
+```
+
+If Dev Containers is not available, use the same dev environment via Docker Compose:
 
 ```bash
-# Clone repository
-git clone https://github.com/thomas-lg/plex-releases-summary.git
-cd plex-releases-summary
+docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.dev.yml exec app bash
+# or:
+./scripts/dev-shell.sh
+```
 
-# Start development with hot-reload (recommended)
-./scripts/dev.sh
+Then run contributor checks:
 
-# OR: Run tests
+```bash
+./scripts/format.sh
+./scripts/typecheck.sh
 ./scripts/test.sh
+```
 
-# OR: Start production mode
+To run the app locally (devcontainer or optional host-native workflow):
+
+```bash
+cp .env.example .env
+# Edit .env with your Tautulli values
 ./scripts/start.sh
 ```
 
-**Helper Scripts:**
-
-All scripts are located in the `scripts/` directory. See [scripts/README.md](scripts/README.md) for full documentation.
-
-```bash
-./scripts/dev.sh       # Start development with hot-reload
-./scripts/start.sh     # Start production mode
-./scripts/test.sh      # Run tests with coverage
-./scripts/format.sh    # Format + auto-fix Python code in Docker
-./scripts/typecheck.sh # Type check Python code in Docker
-./scripts/logs.sh      # View logs (prod/dev/test)
-./scripts/stop.sh      # Stop all containers
-./scripts/clean.sh     # Clean up caches and Docker resources
-```
-
-**Development Setup (Manual):**
-
-```bash
-# Option 1: Docker development with hot-reload
-cp docker-compose.dev.local.yml.example docker-compose.dev.local.yml
-# Edit docker-compose.dev.local.yml with your settings
-docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up
-
-# Option 2: Local Python development
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt -r requirements-dev.txt -r requirements-test.txt
-cp configs/config.yml configs/config-dev.yml
-# Edit configs/config-dev.yml with your settings
-cd src && python app.py
-```
-
-**Running Tests:**
-
-```bash
-# Using helper script (recommended - uses Docker)
-./scripts/test.sh                           # Run all tests
-./scripts/test.sh tests/test_config.py      # Run specific test file
-./scripts/test.sh -k "test_config"          # Run tests matching pattern
-
-# Using docker compose directly
-docker compose -f docker-compose.test.yml run --rm test
-
-# Using local Python environment (requires dependencies installed)
-PYTHONPATH=src pytest --cov=src             # Run tests locally
-PYTHONPATH=src black src/ tests/            # Format code locally
-PYTHONPATH=src ruff check src/ tests/       # Lint locally
-PYTHONPATH=src mypy src/                    # Type check locally
-```
+Script reference: [scripts/README.md](scripts/README.md)
 
 ### Project Structure
 
-```
+```text
 .
 ├── src/
 │ ├── app.py # Main application logic
@@ -277,41 +251,36 @@ PYTHONPATH=src mypy src/                    # Type check locally
 │ ├── test_app.py # App logic tests
 │ ├── test_config.py # Configuration tests
 │ ├── test_discord_client.py # Discord tests
-│ └── test_discord_markdown.py # Markdown escaping tests
+│ ├── test_discord_markdown.py # Markdown escaping tests
+│ ├── test_logging_config.py # Logging config tests
+│ ├── test_scheduler.py # Scheduler tests
+│ └── test_tautulli_client.py # Tautulli client tests
 ├── scripts/ # Helper scripts
 │ ├── clean.sh # Clean up caches
-│ ├── dev.sh # Start development mode
+│ ├── dev-shell.sh # Enter dev compose shell
 │ ├── format.sh # Format Python code
-│ ├── logs.sh # View logs
-│ ├── [README.md](scripts/README.md) # Scripts documentation
-│ ├── start.sh # Start production mode
-│ ├── stop.sh # Stop all containers
+│ ├── README.md # Scripts documentation
 │ ├── test.sh # Run tests
 │ └── typecheck.sh # Type-check with mypy
 ├── configs/
-│ ├── [config-dev.yml](configs/config-dev.yml) # Development configuration
-│ └── [config.yml](configs/config.yml) # User configuration file
-├── docs/
-│ └── [CONFIGURATION.md](docs/CONFIGURATION.md) # Complete configuration reference
+│ └── config.yml # User configuration file
+├── CONFIGURATION.md # Complete configuration reference
+├── .devcontainer/
+│ ├── Dockerfile.dev # Devcontainer image
+│ └── devcontainer.json # Devcontainer definition
 ├── .github/
 │ └── workflows/ # CI/CD pipelines
 ├── assets/ # Project assets (screenshots, etc.)
-├── [CONTRIBUTING.md](CONTRIBUTING.md) # Contribution guidelines
-├── [Dockerfile](Dockerfile) # Production Docker image
-├── [Dockerfile.dev](Dockerfile.dev) # Development Docker image
-├── [Dockerfile.test](Dockerfile.test) # Test Docker image
-├── [docker-compose.dev.local.yml.example](docker-compose.dev.local.yml.example) # Example local overrides
-├── [docker-compose.dev.yml](docker-compose.dev.yml) # Development compose config
-├── [docker-compose.test.yml](docker-compose.test.yml) # Test compose config
-├── [docker-compose.yml](docker-compose.yml) # Production compose config
+├── CONTRIBUTING.md # Contribution guidelines
+├── Dockerfile # Production Docker image
+├── docker-compose.dev.yml # Development compose config
+├── docker-compose.yml # Production compose config
 ├── entrypoint.sh # Container entrypoint script
 ├── my-plex-releases-summary.xml # Unraid template
 ├── pyproject.toml # Python project configuration
-├── pytest.ini # Pytest configuration
 ├── requirements-dev.txt # Development dependencies
 ├── requirements-test.txt # Testing dependencies
 ├── requirements.txt # Python dependencies
-├── .pre-commit-config.yaml # Pre-commit hooks
 └── README.md
 
 ```
@@ -328,14 +297,14 @@ docker pull ghcr.io/thomas-lg/plex-releases-summary:latest
 
 ## Deployment Options
 
-See [docker-compose.yml](docker-compose.yml) for minimal production setup or [docs/CONFIGURATION.md](docs/CONFIGURATION.md#examples) for advanced configurations.
+See [docker-compose.yml](docker-compose.yml) for minimal production setup or [CONFIGURATION.md](CONFIGURATION.md#examples) for advanced configurations.
 
 ## Operational Notes
 
-- **Restart:** Safe anytime. Missed schedules don't run retroactively. See [Scheduler Behavior](docs/CONFIGURATION.md#scheduler-behavior).
+- **Restart:** Safe anytime. Missed schedules don't run retroactively. See [Scheduler Behavior](CONFIGURATION.md#scheduler-behavior).
 - **Shutdown:** Handles `SIGTERM`/`SIGINT` cleanly.
-- **Upgrades:** Pull new image, restart. See [Migration Guide](docs/CONFIGURATION.md#migration-and-updates).
-- **Exit codes:** `0` (success), `1` (error), `130` (interrupted). See [Exit Codes](docs/CONFIGURATION.md#exit-codes).
+- **Upgrades:** Pull new image, restart. See [Migration Guide](CONFIGURATION.md#migration-and-updates).
+- **Exit codes:** `0` (success), `1` (error), `130` (interrupted). See [Exit Codes](CONFIGURATION.md#exit-codes).
 - **Persistent logs:** Rotating log files are stored in host `./logs` (`5 MB` each, `5` backups + current), while `docker logs` remains available.
 
 ### Health Monitoring
@@ -349,11 +318,11 @@ HEALTHCHECK CMD pgrep -f "python.*app.py" || exit 1
 # One-shot mode - check exit code
 docker run --rm plex-releases-summary; [ $? -eq 0 ] || alert
 
-# Scheduled mode - check logs
-docker logs container --since 24h | grep -q "Job executed successfully"
+# Scheduled mode - check logs for successful summary completion
+docker logs container --since 24h | grep -q "✅ Summary complete"
 ```
 
-External tools: Uptime Kuma, Prometheus/Grafana, Healthchecks.io. See [Exit Codes](docs/CONFIGURATION.md#exit-codes) for monitoring integration.
+External tools: Uptime Kuma, Prometheus/Grafana, Healthchecks.io. See [Exit Codes](CONFIGURATION.md#exit-codes) for monitoring integration.
 
 ## Troubleshooting
 
@@ -361,18 +330,18 @@ Common issues:
 
 - **Connection errors**: Check Tautulli URL/API key and accessibility
 - **No items**: Increase `days_back` or verify media timing
-- **Config not working**: Verify environment variables in docker-compose.yml
-- **"iteration 1, 2..." logs**: Normal - see [Iteration Logs](docs/CONFIGURATION.md#minimal-configuration)
+- **Config not working**: Verify environment variables in your deployment environment file (example: `docker-compose.yml`)
+- **"iteration 1, 2..." logs**: Normal - see [Iteration Logs](CONFIGURATION.md#minimal-configuration)
 
-Enable debug: Set `LOG_LEVEL=DEBUG` in docker-compose.yml
+Enable debug: Set `LOG_LEVEL=DEBUG` in your deployment environment file (example: `docker-compose.yml`)
 
-See [Configuration Troubleshooting](docs/CONFIGURATION.md#troubleshooting) for comprehensive guidance.
+See [Configuration Troubleshooting](CONFIGURATION.md#troubleshooting) for comprehensive guidance.
 
 ## Security
 
 ### Credentials
 
-Never commit credentials. Use file-based secrets: mount secrets directory and set `TAUTULLI_API_KEY=/run/secrets/tautulli_key`. Application auto-reads files starting with `/`. See [Docker Secrets](docs/CONFIGURATION.md#docker-secrets) for detailed setup.
+Never commit credentials. Use file-based secrets: mount secrets directory and set `TAUTULLI_API_KEY=/run/secrets/tautulli_api_key`. Application auto-reads files starting with `/`, and required secret files fail fast if missing, unreadable, or empty. See [Docker Secrets](CONFIGURATION.md#docker-secrets) for detailed setup.
 
 ### Container Security
 

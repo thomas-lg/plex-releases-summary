@@ -3,17 +3,59 @@
 import logging
 import os
 import re
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import TypedDict, cast
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+# Type definitions for configuration
+
+
+class ConfigInput(TypedDict, total=False):
+    tautulli_url: str
+    tautulli_api_key: str
+    days_back: int
+    cron_schedule: str | None
+    discord_webhook_url: str | None
+    plex_url: str
+    plex_server_id: str | None
+    run_once: bool
+    log_level: str
+    initial_batch_size: int | None
+
 
 logger = logging.getLogger(__name__)
 
 # Constants
 ENV_VAR_PATTERN = re.compile(r"\$\{[^}]+\}")
 REQUIRED_FIELDS = {"tautulli_url", "tautulli_api_key"}
+DEFAULT_CONFIG_PATH = "/app/configs/config.yml"
+
+type ConfigScalar = str | int | float | bool | None
+type ConfigValue = ConfigScalar | list["ConfigValue"] | dict[str, "ConfigValue"]
+
+_VALID_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+
+
+def _validate_log_level_str(v: str) -> str:
+    """
+    Validate and normalise a log level string.
+
+    Args:
+        v: Raw log level string
+
+    Returns:
+        Uppercased, validated log level string
+
+    Raises:
+        ValueError: If the value is not a recognised Python logging level
+    """
+    v_upper = v.upper()
+    if v_upper not in _VALID_LOG_LEVELS:
+        raise ValueError(f"log_level must be one of {_VALID_LOG_LEVELS}, got '{v}'")
+    return v_upper
 
 
 def _is_env_var_reference(value: str) -> bool:
@@ -29,7 +71,7 @@ def _is_env_var_reference(value: str) -> bool:
     return isinstance(value, str) and bool(ENV_VAR_PATTERN.search(value))
 
 
-def _resolve_value(value: Any) -> Any:
+def _resolve_value(value: ConfigValue, required_field: str | None = None) -> ConfigValue:
     """
     Resolve a configuration value, reading from file if it's a file path.
 
@@ -38,6 +80,7 @@ def _resolve_value(value: Any) -> Any:
 
     Args:
         value: The value to resolve (can be any type)
+        required_field: Required field name for strict secret-file validation
 
     Returns:
         The resolved value - file contents if applicable, otherwise original value
@@ -60,8 +103,11 @@ def _resolve_value(value: Any) -> Any:
                 file_size = file_path.stat().st_size
                 if file_size > max_secret_size:
                     logger.error(
-                        f"Secret file {value} exceeds maximum size ({file_size} bytes > {max_secret_size} bytes). "
-                        f"This may not be a valid secret file."
+                        "Secret file %s exceeds maximum size (%d bytes > %d bytes). "
+                        "This may not be a valid secret file.",
+                        value,
+                        file_size,
+                        max_secret_size,
                     )
                     raise ValueError(f"Secret file {value} too large: {file_size} bytes")
 
@@ -69,19 +115,34 @@ def _resolve_value(value: Any) -> Any:
 
                 # Validate content is reasonable (printable ASCII or UTF-8)
                 if not content:
-                    logger.warning(f"Secret file {value} is empty")
+                    if required_field:
+                        raise ValueError(
+                            f"Required field '{required_field}' references secret file '{value}', "
+                            "but the file is empty."
+                        )
+                    logger.warning("Secret file %s is empty", value)
                     return value
 
-                logger.info(f"Successfully read secret from file: {value}")
+                logger.debug("Successfully read secret from file: %s", value)
                 return content
             except OSError as e:
-                logger.warning(f"I/O error reading file {value}: {e}")
+                if required_field:
+                    raise ValueError(
+                        f"Required field '{required_field}' references secret file '{value}', "
+                        f"but it could not be read: {e}"
+                    ) from e
+                logger.warning("I/O error reading file %s: %s", value, e)
                 return value
             except UnicodeDecodeError as e:
-                logger.error(f"Secret file {value} contains invalid UTF-8 data: {e}")
+                logger.error("Secret file %s contains invalid UTF-8 data: %s", value, e)
                 raise ValueError(f"Secret file {value} is not valid text") from None
         else:
-            logger.info(f"Path {value} does not exist, treating as literal value")
+            if required_field:
+                raise ValueError(
+                    f"Required field '{required_field}' references secret file '{value}', "
+                    "but the file does not exist or is not a regular file."
+                )
+            logger.debug("Path %s does not exist, treating as literal value", value)
             return value
     elif isinstance(value, dict):
         return {k: _resolve_value(v) for k, v in value.items()}
@@ -91,7 +152,7 @@ def _resolve_value(value: Any) -> Any:
     return value
 
 
-def _expand_env_vars(data: dict[str, Any]) -> dict[str, Any]:
+def _expand_env_vars(data: Mapping[str, ConfigValue]) -> dict[str, ConfigValue]:
     """
     Recursively expand environment variables in dictionary values.
 
@@ -109,7 +170,7 @@ def _expand_env_vars(data: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Dictionary with all environment variables expanded and files resolved
     """
-    expanded: dict[str, Any] = {}
+    expanded: dict[str, ConfigValue] = {}
     for key, value in data.items():
         if isinstance(value, str):
             is_env_var_ref = _is_env_var_reference(value)
@@ -126,15 +187,23 @@ def _expand_env_vars(data: dict[str, Any]) -> dict[str, Any]:
                     expanded[key] = expanded_value
                 else:
                     logger.warning(
-                        f"Environment variable for field '{key}' is defined but empty. " f"Using default value instead."
+                        "Environment variable for field '%s' is defined but empty. Using default value instead.",
+                        key,
                     )
             else:
-                expanded[key] = _resolve_value(expanded_value)
+                required_field = key if key in REQUIRED_FIELDS else None
+                expanded[key] = _resolve_value(expanded_value, required_field=required_field)
         elif isinstance(value, dict):
             expanded[key] = _expand_env_vars(value)
         elif isinstance(value, list):
-            expanded[key] = [os.path.expandvars(item) if isinstance(item, str) else item for item in value]
-            expanded[key] = [_resolve_value(item) for item in expanded[key]]
+            expanded_list: list[ConfigValue] = []
+            for item in value:
+                if isinstance(item, str):
+                    expanded_item: ConfigValue = os.path.expandvars(item)
+                else:
+                    expanded_item = item
+                expanded_list.append(_resolve_value(expanded_item))
+            expanded[key] = expanded_list
         else:
             expanded[key] = value
 
@@ -152,8 +221,10 @@ class Config(BaseModel):
     """
 
     # Tautulli Configuration (Required)
-    tautulli_url: str = Field(..., description="Full URL to Tautulli instance (e.g., http://localhost:8181)")
-    tautulli_api_key: str = Field(..., description="Tautulli API key for authentication")
+    tautulli_url: str = Field(
+        ..., min_length=1, description="Full URL to Tautulli instance (e.g., http://localhost:8181)"
+    )
+    tautulli_api_key: str = Field(..., min_length=1, description="Tautulli API key for authentication")
 
     # Core Settings (Optional with defaults)
     days_back: int = Field(default=7, description="Number of days to look back for media releases (default: 7)", ge=1)
@@ -184,11 +255,7 @@ class Config(BaseModel):
     @classmethod
     def validate_log_level(cls, v: str) -> str:
         """Validate log level is one of the standard Python logging levels."""
-        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        v_upper = v.upper()
-        if v_upper not in valid_levels:
-            raise ValueError(f"log_level must be one of {valid_levels}, got '{v}'")
-        return v_upper
+        return _validate_log_level_str(v)
 
     @model_validator(mode="after")
     def validate_cron_schedule_required(self) -> "Config":
@@ -209,7 +276,7 @@ class Config(BaseModel):
         ]
 
         for field_name, field_value in required_fields:
-            if field_value and isinstance(field_value, str):
+            if isinstance(field_value, str):
                 match = ENV_VAR_PATTERN.search(field_value)
                 if match:
                     raise ValueError(
@@ -220,7 +287,7 @@ class Config(BaseModel):
         return self
 
 
-def load_config(config_path: str = "/app/configs/config.yml") -> Config:
+def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Config:
     """
     Load and validate configuration from YAML file.
 
@@ -251,15 +318,13 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
             f"Configuration file not found: {config_path}\n"
             "Please create a config.yml file based on configs/config.yml in the repository."
         )
-        logger.error(error_msg)
         raise FileNotFoundError(error_msg)
 
     try:
-        logger.info(f"Loading configuration from {config_path}")
+        logger.info("Loading configuration from %s", config_path)
         with config_file.open("r") as f:
             raw_config = yaml.safe_load(f)
 
-        # Pre-validation: Check for unresolved env vars in required fields
         if raw_config is None:
             raise ValueError("Configuration file is empty")
         if not isinstance(raw_config, dict):
@@ -267,44 +332,29 @@ def load_config(config_path: str = "/app/configs/config.yml") -> Config:
                 "config.yml must contain a mapping/object at the root " "(not a list, string, or other type)"
             )
 
-        missing_vars = []
-        for field in ["tautulli_url", "tautulli_api_key"]:
-            value = raw_config.get(field)
-            if isinstance(value, str):
-                matches = ENV_VAR_PATTERN.findall(os.path.expandvars(value))
-                if matches:
-                    missing_vars.extend([f"{field}: {match}" for match in matches])
-
-        if missing_vars:
-            error_msg = (
-                "Unresolved environment variable placeholders found in required fields:\n"
-                + "\n".join(missing_vars)
-                + "\nPlease set the missing environment variables or update config.yml."
-            )
-            logger.error(error_msg)
-            raise ValueError(error_msg)
         # Expand environment variables and resolve file paths
-        expanded_config = _expand_env_vars(raw_config)
+        expanded_config = cast(ConfigInput, _expand_env_vars(raw_config))
 
         # Validate and create Config instance
-        config = Config(**expanded_config)
+        config = Config.model_validate(expanded_config)
 
-        logger.info("Configuration loaded and validated successfully")
-        logger.info(f"Config: run_once={config.run_once}, log_level={config.log_level}")
+        logger.info("✅ Configuration loaded and validated successfully")
+        logger.info(
+            "Config: days_back=%d, log_level=%s, run_once=%s, discord=%s, cron=%s",
+            config.days_back,
+            config.log_level,
+            config.run_once,
+            "configured" if config.discord_webhook_url else "not configured",
+            config.cron_schedule if not config.run_once else "N/A (run_once)",
+        )
 
         return config
 
-    except yaml.YAMLError as e:
-        error_msg = f"Failed to parse YAML configuration: {e}"
-        logger.error(error_msg)
-        raise
-    except Exception as e:
-        error_msg = f"Failed to load configuration: {e}"
-        logger.error(error_msg)
+    except yaml.YAMLError:
         raise
 
 
-def get_bootstrap_log_level(config_path: str = "/app/configs/config.yml") -> str:
+def get_bootstrap_log_level(config_path: str = DEFAULT_CONFIG_PATH) -> str:
     """
     Read log_level from config file before full validation.
 
@@ -334,6 +384,6 @@ def get_bootstrap_log_level(config_path: str = "/app/configs/config.yml") -> str
         if not isinstance(level, str):
             return "INFO"
 
-        return Config.validate_log_level(level.strip())
+        return _validate_log_level_str(level.strip())
     except Exception:
         return "INFO"

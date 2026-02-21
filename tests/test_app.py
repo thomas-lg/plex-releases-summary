@@ -1,8 +1,13 @@
 """Unit tests for app module formatting logic."""
 
-import pytest
+from datetime import UTC, datetime
 
-from src.app import _calculate_batch_params, _format_display_title
+import pytest
+import requests
+
+from src.app import _calculate_batch_params, _format_display_title, run_summary
+from src.config import Config
+from src.tautulli_client import TautulliMediaItem
 
 
 class TestCalculateBatchParams:
@@ -59,7 +64,7 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_episode_with_valid_numbers(self):
         """Test formatting episode with valid season/episode numbers."""
-        item = {
+        item: TautulliMediaItem = {
             "media_type": "episode",
             "grandparent_title": "Breaking Bad",
             "parent_media_index": "5",
@@ -72,7 +77,7 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_episode_with_integer_numbers(self):
         """Test formatting episode with integer season/episode numbers."""
-        item = {
+        item: TautulliMediaItem = {
             "media_type": "episode",
             "grandparent_title": "The Wire",
             "parent_media_index": 1,
@@ -85,7 +90,7 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_episode_with_missing_numbers(self):
         """Test formatting episode with missing season/episode numbers."""
-        item = {
+        item: TautulliMediaItem = {
             "media_type": "episode",
             "grandparent_title": "Unknown Show",
             "parent_media_index": "?",
@@ -98,7 +103,7 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_episode_with_invalid_numbers(self):
         """Test formatting episode with non-numeric season/episode values."""
-        item = {
+        item: TautulliMediaItem = {
             "media_type": "episode",
             "grandparent_title": "Show Name",
             "parent_media_index": "invalid",
@@ -111,7 +116,7 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_episode_missing_fields(self):
         """Test formatting episode with missing fields."""
-        item = {
+        item: TautulliMediaItem = {
             "media_type": "episode",
             # Missing grandparent_title, parent_media_index, etc.
         }
@@ -122,14 +127,14 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_season(self):
         """Test formatting season."""
-        item = {"media_type": "season", "parent_title": "The Sopranos", "media_index": "3"}
+        item: TautulliMediaItem = {"media_type": "season", "parent_title": "The Sopranos", "media_index": "3"}
         result = _format_display_title(item)
         assert result == "The Sopranos - Season 3"
 
     @pytest.mark.unit
     def test_format_season_missing_fields(self):
         """Test formatting season with missing fields."""
-        item = {"media_type": "season", "media_index": "1"}
+        item: TautulliMediaItem = {"media_type": "season", "media_index": "1"}
         result = _format_display_title(item)
         assert "Unknown Show" in result
         assert "Season 1" in result
@@ -137,21 +142,21 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_show_with_year(self):
         """Test formatting show with year."""
-        item = {"media_type": "show", "title": "Stranger Things", "year": "2016"}
+        item: TautulliMediaItem = {"media_type": "show", "title": "Stranger Things", "year": "2016"}
         result = _format_display_title(item)
         assert result == "Stranger Things (2016)"
 
     @pytest.mark.unit
     def test_format_show_without_year(self):
         """Test formatting show without year."""
-        item = {"media_type": "show", "title": "New Show"}
+        item: TautulliMediaItem = {"media_type": "show", "title": "New Show"}
         result = _format_display_title(item)
         assert result == "New Show (New Series)"
 
     @pytest.mark.unit
     def test_format_track(self):
         """Test formatting music track."""
-        item = {
+        item: TautulliMediaItem = {
             "media_type": "track",
             "grandparent_title": "The Beatles",
             "parent_title": "Abbey Road",
@@ -163,7 +168,7 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_track_missing_fields(self):
         """Test formatting track with missing fields."""
-        item = {"media_type": "track", "title": "Song Name"}
+        item: TautulliMediaItem = {"media_type": "track", "title": "Song Name"}
         result = _format_display_title(item)
         assert "Unknown Artist" in result
         assert "Unknown Album" in result
@@ -172,14 +177,18 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_album(self):
         """Test formatting music album."""
-        item = {"media_type": "album", "parent_title": "Pink Floyd", "title": "Dark Side of the Moon"}
+        item: TautulliMediaItem = {
+            "media_type": "album",
+            "parent_title": "Pink Floyd",
+            "title": "Dark Side of the Moon",
+        }
         result = _format_display_title(item)
         assert result == "Pink Floyd - Dark Side of the Moon"
 
     @pytest.mark.unit
     def test_format_album_missing_fields(self):
         """Test formatting album with missing fields."""
-        item = {"media_type": "album", "title": "Album Name"}
+        item: TautulliMediaItem = {"media_type": "album", "title": "Album Name"}
         result = _format_display_title(item)
         assert "Unknown Artist" in result
         assert "Album Name" in result
@@ -187,45 +196,277 @@ class TestFormatDisplayTitle:
     @pytest.mark.unit
     def test_format_movie_with_year(self):
         """Test formatting movie with year."""
-        item = {"media_type": "movie", "title": "The Shawshank Redemption", "year": "1994"}
+        item: TautulliMediaItem = {"media_type": "movie", "title": "The Shawshank Redemption", "year": "1994"}
         result = _format_display_title(item)
         assert result == "The Shawshank Redemption (1994)"
 
     @pytest.mark.unit
     def test_format_movie_without_year(self):
         """Test formatting movie without year."""
-        item = {"media_type": "movie", "title": "New Movie"}
+        item: TautulliMediaItem = {"media_type": "movie", "title": "New Movie"}
         result = _format_display_title(item)
         assert result == "New Movie"
 
     @pytest.mark.unit
     def test_format_movie_missing_fields(self):
         """Test formatting movie with missing fields."""
-        item = {"media_type": "movie"}
+        item: TautulliMediaItem = {"media_type": "movie"}
         result = _format_display_title(item)
         assert result == "Unknown Movie"
 
     @pytest.mark.unit
     def test_format_unknown_media_type(self):
         """Test formatting unknown media type."""
-        item = {"media_type": "unknown_type", "title": "Some Media"}
+        item: TautulliMediaItem = {"media_type": "unknown_type", "title": "Some Media"}
         result = _format_display_title(item)
         assert result == "Some Media"
 
     @pytest.mark.unit
     def test_format_no_media_type(self):
         """Test formatting when media_type is missing."""
-        item = {"title": "Some Title"}
+        item: TautulliMediaItem = {"title": "Some Title"}
         result = _format_display_title(item)
         assert result == "Some Title"
 
     @pytest.mark.unit
     def test_format_no_title_at_all(self):
         """Test formatting when title is completely missing."""
-        item = {"media_type": "movie"}
+        item: TautulliMediaItem = {"media_type": "movie"}
         result = _format_display_title(item)
         assert result == "Unknown Movie"
 
-        item = {"media_type": "unknown"}
+        item: TautulliMediaItem = {"media_type": "unknown"}
         result = _format_display_title(item)
         assert result == "Unknown"
+
+
+class TestRunSummary:
+    """Tests for run_summary behavior and operational guarantees."""
+
+    @pytest.mark.unit
+    def test_run_summary_fails_in_run_once_when_discord_send_fails(self, monkeypatch):
+        """Discord delivery errors should produce non-zero exit code in one-shot mode."""
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                timestamp = int(datetime.now(UTC).timestamp())
+                return {"recently_added": [{"media_type": "movie", "title": "Movie", "added_at": timestamp}]}
+
+            def get_server_identity(self):
+                return {"machine_identifier": "server-id"}
+
+        class StubDiscordNotifier:
+            def __init__(self, webhook_url, plex_url, plex_server_id):
+                self.webhook_url = webhook_url
+                self.plex_url = plex_url
+                self.plex_server_id = plex_server_id
+
+            def send_summary(self, media_items, days_back, total_count):
+                raise requests.RequestException("network timeout")
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+        monkeypatch.setattr("src.app.DiscordNotifier", StubDiscordNotifier)
+
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": "https://discord.example/webhook",
+            }
+        )
+
+        assert run_summary(config) == 1
+
+    @pytest.mark.unit
+    def test_run_summary_keeps_scheduled_mode_non_fatal_on_discord_error(self, monkeypatch):
+        """Discord errors should not fail scheduled executions."""
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                timestamp = int(datetime.now(UTC).timestamp())
+                return {"recently_added": [{"media_type": "movie", "title": "Movie", "added_at": timestamp}]}
+
+            def get_server_identity(self):
+                return {"machine_identifier": "server-id"}
+
+        class StubDiscordNotifier:
+            def __init__(self, webhook_url, plex_url, plex_server_id):
+                self.webhook_url = webhook_url
+                self.plex_url = plex_url
+                self.plex_server_id = plex_server_id
+
+            def send_summary(self, media_items, days_back, total_count):
+                raise requests.RequestException("network timeout")
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+        monkeypatch.setattr("src.app.DiscordNotifier", StubDiscordNotifier)
+
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": False,
+                "discord_webhook_url": "https://discord.example/webhook",
+            }
+        )
+
+        assert run_summary(config) == 0
+
+    @pytest.mark.unit
+    def test_run_summary_limits_info_output_per_media_type(self, monkeypatch, caplog):
+        """INFO logging should show at most 10 entries per media type."""
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                timestamp = int(datetime.now(UTC).timestamp())
+                movies = [{"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp} for i in range(1, 13)]
+                shows = [{"media_type": "show", "title": f"Show {i}", "added_at": timestamp} for i in range(1, 12)]
+                return {"recently_added": movies + shows}
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+            }
+        )
+
+        caplog.set_level("INFO")
+        assert run_summary(config) == 0
+
+        added_lines = [record.message for record in caplog.records if record.message.startswith("➕")]
+        assert len(added_lines) == 20
+        assert any("movie: 2" in record.message and "show: 1" in record.message for record in caplog.records)
+
+    @pytest.mark.unit
+    def test_run_summary_stops_when_api_returns_fewer_items_than_requested(self, monkeypatch):
+        """Fetching should stop when the API returns fewer items than requested (hit its limit)."""
+        call_counts = {"n": 0}
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                call_counts["n"] += 1
+                timestamp = int(datetime.now(UTC).timestamp())
+                # Always return 5 items regardless of how many were requested
+                return {
+                    "recently_added": [
+                        {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp} for i in range(5)
+                    ]
+                }
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+                "initial_batch_size": 100,  # request 100, get 5 → stop after first batch
+            }
+        )
+
+        assert run_summary(config) == 0
+        assert call_counts["n"] == 1  # exactly one API call
+
+    @pytest.mark.unit
+    def test_run_summary_expands_batch_when_oldest_item_still_in_range(self, monkeypatch):
+        """Fetching should expand the batch size when the oldest returned item is still within the date range."""
+        call_counts = {"n": 0}
+        timestamps = {
+            # First batch: all items are recent (within range), oldest still in range → expand
+            1: int(datetime.now(UTC).timestamp()),
+            # Second batch: oldest item is old (outside range) → stop
+            2: 0,
+        }
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                call_counts["n"] += 1
+                oldest_ts = timestamps.get(call_counts["n"], 0)
+                items = [
+                    {"media_type": "movie", "title": f"Movie {i}", "added_at": int(datetime.now(UTC).timestamp())}
+                    for i in range(count - 1)
+                ]
+                # Last item has the controlled timestamp
+                items.append({"media_type": "movie", "title": "Oldest", "added_at": oldest_ts})
+                return {"recently_added": items}
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+        monkeypatch.setattr("src.app.time.sleep", lambda _: None)
+
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+                "initial_batch_size": 5,
+            }
+        )
+
+        assert run_summary(config) == 0
+        assert call_counts["n"] == 2  # expanded once, then stopped
+
+    @pytest.mark.unit
+    def test_run_summary_stops_at_max_iterations(self, monkeypatch, caplog):
+        """Fetching should stop and warn when the max iteration guardrail (50) is reached."""
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                # Always return exactly `count` items, all recent → always triggers another iteration
+                timestamp = int(datetime.now(UTC).timestamp())
+                return {
+                    "recently_added": [
+                        {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp} for i in range(count)
+                    ]
+                }
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+        monkeypatch.setattr("src.app.time.sleep", lambda _: None)
+
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+                "initial_batch_size": 1,
+            }
+        )
+
+        caplog.set_level("WARNING")
+        assert run_summary(config) == 0
+        assert any("max fetch iterations" in r.message.lower() for r in caplog.records)
+
+    @pytest.mark.unit
+    def test_run_summary_stops_when_max_fetch_count_reached(self, monkeypatch):
+        """Iterative fetching should stop once the max fetch count guardrail is reached."""
+
+        class StubTautulliClient:
+            def get_recently_added(self, days, count):
+                timestamp = int(datetime.now(UTC).timestamp())
+                return {
+                    "recently_added": [
+                        {"media_type": "movie", "title": f"Movie {i}", "added_at": timestamp} for i in range(count)
+                    ]
+                }
+
+        monkeypatch.setattr("src.app.TautulliClient", lambda *args, **kwargs: StubTautulliClient())
+        monkeypatch.setattr("src.app.time.sleep", lambda _seconds: None)
+
+        config = Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+                "initial_batch_size": 9990,
+            }
+        )
+
+        assert run_summary(config) == 0

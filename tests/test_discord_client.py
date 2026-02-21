@@ -3,7 +3,7 @@
 import pytest
 from discord_webhook import DiscordEmbed
 
-from src.discord_client import DiscordNotifier
+from src.discord_client import DiscordMediaItem, DiscordNotifier
 
 
 class TestDiscordNotifier:
@@ -149,19 +149,18 @@ class TestDiscordNotifier:
 
     @pytest.mark.unit
     def test_group_items_by_type_unknown(self, notifier):
-        """Test grouping with unknown media type."""
-        items = [
-            {"type": "unknown", "title": "Unknown Item"},
+        """Test grouping with unknown media type — should land in Other, not be dropped."""
+        items: list[DiscordMediaItem] = [
+            {"type": "audiobook", "title": "Unknown Item"},
         ]
         grouped = notifier._group_items_by_type(items)
-        # Unknown types should be skipped or handled gracefully
-        # Check implementation behavior
-        assert isinstance(grouped, dict)
+        assert len(grouped["Other"]) == 1
+        assert grouped["Other"][0]["title"] == "Unknown Item"
 
     @pytest.mark.unit
     def test_format_media_item_with_link(self, notifier):
         """Test formatting media item with Plex link."""
-        item = {"type": "movie", "rating_key": "12345", "title": "Test Movie"}
+        item: DiscordMediaItem = {"type": "movie", "rating_key": "12345", "title": "Test Movie"}
         formatted = notifier._format_media_item(item)
         assert "app.plex.tv" in formatted
         assert "test-server-id" in formatted
@@ -174,27 +173,27 @@ class TestDiscordNotifier:
         notifier = DiscordNotifier(
             webhook_url="https://discord.com/api/webhooks/test", plex_url="https://app.plex.tv", plex_server_id=None
         )
-        item = {"type": "movie", "rating_key": "12345", "title": "Test Movie"}
+        item: DiscordMediaItem = {"type": "movie", "rating_key": "12345", "title": "Test Movie"}
         formatted = notifier._format_media_item(item)
         assert formatted == "• **Test Movie**"
 
     @pytest.mark.unit
     def test_format_media_item_missing_rating_key(self, notifier):
         """Test formatting media item without rating_key."""
-        item = {"type": "movie", "title": "Test Movie"}
+        item: DiscordMediaItem = {"type": "movie", "title": "Test Movie"}
         formatted = notifier._format_media_item(item)
         assert formatted == "• **Test Movie**"
 
     @pytest.mark.unit
     def test_validate_and_trim_embed_within_limits(self, notifier):
         """Test that embed within limits is not trimmed."""
-        items = [
+        items: list[DiscordMediaItem] = [
             {"type": "movie", "title": "Movie 1", "added_at": "2024-01-01"},
             {"type": "movie", "title": "Movie 2", "added_at": "2024-01-02"},
         ]
 
         embed, items_sent = notifier._validate_and_trim_embed(
-            category="Movies", items=items, days_back=7, total_count=2, part_num=1, category_total=2, all_items=items
+            category="Movies", items=items, days_back=7, part_num=1, category_total=2, all_items=items
         )
 
         assert items_sent == 2  # All items should be included
@@ -204,17 +203,17 @@ class TestDiscordNotifier:
     def test_validate_and_trim_embed_exceeds_limits(self, notifier):
         """Test that oversized embed is trimmed."""
         # Create many items with long titles to exceed size limit
-        items = [
+        items: list[DiscordMediaItem] = [
             {"type": "movie", "title": "Very Long Movie Title " * 50, "added_at": f"2024-01-{i:02d}"}  # Very long title
             for i in range(1, 26)  # 25 items (max allowed)
         ]
 
         embed, items_sent = notifier._validate_and_trim_embed(
-            category="Movies", items=items, days_back=7, total_count=25, part_num=1, category_total=25, all_items=items
+            category="Movies", items=items, days_back=7, part_num=1, category_total=25, all_items=items
         )
 
         # Some items should be trimmed
-        assert items_sent < len(items) or items_sent == len(items)
+        assert items_sent < len(items)
         assert embed is not None
 
         # Embed may still exceed limits if trimming hits minimum size
@@ -238,3 +237,182 @@ class TestDiscordNotifier:
             assert category in DiscordNotifier.MEDIA_ICONS
             assert isinstance(DiscordNotifier.MEDIA_ICONS[category], str)
             assert len(DiscordNotifier.MEDIA_ICONS[category]) > 0
+
+    @pytest.mark.unit
+    def test_send_with_retry_passes_timeout_when_supported(self, notifier):
+        """Webhook execution should set timeout attribute when supported."""
+
+        class StubResponse:
+            status_code = 204
+            text = ""
+
+            def json(self):
+                return {}
+
+        class StubWebhook:
+            def __init__(self):
+                self.timeout = None
+
+            def execute(self):
+                return StubResponse()
+
+        webhook = StubWebhook()
+        response = notifier._send_with_retry(webhook)
+
+        assert response.status_code == 204
+        assert webhook.timeout == notifier.REQUEST_TIMEOUT_SECONDS
+
+    @pytest.mark.unit
+    def test_send_with_retry_falls_back_when_timeout_kwarg_unsupported(self, notifier):
+        """Webhook execution should use attribute fallback for older implementations."""
+
+        class StubResponse:
+            status_code = 204
+            text = ""
+
+            def json(self):
+                return {}
+
+        class StubWebhook:
+            def __init__(self):
+                self.timeout = None
+                self.call_count = 0
+
+            def execute(self):
+                self.call_count += 1
+                return StubResponse()
+
+        webhook = StubWebhook()
+        response = notifier._send_with_retry(webhook)
+
+        assert response.status_code == 204
+        assert webhook.call_count == 1
+        assert webhook.timeout == notifier.REQUEST_TIMEOUT_SECONDS
+
+    @pytest.mark.unit
+    def test_send_summary_no_items_sends_friendly_embed(self, notifier, monkeypatch):
+        """No items should trigger a friendly empty-state embed."""
+
+        class StubResponse:
+            status_code = 204
+            text = ""
+
+            def json(self):
+                return {}
+
+        sent_webhooks = []
+
+        class StubWebhook:
+            def __init__(self, url):
+                self.url = url
+                self.embeds = []
+                sent_webhooks.append(self)
+
+            def add_embed(self, embed):
+                self.embeds.append(embed)
+
+            def execute(self, timeout=None):
+                return StubResponse()
+
+        monkeypatch.setattr("src.discord_client.DiscordWebhook", StubWebhook)
+        monkeypatch.setattr("src.discord_client.random.choice", lambda choices: choices[0])
+
+        ok = notifier.send_summary(media_items=[], days_back=7, total_count=0)
+
+        assert ok is True
+        assert len(sent_webhooks) == 1
+        assert len(sent_webhooks[0].embeds) == 1
+        embed = sent_webhooks[0].embeds[0]
+        assert embed.title == DiscordNotifier.NO_NEW_TITLES[0]
+        assert "last 7 days" in embed.description
+        assert "add" in embed.description.lower()
+
+    @pytest.mark.unit
+    def test_send_summary_no_items_returns_false_on_webhook_failure(self, notifier, monkeypatch):
+        """No items empty-state notification should fail cleanly on webhook errors."""
+
+        class StubResponse:
+            status_code = 500
+            text = "internal error"
+
+            def json(self):
+                return {}
+
+        class StubWebhook:
+            def __init__(self, url):
+                self.url = url
+
+            def add_embed(self, embed):
+                pass
+
+            def execute(self, timeout=None):
+                return StubResponse()
+
+        monkeypatch.setattr("src.discord_client.DiscordWebhook", StubWebhook)
+
+        ok = notifier.send_summary(media_items=[], days_back=3, total_count=0)
+
+        assert ok is False
+
+    @pytest.mark.unit
+    def test_send_with_retry_respects_rate_limit_429(self, notifier, monkeypatch):
+        """_send_with_retry should wait retry_after seconds and retry on 429 responses."""
+        sleep_calls: list[float] = []
+        monkeypatch.setattr("src.discord_client.time.sleep", lambda s: sleep_calls.append(s))
+
+        attempt = {"n": 0}
+
+        class StubResponse429:
+            status_code = 429
+            text = ""
+
+            def json(self):
+                return {"retry_after": 2.5}
+
+        class StubResponse204:
+            status_code = 204
+            text = ""
+
+            def json(self):
+                return {}
+
+        class StubWebhook:
+            def __init__(self):
+                self.timeout = None
+
+            def execute(self):
+                attempt["n"] += 1
+                if attempt["n"] == 1:
+                    return StubResponse429()
+                return StubResponse204()
+
+        webhook = StubWebhook()
+        response = notifier._send_with_retry(webhook, max_retries=3)
+
+        assert response.status_code == 204
+        assert attempt["n"] == 2  # one 429, one success
+        assert 2.5 in sleep_calls  # waited the retry_after value
+
+    @pytest.mark.unit
+    def test_send_with_retry_exhausts_retries_on_persistent_429(self, notifier, monkeypatch):
+        """_send_with_retry should return the last response after exhausting retries on persistent 429."""
+        monkeypatch.setattr("src.discord_client.time.sleep", lambda _: None)
+
+        class StubResponse429:
+            status_code = 429
+            text = ""
+
+            def json(self):
+                return {"retry_after": 0.1}
+
+        class StubWebhook:
+            def __init__(self):
+                self.timeout = None
+
+            def execute(self):
+                return StubResponse429()
+
+        webhook = StubWebhook()
+        response = notifier._send_with_retry(webhook, max_retries=3)
+
+        assert response.status_code == 429

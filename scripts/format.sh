@@ -1,11 +1,12 @@
-#!/bin/bash
-# Format and auto-fix Python code using tools installed in the development container
+#!/bin/sh
+# Format and auto-fix Python code in the current environment
+# Note: Black is the formatter; ruff is used only as a linter (ruff check --fix).
+# ruff format is intentionally not enabled to avoid conflicts with Black.
 
 set -e
 
 cd "$(dirname "$0")/.."
 
-IMAGE_NAME="plex-releases-summary-dev"
 MODE="fix"
 
 if [ "${1:-}" = "--check" ]; then
@@ -13,53 +14,30 @@ if [ "${1:-}" = "--check" ]; then
     shift
 fi
 
-if [ "$#" -gt 0 ]; then
-    TARGETS=("$@")
-else
-    TARGETS=(src tests)
+if [ "$#" -eq 0 ]; then
+    set -- src tests
 fi
 
-echo "🎨 Running Python formatting and linting in Docker..."
-echo ""
-echo "📦 Building development image (contains black/ruff)..."
-docker build -f Dockerfile.dev -t "$IMAGE_NAME" .
+TARGETS="$*"
+
+echo "🎨 Running Python formatting and linting..."
 
 if [ "$MODE" = "check" ]; then
     echo ""
-    echo "🔍 Checking Black formatting on: ${TARGETS[*]}"
-    docker run --rm \
-        -u "$(id -u):$(id -g)" \
-        -v "$PWD:/app" \
-        -w /app \
-        "$IMAGE_NAME" \
-        black --check "${TARGETS[@]}"
+    echo "🔍 Checking Black formatting on: $TARGETS"
+    black --check "$@"
 
     echo ""
-    echo "🔍 Checking Ruff lint on: ${TARGETS[*]}"
-    docker run --rm \
-        -u "$(id -u):$(id -g)" \
-        -v "$PWD:/app" \
-        -w /app \
-        "$IMAGE_NAME" \
-        ruff check "${TARGETS[@]}"
+    echo "🔍 Checking Ruff lint on: $TARGETS"
+    ruff check "$@"
 else
     echo ""
-    echo "🧹 Running Black on: ${TARGETS[*]}"
-    docker run --rm \
-        -u "$(id -u):$(id -g)" \
-        -v "$PWD:/app" \
-        -w /app \
-        "$IMAGE_NAME" \
-        black "${TARGETS[@]}"
+    echo "🧹 Running Black on: $TARGETS"
+    black "$@"
 
     echo ""
-    echo "🛠️  Running Ruff auto-fix on: ${TARGETS[*]}"
-    docker run --rm \
-        -u "$(id -u):$(id -g)" \
-        -v "$PWD:/app" \
-        -w /app \
-        "$IMAGE_NAME" \
-        ruff check --fix "${TARGETS[@]}"
+    echo "🛠️  Running Ruff auto-fix on: $TARGETS"
+    ruff check --fix "$@"
 fi
 
 echo ""

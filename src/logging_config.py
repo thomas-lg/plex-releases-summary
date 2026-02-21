@@ -1,9 +1,12 @@
+"""Logging configuration: sets up console and rotating file handlers for the application."""
+
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-LOG_DIR = Path("/app/logs")
+LOG_DIR = Path(os.getenv("LOG_DIR", "/app/logs"))
 LOG_FILE = LOG_DIR / "app.log"
 LOG_MAX_BYTES = 5 * 1024 * 1024
 LOG_BACKUP_COUNT = 5

@@ -1,3 +1,5 @@
+"""APScheduler-based daemon scheduler with graceful SIGTERM/SIGINT shutdown handling."""
+
 import logging
 import signal
 import sys
@@ -7,13 +9,13 @@ from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-logger = logging.getLogger("plex-weekly.scheduler")
+logger = logging.getLogger(__name__)
 
 
 class GracefulScheduler:
     """Scheduler with graceful shutdown handling for containerized environments."""
 
-    def __init__(self, cron_schedule: str, task_func: Callable):
+    def __init__(self, cron_schedule: str, task_func: Callable[[], int]):
         """
         Initialize scheduler with CRON schedule and task function.
 
@@ -78,27 +80,26 @@ class GracefulScheduler:
             )
 
             logger.info("🕐 Scheduler started - waiting for scheduled executions")
-            logger.info("Press Ctrl+C or send SIGTERM to stop")
 
             # Start blocking scheduler
             self.scheduler.start()
 
         except ValueError as e:
             logger.error("Invalid CRON schedule '%s': %s", self.cron_schedule, e)
-            logger.error("CRON format: 'minute hour day month day_of_week'")
-            logger.error("Examples: '0 9 * * *' (daily at 9 AM), '0 9 * * MON' (Mondays at 9 AM)")
+            logger.info("CRON format: 'minute hour day month day_of_week'")
+            logger.info("Example: '0 9 * * *' (daily at 9 AM), '0 9 * * MON' (Mondays at 9 AM)")
             sys.exit(1)
         except Exception as e:
             logger.exception("Failed to start scheduler: %s", e)
             sys.exit(1)
         finally:
             if not self._shutdown_requested:
-                logger.info("Scheduler stopped unexpectedly")
+                logger.warning("⚠️ Scheduler stopped unexpectedly")
             else:
                 logger.info("✅ Scheduler shutdown complete")
 
 
-def run_scheduled(task_func: Callable, cron_schedule: str) -> int:
+def run_scheduled(task_func: Callable[[], int], cron_schedule: str) -> int:
     """
     Run task function on a CRON schedule.
 
@@ -107,7 +108,8 @@ def run_scheduled(task_func: Callable, cron_schedule: str) -> int:
         cron_schedule: CRON expression (e.g., "0 9 * * MON" for Mondays at 9 AM)
 
     Returns:
-        Exit code (normally doesn't return, runs until shutdown signal)
+        Exit code: returns 0 only on graceful SIGTERM/SIGINT shutdown.
+        Under normal operation this function blocks indefinitely.
     """
     scheduler = GracefulScheduler(cron_schedule, task_func)
     scheduler.start()

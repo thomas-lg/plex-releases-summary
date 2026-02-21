@@ -1,12 +1,25 @@
 """Discord webhook client for sending Plex release summaries."""
 
+import inspect
 import logging
+import random
 import re
 import time
 from datetime import datetime
-from typing import Any
+from typing import Any, NotRequired, TypedDict, cast
 
+import requests
 from discord_webhook import DiscordEmbed, DiscordWebhook
+
+# Type definitions for Discord payloads
+
+
+class DiscordMediaItem(TypedDict):
+    type: str
+    title: str
+    added_at: NotRequired[str]
+    rating_key: NotRequired[int | str]
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +45,13 @@ class DiscordNotifier:
 
     # Discord limits
     MAX_FIELD_VALUE = 1024
-    MAX_ITEMS_TOTAL = 25  # Conservative limit to stay under 6000 char limit with URLs
+    MAX_ITEMS_TOTAL = 25  # Discord embed hard limit: 25 fields per embed
     EMBED_SIZE_BUFFER = 5800  # Safety buffer below 6000 to account for JSON overhead
 
     # Retry configuration
     MAX_SEND_RETRIES = 3
     RETRY_BACKOFF_BASE = 2  # Exponential backoff base (1s, 2s, 4s, ...)
+    REQUEST_TIMEOUT_SECONDS = 15
 
     # Embed trimming configuration
     MAX_TRIM_ATTEMPTS = 5
@@ -51,7 +65,45 @@ class DiscordNotifier:
         "TV Episodes": "📺",
         "Music Albums": "💿",
         "Music Tracks": "🎵",
+        "Other": "📁",
     }
+
+    # Singular display names for each category
+    CATEGORY_SINGULAR = {
+        "Movies": "movie",
+        "TV Shows": "TV show",
+        "TV Seasons": "TV season",
+        "TV Episodes": "TV episode",
+        "Music Albums": "music album",
+        "Music Tracks": "music track",
+        "Other": "item",
+    }
+
+    # Plural display names for each category
+    CATEGORY_PLURAL = {
+        "Movies": "movies",
+        "TV Shows": "TV shows",
+        "TV Seasons": "TV seasons",
+        "TV Episodes": "TV episodes",
+        "Music Albums": "music albums",
+        "Music Tracks": "music tracks",
+        "Other": "items",
+    }
+
+    # Friendly empty-state messages when no new media is found
+    NO_NEW_TITLES = [
+        "🛋️ Quiet Plex vibes",
+        "🍃 Nothing new this round",
+        "📭 No fresh arrivals",
+        "🌙 Calm library check-in",
+    ]
+
+    NO_NEW_MESSAGES = [
+        "No new releases in the last {days} {day_word}. Time to add something awesome to the library 🍿",
+        "Your Plex library stayed peaceful for {days} {day_word}. Maybe tonight is a perfect time to queue a new download ✨",
+        "Nothing new landed in the past {days} {day_word}. Give your future self a surprise and add something fun 🎬",
+        "No new content in {days} {day_word}. Friendly reminder: your watchlist won’t fill itself 😄",
+    ]
 
     def __init__(self, webhook_url: str, plex_url: str | None = None, plex_server_id: str | None = None):
         """
@@ -66,7 +118,7 @@ class DiscordNotifier:
         self.plex_url = plex_url.rstrip("/") if plex_url else None
         self.plex_server_id = plex_server_id
 
-    def send_summary(self, media_items: list[dict[str, Any]], days_back: int, total_count: int) -> bool:
+    def send_summary(self, media_items: list[DiscordMediaItem], days_back: int, total_count: int) -> bool:
         """
         Send media summary to Discord as rich embed(s), grouped by category.
         Sends separate messages for each media type (Movies, TV Shows, etc.).
@@ -80,11 +132,38 @@ class DiscordNotifier:
             bool: True if all messages sent successfully, False otherwise
         """
         try:
+            if not media_items or total_count == 0:
+                webhook = DiscordWebhook(url=self.webhook_url)
+                webhook.add_embed(self._create_no_new_items_embed(days_back))
+
+                response = self._send_with_retry(webhook)
+                if response.status_code in [200, 204]:
+                    logger.info("✅ Discord no-new-items notification sent")
+                    return True
+
+                if response.status_code == 400:
+                    logger.error("Discord rejected no-new-items message (invalid payload): %s", response.text)
+                else:
+                    logger.error(
+                        "Discord webhook failed with status %d for no-new-items message: %s",
+                        response.status_code,
+                        response.text,
+                    )
+                return False
+
             # Group items by type
             grouped = self._group_items_by_type(media_items)
 
             # Category order for display
-            category_order = ["Movies", "TV Shows", "TV Seasons", "TV Episodes", "Music Albums", "Music Tracks"]
+            category_order = [
+                "Movies",
+                "TV Shows",
+                "TV Seasons",
+                "TV Episodes",
+                "Music Albums",
+                "Music Tracks",
+                "Other",
+            ]
 
             total_messages = 0
             success_count = 0
@@ -112,7 +191,7 @@ class DiscordNotifier:
 
                     # Create and validate embed - this may trim items if too large
                     embed, items_sent = self._validate_and_trim_embed(
-                        category, chunk, days_back, total_count, part_num, len(items), items_remaining
+                        category, chunk, days_back, part_num, len(items), items_remaining
                     )
                     webhook.add_embed(embed)
 
@@ -161,10 +240,17 @@ class DiscordNotifier:
                         )
                         break  # Stop trying to send this category
 
-            logger.info("✅ All Discord notifications sent (%d/%d messages)", success_count, total_messages)
+            if success_count == total_messages:
+                logger.info("✅ All Discord notifications sent (%d/%d messages)", success_count, total_messages)
+            else:
+                logger.warning(
+                    "⚠️  Partial Discord send: only %d/%d messages succeeded",
+                    success_count,
+                    total_messages,
+                )
             return success_count == total_messages
 
-        except (ConnectionError, TimeoutError) as e:
+        except requests.RequestException as e:
             logger.error("Network error sending Discord notification: %s", e)
             return False
         except ValueError as e:
@@ -174,12 +260,22 @@ class DiscordNotifier:
             logger.exception("Unexpected error sending Discord notification: %s", e)
             return False
 
+    def _create_no_new_items_embed(self, days_back: int) -> DiscordEmbed:
+        """Create a friendly embed for periods with no new items."""
+        day_word = "day" if days_back == 1 else "days"
+        title = random.choice(self.NO_NEW_TITLES)
+        description = random.choice(self.NO_NEW_MESSAGES).format(days=days_back, day_word=day_word)
+
+        embed = DiscordEmbed(title=title, description=description, color=0x5865F2)
+        embed.set_footer(text=f"Checked on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        embed.set_timestamp()
+        return embed
+
     def _create_category_embed(
         self,
         category: str,
-        items: list[dict[str, Any]],
+        items: list[DiscordMediaItem],
         days_back: int,
-        total_count: int,
         part_num: int,
         estimated_parts: int,
         category_total: int,
@@ -196,9 +292,11 @@ class DiscordNotifier:
 
         # Build description - just show category count to avoid confusion
         if category_total == 1:
-            description = f"**{category_total} {category[:-1].lower()} added**"  # Singular
+            label = self.CATEGORY_SINGULAR.get(category, category.rstrip("s").lower())
+            description = f"**{category_total} {label} added**"
         else:
-            description = f"**{category_total} {category.lower()} added**"
+            label = self.CATEGORY_PLURAL.get(category, category.lower())
+            description = f"**{category_total} {label} added**"
 
         embed = DiscordEmbed(title=title, description=description, color=0x57F287)  # Green color
 
@@ -232,30 +330,35 @@ class DiscordNotifier:
 
         # Fields
         for field in embed.fields:
-            if field.get("name"):
-                total += len(field["name"])
-            if field.get("value"):
-                total += len(field["value"])
+            name = field.get("name")
+            if name:
+                total += len(str(name))
+            value = field.get("value")
+            if value:
+                total += len(str(value))
 
         # Footer
         if embed.footer:
-            total += len(embed.footer.get("text", ""))
+            footer_text = embed.footer.get("text")
+            if footer_text:
+                total += len(footer_text)
 
         # Author
         if embed.author:
-            total += len(embed.author.get("name", ""))
+            author_name = embed.author.get("name")
+            if author_name:
+                total += len(author_name)
 
         return total
 
     def _validate_and_trim_embed(
         self,
         category: str,
-        items: list[dict[str, Any]],
+        items: list[DiscordMediaItem],
         days_back: int,
-        total_count: int,
         part_num: int,
         category_total: int,
-        all_items: list[dict[str, Any]],
+        all_items: list[DiscordMediaItem],
     ) -> tuple[DiscordEmbed, int]:
         """
         Create embed and validate size, trimming items if necessary to stay under Discord limits.
@@ -264,7 +367,6 @@ class DiscordNotifier:
             category: Media category name
             items: List of media items to attempt to include
             days_back: Number of days in the summary
-            total_count: Total count across all categories
             part_num: Current part number
             category_total: Total items in this category
             all_items: All remaining items (for calculating parts)
@@ -280,7 +382,7 @@ class DiscordNotifier:
             estimated_parts = (len(all_items) + items_per_part - 1) // items_per_part if items_per_part > 0 else 1
 
             embed = self._create_category_embed(
-                category, current_items, days_back, total_count, part_num, estimated_parts, category_total
+                category, current_items, days_back, part_num, estimated_parts, category_total
             )
 
             size = self._calculate_embed_size(embed)
@@ -326,10 +428,10 @@ class DiscordNotifier:
         # Return the smallest version we managed to create
         return embed, len(current_items)
 
-    def _add_items_to_embed(self, embed: DiscordEmbed, items: list[dict[str, Any]], category: str) -> None:
+    def _add_items_to_embed(self, embed: DiscordEmbed, items: list[DiscordMediaItem], category: str) -> None:
         """Add items to embed, splitting into multiple fields if needed with date ranges."""
         current_chunk: list[str] = []
-        current_chunk_items: list[dict[str, Any]] = []  # Track items for date range
+        current_chunk_items: list[DiscordMediaItem] = []  # Track items for date range
         current_chars = 0
         chunk_num = 1
 
@@ -358,7 +460,7 @@ class DiscordNotifier:
             field_value = "\n".join(current_chunk)
             embed.add_embed_field(name=field_name, value=field_value, inline=False)
 
-    def _get_date_range_field_name(self, items: list[dict[str, Any]], chunk_num: int) -> str:
+    def _get_date_range_field_name(self, items: list[DiscordMediaItem], chunk_num: int) -> str:
         """Generate field name with date range in DD/MM - DD/MM format."""
         if not items:
             return f"Items ({chunk_num})" if chunk_num > 1 else "Items"
@@ -367,35 +469,34 @@ class DiscordNotifier:
         first_date = items[0].get("added_at", "")
         last_date = items[-1].get("added_at", "")
 
-        # Convert from MM/DD (internal format) to DD/MM (display format)
+        # Parse ISO date format (YYYY-MM-DD) and format as DD/MM for display
         try:
-            # Parse MM/DD format
-            if "/" in first_date and "/" in last_date:
-                first_parts = first_date.split("/")
-                last_parts = last_date.split("/")
+            first_dt = datetime.strptime(first_date, "%Y-%m-%d")
+            last_dt = datetime.strptime(last_date, "%Y-%m-%d")
+            first_formatted = first_dt.strftime("%d/%m")
+            last_formatted = last_dt.strftime("%d/%m")
 
-                # Convert to DD/MM
-                first_formatted = f"{first_parts[1]}/{first_parts[0]}"
-                last_formatted = f"{last_parts[1]}/{last_parts[0]}"
-
-                if first_formatted == last_formatted:
-                    return first_formatted
-                else:
-                    return f"{first_formatted} - {last_formatted}"
-        except (IndexError, ValueError):
-            logger.debug("Failed to parse date format for field name, using fallback")
+            if first_formatted == last_formatted:
+                return first_formatted
+            else:
+                return f"{first_formatted} - {last_formatted}"
+        except (ValueError, AttributeError):
+            logger.debug(
+                "Failed to parse date format '%s' or '%s' for field name, using fallback", first_date, last_date
+            )
 
         return f"Items ({chunk_num})" if chunk_num > 1 else "Items"
 
-    def _group_items_by_type(self, media_items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    def _group_items_by_type(self, media_items: list[DiscordMediaItem]) -> dict[str, list[DiscordMediaItem]]:
         """Group media items by type."""
-        grouped: dict[str, list[dict[str, Any]]] = {
+        grouped: dict[str, list[DiscordMediaItem]] = {
             "Movies": [],
             "TV Shows": [],
             "TV Seasons": [],
             "TV Episodes": [],
             "Music Albums": [],
             "Music Tracks": [],
+            "Other": [],
         }
 
         for item in media_items:
@@ -413,10 +514,13 @@ class DiscordNotifier:
                 grouped["Music Albums"].append(item)
             elif media_type == "track":
                 grouped["Music Tracks"].append(item)
+            else:
+                logger.warning("Unrecognized media type: %s — item placed in 'Other'", media_type)
+                grouped["Other"].append(item)
 
         return grouped
 
-    def _format_media_item(self, item: dict[str, Any]) -> str:
+    def _format_media_item(self, item: DiscordMediaItem) -> str:
         """Format a single media item for display."""
         title = item.get("title", "Unknown")
         rating_key = item.get("rating_key")
@@ -427,7 +531,7 @@ class DiscordNotifier:
         # Create clickable link to Plex if URL and server ID are available
         if self.plex_url and self.plex_server_id and rating_key:
             # URL encode the library path
-            encoded_key = "%2Flibrary%2Fmetadata%2F" + str(rating_key)
+            encoded_key = f"%2Flibrary%2Fmetadata%2F{rating_key}"
 
             # Check if using Plex.tv or local Plex server
             if "plex.tv" in self.plex_url.lower():
@@ -458,10 +562,21 @@ class DiscordNotifier:
         if max_retries is None:
             max_retries = self.MAX_SEND_RETRIES
 
+        if max_retries == 0:
+            raise ValueError("max_retries must be at least 1")
+
         response = None
         for attempt in range(max_retries):
             try:
-                response = webhook.execute()
+                # Try to set timeout explicitly if supported
+                execute_func = webhook.execute
+                if hasattr(webhook, "timeout"):
+                    webhook.timeout = self.REQUEST_TIMEOUT_SECONDS
+                    response = execute_func()
+                elif "timeout" in inspect.signature(execute_func).parameters:
+                    response = cast(Any, execute_func)(timeout=self.REQUEST_TIMEOUT_SECONDS)
+                else:
+                    response = execute_func()
 
                 # If validation error (bad request), don't retry - it won't help
                 if response.status_code == 400:
@@ -492,4 +607,8 @@ class DiscordNotifier:
                 else:
                     raise
 
+        # This point is only reached if every attempt hit the rate-limit path
+        # without a successful response. The assert guards against an unexpected
+        # None, which would indicate a bug in the retry loop above.
+        assert response is not None, "_send_with_retry exhausted retries without raising"
         return response
