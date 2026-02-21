@@ -1,0 +1,35 @@
+# Automatically applies a label to a PR based on its conventional commit prefix (e.g. feat: → feature).
+name: Label PR from Conventional Commit
+
+on:
+    pull_request:
+        types: [opened, edited, reopened]
+
+jobs:
+    apply-label:
+        runs-on: ubuntu-latest
+        permissions:
+            pull-requests: write
+
+        steps:
+            - name: Apply label from PR title prefix
+              uses: bcoe/conventional-release-labels@v1
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  type_labels: |
+                      {
+                        "feat": "feature",
+                        "fix": "fix",
+                        "docs": "documentation",
+                        "chore": "chore",
+                        "refactor": "chore",
+                        "style": "chore",
+                        "revert": "fix",
+                        "perf": "enhancement",
+                        "test": "chore",
+                        "ci": "chore",
+                        "build": "chore",
+                        "deps": "dependencies",
+                        "breaking": "breaking"
+                      }
+                  ignored_types: "[]"

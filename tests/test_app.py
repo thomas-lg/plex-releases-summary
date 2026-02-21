@@ -1,11 +1,12 @@
 """Unit tests for app module formatting logic."""
 
+import importlib.metadata
 from datetime import UTC, datetime
 
 import pytest
 import requests
 
-from src.app import _calculate_batch_params, _format_display_title, run_summary
+from src.app import _calculate_batch_params, _format_display_title, main, run_summary
 from src.config import Config
 from src.tautulli_client import TautulliMediaItem
 
@@ -470,3 +471,63 @@ class TestRunSummary:
         )
 
         assert run_summary(config) == 0
+
+
+class TestMain:
+    """Tests for main() startup behavior: banner and version resolution."""
+
+    @staticmethod
+    def _stub_config():
+        return Config.model_validate(
+            {
+                "tautulli_url": "http://tautulli:8181",
+                "tautulli_api_key": "secret",
+                "run_once": True,
+                "discord_webhook_url": None,
+            }
+        )
+
+    @pytest.mark.unit
+    def test_main_prints_banner_and_logs_version(self, monkeypatch, caplog, capsys):
+        """main() prints the ASCII banner to stdout and logs the version."""
+        monkeypatch.setattr("src.app._get_config_path", lambda: "/config.yml")
+        monkeypatch.setattr("src.app.setup_logging", lambda *a, **kw: None)
+        monkeypatch.setattr("src.app.get_bootstrap_log_level", lambda _: "INFO")
+        monkeypatch.setattr("importlib.metadata.version", lambda _pkg: "1.2.3")
+        monkeypatch.setattr("src.app.load_config", lambda _: TestMain._stub_config())
+        monkeypatch.setattr("src.app.run_summary", lambda _: 0)
+
+        caplog.set_level("INFO", logger="app")
+        main()
+
+        stdout = capsys.readouterr().out
+        assert "PRS" in stdout or "Plex Releases Summary" in stdout, "Expected banner in stdout"
+        assert "v1.2.3" in stdout
+
+        log_records = [r.message for r in caplog.records if "Plex Releases Summary" in r.message]
+        assert log_records, "Expected version log line"
+        assert "v1.2.3" in log_records[0]
+
+    @pytest.mark.unit
+    def test_main_falls_back_to_unknown_version_when_package_not_installed(self, monkeypatch, caplog, capsys):
+        """main() falls back to 'unknown' in both banner and log when package is not installed."""
+        monkeypatch.setattr("src.app._get_config_path", lambda: "/config.yml")
+        monkeypatch.setattr("src.app.setup_logging", lambda *a, **kw: None)
+        monkeypatch.setattr("src.app.get_bootstrap_log_level", lambda _: "INFO")
+
+        def _raise_not_found(_pkg):
+            raise importlib.metadata.PackageNotFoundError("plex-releases-summary")
+
+        monkeypatch.setattr("importlib.metadata.version", _raise_not_found)
+        monkeypatch.setattr("src.app.load_config", lambda _: TestMain._stub_config())
+        monkeypatch.setattr("src.app.run_summary", lambda _: 0)
+
+        caplog.set_level("INFO", logger="app")
+        main()
+
+        stdout = capsys.readouterr().out
+        assert "unknown" in stdout, "Expected 'unknown' version in printed banner"
+
+        log_records = [r.message for r in caplog.records if "Plex Releases Summary" in r.message]
+        assert log_records, "Expected version log line"
+        assert "vunknown" in log_records[0]
