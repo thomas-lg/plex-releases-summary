@@ -18,6 +18,7 @@ ENV APP_VERSION=$VERSION
 WORKDIR /app
 
 # Install gosu for privilege dropping
+# NOTE: procps is installed to provide the `pgrep` command used in the HEALTHCHECK below.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gosu procps && \
     rm -rf /var/lib/apt/lists/* && \
