@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main, develop]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   quality-and-tests:
     runs-on: ubuntu-latest
@@ -33,10 +42,33 @@ jobs:
         run: |
           docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app -e PYTHONPATH=src prs-devcontainer pytest
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Generate coverage badge data
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          LINE_RATE=$(python3 -c "import xml.etree.ElementTree as ET; root = ET.parse('coverage.xml').getroot(); print(root.attrib['line-rate'])")
+          COVERAGE=$(python3 -c "print(round(float('$LINE_RATE') * 100))")
+          if [ "$COVERAGE" -ge 90 ]; then COLOR="brightgreen"
+          elif [ "$COVERAGE" -ge 75 ]; then COLOR="green"
+          elif [ "$COVERAGE" -ge 60 ]; then COLOR="yellow"
+          else COLOR="red"
+          fi
+          printf '{"schemaVersion":1,"label":"coverage","message":"%s%%","color":"%s"}' "$COVERAGE" "$COLOR" > htmlcov/coverage.json
+
+      - name: Upload coverage report as Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
         with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-        continue-on-error: true
+          path: ./htmlcov
+
+  deploy-pages:
+    needs: quality-and-tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
