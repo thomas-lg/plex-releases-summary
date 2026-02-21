@@ -1,17 +1,11 @@
 # Blocks merging if no valid label is present on the PR.
 # Works in tandem with the 'Label PR from Conventional Commit' workflow which sets labels automatically.
-# Triggered by workflow_run (after auto-labeling completes) and by manual label changes.
+# Enforcement only triggers on label changes; other events pass through so auto-labeling can run first.
 name: Enforce PR Label
 
 on:
-  # Runs after the auto-labeling workflow finishes, avoiding the race condition where
-  # check-labels would run before apply-label had a chance to set the label.
-  workflow_run:
-    workflows: ["Label PR from Conventional Commit"]
-    types: [completed]
-  # Still runs on manual label changes and new pushes.
   pull_request:
-    types: [labeled, unlabeled, synchronize]
+    types: [opened, reopened, labeled, unlabeled, synchronize]
 
 jobs:
   check-labels:
@@ -23,17 +17,14 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            let prNumber;
-            if (context.eventName === 'workflow_run') {
-              const prs = context.payload.workflow_run.pull_requests;
-              if (prs.length === 0) {
-                console.log('No PR associated with this workflow run, skipping.');
-                return;
-              }
-              prNumber = prs[0].number;
-            } else {
-              prNumber = context.payload.pull_request.number;
+            // Only enforce on label change events; other events (opened, synchronize, etc.)
+            // pass through since auto-labeling will fire a 'labeled' event shortly after.
+            if (!['labeled', 'unlabeled'].includes(context.payload.action)) {
+              console.log(`ℹ️ Event '${context.payload.action}' — skipping label check, waiting for auto-labeling.`);
+              return;
             }
+
+            const prNumber = context.payload.pull_request.number;
 
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
