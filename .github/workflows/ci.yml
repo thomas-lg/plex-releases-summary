@@ -32,7 +32,7 @@ jobs:
         run: docker save prs-devcontainer | gzip > prs-devcontainer.tar.gz
 
       - name: Upload image artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: prs-devcontainer
           path: prs-devcontainer.tar.gz
