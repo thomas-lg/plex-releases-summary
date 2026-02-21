@@ -34,5 +34,25 @@
   // Editor settings
   "editor.rulers": [120],
   "files.trimTrailingWhitespace": true,
-  "files.insertFinalNewline": true
+  "files.insertFinalNewline": true,
+
+  // Commit message generation
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "text": "Follow the Conventional Commits specification. The commit message must start with one of the types defined in .github/conventional-commit-types.json (feat, fix, docs, chore, refactor, style, revert, perf, test, ci, build, deps, breaking, security, hotfix, deprecate, release, wip), optionally followed by a scope in parentheses. Format: <type>(<optional scope>): <short description>. Use the imperative mood, lowercase, no trailing period."
+    },
+    {
+      "file": ".github/conventional-commit-types.json"
+    }
+  ],
+
+  // PR title & description generation
+  "github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
+    {
+      "text": "The PR title must follow the Conventional Commits specification using one of the types defined in .github/conventional-commit-types.json (feat, fix, docs, chore, refactor, style, revert, perf, test, ci, build, deps, breaking, security, hotfix, deprecate, release, wip), optionally followed by a scope in parentheses. Format: <type>(<optional scope>): <short description>. Use the imperative mood, lowercase, no trailing period. The title must pass the regex enforced by the CI workflow: ^(type)(\\(.+\\))?!?: .+"
+    },
+    {
+      "file": ".github/conventional-commit-types.json"
+    }
+  ]
 }
