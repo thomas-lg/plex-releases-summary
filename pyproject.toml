@@ -46,7 +46,7 @@ ignore_missing_imports = true
 
 [tool.ruff]
 # Ruff configuration for linting and formatting
-target-version = "py312"
+target-version = "py314"
 line-length = 120
 
 [tool.ruff.lint]
@@ -75,7 +75,7 @@ ignore = [
 # Note: Black is used as the formatter; ruff is used only as a linter (ruff check).
 # ruff format is intentionally not enabled to avoid conflicts with Black.
 line-length = 120
-target-version = ['py312']
+target-version = ['py314']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -123,8 +123,6 @@ skip_covered = false
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]

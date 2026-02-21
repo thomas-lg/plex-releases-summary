@@ -46,7 +46,7 @@ class DiscordNotifier:
     # Discord limits
     MAX_FIELD_VALUE = 1024
     MAX_ITEMS_TOTAL = 25  # Discord embed hard limit: 25 fields per embed
-    EMBED_SIZE_BUFFER = 5800  # Safety buffer below 6000 to account for JSON overhead
+    MAX_EMBED_SIZE = 5800  # Maximum embed character count (safety margin below Discord's 6000 limit)
 
     # Retry configuration
     MAX_SEND_RETRIES = 3
@@ -267,7 +267,7 @@ class DiscordNotifier:
         description = random.choice(self.NO_NEW_MESSAGES).format(days=days_back, day_word=day_word)
 
         embed = DiscordEmbed(title=title, description=description, color=0x5865F2)
-        embed.set_footer(text=f"Checked on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        embed.set_footer(text=f"Checked on {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')}")
         embed.set_timestamp()
         return embed
 
@@ -304,7 +304,7 @@ class DiscordNotifier:
         self._add_items_to_embed(embed, items, category)
 
         # Add footer with timestamp
-        embed.set_footer(text=f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        embed.set_footer(text=f"Generated on {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')}")
         embed.set_timestamp()
 
         return embed
@@ -388,7 +388,7 @@ class DiscordNotifier:
             size = self._calculate_embed_size(embed)
 
             # Check if within safe limits (with buffer)
-            if size <= self.EMBED_SIZE_BUFFER:
+            if size <= self.MAX_EMBED_SIZE:
                 if len(current_items) < len(items):
                     removed = len(items) - len(current_items)
                     logger.warning(
@@ -409,7 +409,7 @@ class DiscordNotifier:
                     "Discord may reject this message.",
                     category,
                     size,
-                    self.EMBED_SIZE_BUFFER,
+                    self.MAX_EMBED_SIZE,
                 )
                 return embed, len(current_items)
 
@@ -480,7 +480,7 @@ class DiscordNotifier:
                 return first_formatted
             else:
                 return f"{first_formatted} - {last_formatted}"
-        except (ValueError, AttributeError):
+        except ValueError, AttributeError:
             logger.debug(
                 "Failed to parse date format '%s' or '%s' for field name, using fallback", first_date, last_date
             )

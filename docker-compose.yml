@@ -39,7 +39,9 @@ services:
         max-size: "5m"
         max-file: "5"
 
-    restart: on-failure
+    # Use 'unless-stopped' for scheduled mode (long-running daemon).
+    # Use 'on-failure' only if you set run_once: true in config.yml.
+    restart: unless-stopped
 # Optional: Docker Compose secrets (alternative to volume-mounted secrets)
 # Uncomment to use Docker secrets instead of volume-mounted files
 # secrets:

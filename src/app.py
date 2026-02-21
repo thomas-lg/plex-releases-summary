@@ -72,7 +72,7 @@ def _format_display_title(item: TautulliMediaItem) -> str:
             s_num = int(season_num) if season_num != "?" else 0
             e_num = int(episode_num) if episode_num != "?" else 0
             return f"{show} - S{s_num:02d}E{e_num:02d} - {episode_title}"
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return f"{show} - S{season_num}E{episode_num} - {episode_title}"
     elif media_type == "season":
         show = item.get("parent_title", "Unknown Show")
@@ -307,7 +307,8 @@ def _send_discord_notification(
                 logger.warning("Invalid response from Tautulli: %s", e)
 
         webhook_url = config.discord_webhook_url
-        assert webhook_url is not None  # caller guarantees this
+        if webhook_url is None:
+            raise RuntimeError("discord_webhook_url must not be None — ensure it is set in config.yml")
 
         notifier = DiscordNotifier(webhook_url, config.plex_url, plex_server_id)
         success = notifier.send_summary(discord_items, days, total_count)

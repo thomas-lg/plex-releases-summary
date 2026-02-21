@@ -225,7 +225,7 @@ class TestDiscordNotifier:
         """Test that class constants respect Discord API limits."""
         assert DiscordNotifier.MAX_FIELD_VALUE <= 1024
         assert DiscordNotifier.MAX_ITEMS_TOTAL <= 25
-        assert DiscordNotifier.EMBED_SIZE_BUFFER <= 6000
+        assert DiscordNotifier.MAX_EMBED_SIZE <= 6000
         assert DiscordNotifier.TRIM_REDUCTION_FACTOR > 0
         assert DiscordNotifier.TRIM_REDUCTION_FACTOR < 1
 
