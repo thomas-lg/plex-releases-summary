@@ -1,8 +1,8 @@
+
+# Plex Releases Summary
 <p align="center">
   <img src="assets/plex_releases_summary.png" alt="Plex Releases Summary logo" width="180"/>
 </p>
-
-# Plex Releases Summary
 
 <p align="center">
   <a href="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/quality-and-tests.yml"><img src="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/quality-and-tests.yml/badge.svg" alt="Quality and Tests"/></a>
