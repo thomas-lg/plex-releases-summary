@@ -1,6 +1,7 @@
 # Blocks merging if no valid label is present on the PR.
 # Works in tandem with the 'Label PR from Conventional Commit' workflow which sets labels automatically.
-# Enforcement only triggers on label changes; other events pass through so auto-labeling can run first.
+# Enforcement only triggers on label change events; opened/synchronize/reopened pass through
+# so auto-labeling has a chance to fire a 'labeled' event before enforcement kicks in.
 name: Enforce PR Label
 
 on:

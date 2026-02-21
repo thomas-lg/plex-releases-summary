@@ -178,17 +178,16 @@ environment:
 ## Example Output
 
 ```text
-2026-02-15 10:00:15 | INFO    | app | 🚀 Plex weekly summary starting
-2026-02-15 10:00:15 | INFO    | app | Configuration: Looking back 7 days
+2026-02-15 10:00:15 | INFO    | app | 🚀 Starting Plex summary (last 7 days)
 2026-02-15 10:00:15 | INFO    | app | Querying recently added items with iterative fetching...
 2026-02-15 10:00:16 | INFO    | app | Retrieved 45 items, filtered to 23 items from last 7 days
-2026-02-15 10:00:16 | INFO    | app | Found 23 recent items matching criteria
 2026-02-15 10:00:16 | INFO    | app | ➕ The Last of Us - S01E03 - Long, Long Time | added: 2026-02-12 14:23
 2026-02-15 10:00:16 | INFO    | app | ➕ Everything Everywhere All at Once (2022) | added: 2026-02-13 20:15
 2026-02-15 10:00:16 | INFO    | app | ➕ Succession - S04E01 - The Munsters | added: 2026-02-14 18:45
+2026-02-15 10:00:17 | INFO    | app | ✅ Run complete: 23 items in the last 7 days
 ```
 
-> **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal behavior. Iterative fetch has safety guardrails to avoid runaway loops. See [Iteration Logs](CONFIGURATION.md#minimal-configuration) for details.
+> **About "iteration" logs:** You may see logs like "iteration 1, 2, 3...". This is normal behavior. Iterative fetch has safety guardrails to avoid runaway loops. See [Minimal Configuration](CONFIGURATION.md#minimal-configuration) for details.
 
 ## Discord Notifications
 
@@ -333,7 +332,7 @@ HEALTHCHECK CMD pgrep -f "python.*app.py" || exit 1
 docker run --rm plex-releases-summary; [ $? -eq 0 ] || alert
 
 # Scheduled mode - check logs for successful summary completion
-docker logs container --since 24h | grep -q "✅ Summary complete"
+docker logs container --since 24h | grep -q "✅ Run complete"
 ```
 
 External tools: Uptime Kuma, Prometheus/Grafana, Healthchecks.io. See [Exit Codes](CONFIGURATION.md#exit-codes) for monitoring integration.
