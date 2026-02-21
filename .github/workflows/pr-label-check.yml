@@ -27,12 +27,10 @@ jobs:
               'feature',
               'enhancement',
               'fix',
-              'bugfix',
               'documentation',
               'chore',
               'dependencies',
-              'breaking',
-              'breaking-change'
+              'breaking'
             ];
 
             const hasValidLabel = labels.some(label => validLabels.includes(label));
