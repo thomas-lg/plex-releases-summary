@@ -2,7 +2,7 @@
 # On a clean merge: pushes directly to develop (uses SYNC_TOKEN PAT to bypass develop's branch protection).
 # On conflict: creates a chore/sync-develop-<date> branch and opens a PR targeting develop for manual resolution.
 #
-# Prerequisites: create a fine-grained PAT with "Contents: Read & Write" scope on this repo
+# Prerequisites: create a fine-grained PAT with "Contents: Read & Write" and "Pull requests: Read & Write" scopes on this repo
 # and store it as a repository secret named SYNC_TOKEN.
 name: Sync develop from main
 
@@ -52,21 +52,50 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          DATE=$(date +%Y-%m-%d)
+          DATE=$(date -u +%Y-%m-%d)
           BRANCH="chore/sync-develop-${DATE}"
+
+          CURRENT_MAIN_SHA=$(git rev-parse origin/main)
+
+          # Check whether an open conflict-resolution PR already exists.
+          # The conflict branch tip is a merge commit whose second parent is the
+          # origin/main SHA at the time the branch was created. If that SHA still
+          # matches the current origin/main tip, main hasn't changed and the
+          # existing PR's conflict markers are still accurate — no need to replace it.
+          STALE_PRS=$(gh pr list \
+            --base develop \
+            --state open \
+            --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("chore/sync-develop-")) | [.number, .headRefName] | @tsv')
+
+          while IFS=$'\t' read -r PR_NUM STALE_BRANCH; do
+            [ -z "${PR_NUM}" ] && continue
+            # Second parent of the merge commit = origin/main SHA when the branch was made
+            BRANCH_MAIN_SHA=$(git log --pretty="%P" -1 "origin/${STALE_BRANCH}" 2>/dev/null | awk '{print $2}')
+            if [ "${BRANCH_MAIN_SHA}" = "${CURRENT_MAIN_SHA}" ]; then
+              echo "PR #${PR_NUM} (${STALE_BRANCH}) is still current — main has not changed since it was opened. Keeping it."
+              exit 0
+            fi
+            echo "main has moved on since PR #${PR_NUM} was opened. Closing it and opening a fresh one."
+            gh pr close "${PR_NUM}" --comment "main has changed since this PR was opened. Superseded by a newer conflict-resolution PR." --delete-branch || true
+          done <<< "${STALE_PRS}"
+
+          # Guard: today's branch exists but no open PR (e.g. workflow_dispatch ran twice today).
+          if git ls-remote --exit-code origin "refs/heads/${BRANCH}" > /dev/null 2>&1; then
+            echo "::warning::Branch ${BRANCH} already exists and no open PR was found. Skipping to avoid a duplicate push failure."
+            exit 0
+          fi
+
           git checkout -b "${BRANCH}"
           # Merge with conflict markers so the reviewer sees exactly what needs fixing
           git merge origin/main --no-commit || true
           git add -A
           git commit -m "chore: sync develop with main — conflict resolution needed (${DATE})"
           git push origin "${BRANCH}"
+          PR_BODY=$(printf '## ⚠️ Automatic sync: `main` → `develop` (conflict detected)\n\nThis PR was opened automatically by the nightly sync workflow because a merge conflict was detected between `main` and `develop`.\n\n**Action required:** Resolve the conflicts in this branch, then merge into `develop`.')
           gh pr create \
             --title "chore: sync develop with main (${DATE})" \
-            --body "## ⚠️ Automatic sync: \`main\` → \`develop\` (conflict detected)
-
-This PR was opened automatically by the nightly sync workflow because a merge conflict was detected between \`main\` and \`develop\`.
-
-**Action required:** Resolve the conflicts in this branch, then merge into \`develop\`." \
+            --body "${PR_BODY}" \
             --base develop \
             --head "${BRANCH}" \
             --label "chore"
