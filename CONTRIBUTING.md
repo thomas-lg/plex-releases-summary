@@ -100,7 +100,7 @@ Host-native development is optional and not the primary workflow. If you use it,
 Install all dependencies:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements-dev.lock
 ```
 
 Copy the example environment file and fill in your values:
@@ -161,7 +161,14 @@ Before submitting:
    ./scripts/test.sh
    ```
 
-4. Update docs when behavior/configuration changes
+4. If you changed `requirements.txt` or `requirements-dev.txt`, regenerate the lockfiles and commit them:
+
+   ```bash
+   pip-compile requirements.txt --output-file requirements.lock --annotate --strip-extras
+   pip-compile requirements-dev.txt --output-file requirements-dev.lock --annotate --strip-extras
+   ```
+
+5. Update docs when behavior/configuration changes
 
 PR expectations:
 
