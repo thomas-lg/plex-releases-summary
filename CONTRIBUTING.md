@@ -90,7 +90,7 @@ Equivalent direct commands:
 black src tests
 ruff check --fix src tests
 PYTHONPATH=src mypy src
-PYTHONPATH=src pytest --cov=src --cov-branch --cov-report=xml --cov-report=term --cov-report=html
+PYTHONPATH=src pytest --cov=src --cov-branch --cov-report=xml --cov-report=term-missing --cov-report=html
 ```
 
 ### Optional Host Workflow

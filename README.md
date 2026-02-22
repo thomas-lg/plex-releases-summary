@@ -274,6 +274,7 @@ Script reference: [scripts/README.md](scripts/README.md)
 │   ├── test_config.py # Configuration tests
 │   ├── test_discord_client.py # Discord tests
 │   ├── test_discord_markdown.py # Markdown escaping tests
+│   ├── test_integration.py # Integration tests
 │   ├── test_logging_config.py # Logging config tests
 │   ├── test_scheduler.py # Scheduler tests
 │   └── test_tautulli_client.py # Tautulli client tests
