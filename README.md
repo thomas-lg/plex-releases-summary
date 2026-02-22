@@ -290,8 +290,7 @@ Script reference: [scripts/README.md](scripts/README.md)
 ├── entrypoint.sh # Container entrypoint script
 ├── my-plex-releases-summary.xml # Unraid template
 ├── pyproject.toml # Python project configuration
-├── requirements-dev.txt # Development dependencies
-├── requirements-test.txt # Testing dependencies
+├── requirements-dev.txt # Development & testing dependencies
 ├── requirements.txt # Python dependencies
 └── README.md
 
