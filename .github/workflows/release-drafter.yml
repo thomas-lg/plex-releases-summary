@@ -3,12 +3,6 @@ name: Release Drafter
 on:
     push:
         branches: [main]
-    # pull_request_target runs in the context of the base repo (with write permissions),
-    # even for PRs from forks. This is intentional: release-drafter needs write access
-    # to update draft release notes. It is safe here because no PR code is checked out
-    # or executed — only PR metadata (title, labels) is read by the action.
-    pull_request_target:
-        types: [opened, reopened, synchronize, edited]
     workflow_dispatch:
         inputs:
             dry_run:
@@ -23,10 +17,9 @@ on:
 jobs:
     draft-release:
         runs-on: ubuntu-latest
-        if: github.event_name == 'push' || github.event_name == 'pull_request_target'
+        if: github.event_name == 'push'
         permissions:
             contents: write
-            # write is only needed if autolabeler is configured; read is sufficient here
             pull-requests: read
 
         steps:
@@ -39,7 +32,7 @@ jobs:
 
     publish-release:
         runs-on: ubuntu-latest
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         permissions:
             contents: write
             pull-requests: read
