@@ -75,14 +75,14 @@ jobs:
       - name: Check lockfiles are up to date
         run: |
           docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app prs-devcontainer sh -c "
-            pip-compile requirements.txt --output-file requirements.lock --annotate --quiet &&
-            pip-compile requirements-dev.txt --output-file requirements-dev.lock --annotate --quiet
+            pip-compile requirements.txt --output-file requirements.lock --annotate --quiet --strip-extras --cache-dir /tmp/.cache &&
+            pip-compile requirements-dev.txt --output-file requirements-dev.lock --annotate --quiet --strip-extras --cache-dir /tmp/.cache
           "
           if ! git diff --exit-code requirements.lock requirements-dev.lock; then
             echo ""
             echo "::error::Lockfiles are out of sync with requirements files."
-            echo "::error::Run 'pip-compile requirements.txt --output-file requirements.lock --annotate' and"
-            echo "::error::'pip-compile requirements-dev.txt --output-file requirements-dev.lock --annotate' locally and commit the result."
+            echo "::error::Run 'pip-compile requirements.txt --output-file requirements.lock --annotate --strip-extras' and"
+            echo "::error::'pip-compile requirements-dev.txt --output-file requirements-dev.lock --annotate --strip-extras' locally and commit the result."
             exit 1
           fi
 
