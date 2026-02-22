@@ -21,17 +21,19 @@ Thank you for contributing to Plex Releases Summary.
 This repository uses a structured Git flow:
 
 ```
-feature/* ──► develop ──► release/vX.Y.Z ──► main
-                ▲                              │
-                └──────── nightly sync ◄───────┘
+feature/* ──► develop ──► release/YYYY-MM-DD ──► main
+                ▲                                  │
+                └────────── nightly sync ◄─────────┘
 ```
 
 | Branch | Purpose | Merges into |
 | --- | --- | --- |
 | `feature/*` | New features and fixes | `develop` |
-| `develop` | Integration branch, builds `develop` Docker image | `release/vX.Y.Z` |
-| `release/vX.Y.Z` | Release preparation (version bump, changelog) | `main` |
+| `develop` | Integration branch, builds `develop` Docker image | `release/YYYY-MM-DD` |
+| `release/YYYY-MM-DD` | Release preparation | `main` |
 | `main` | Stable production branch, builds `latest` Docker image | — |
+
+**Release branches** are named by date (e.g. `release/2026-02-22`). The version number (`vX.Y.Z`) is computed automatically by release-drafter based on the labels of merged PRs since the last tag — you don't need to know it at branch creation time. You only confirm or adjust it when publishing the draft release on GitHub.
 
 **Hotfixes** go directly as a PR to `main`. The nightly sync workflow backports `main` → `develop` automatically every night at 02:00 UTC. If there's a merge conflict, a PR is opened automatically targeting `develop` for manual resolution.
 
