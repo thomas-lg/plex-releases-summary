@@ -237,7 +237,7 @@ If Dev Containers is not available, use the same dev environment via Docker Comp
 docker compose -f docker-compose.dev.yml up -d --build
 docker compose -f docker-compose.dev.yml exec app bash
 # or:
-./scripts/dev-shell.sh
+./scripts/dev-container-shell.sh
 ```
 
 Then run contributor checks:
@@ -281,7 +281,7 @@ Script reference: [scripts/README.md](scripts/README.md)
 ├── scripts/ # Helper scripts
 │   ├── clean.sh # Clean up caches
 │   ├── compile-deps.sh # Regenerate lockfiles from requirements files
-│   ├── dev-shell.sh # Enter dev compose shell
+│   ├── dev-container-shell.sh # Enter dev container shell
 │   ├── format.sh # Format Python code
 │   ├── README.md # Scripts documentation
 │   ├── start.sh # Start the app locally

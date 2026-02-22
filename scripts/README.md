@@ -6,13 +6,15 @@ All scripts work both inside the devcontainer and on the host, provided the requ
 
 ## Available Scripts
 
-### 🐳 `dev-shell.sh` - Enter Dev Compose Environment
+### 🐳 `dev-container-shell.sh` - Enter Dev Container Shell
 
 Start the development compose stack and open a shell in the app container.
 
+> **Requires Docker** — the Docker CLI and a running Docker daemon must be available on `PATH`. The script will exit with a clear error message if either is missing.
+
 ```bash
-./scripts/dev-shell.sh
-./scripts/dev-shell.sh pytest -q
+./scripts/dev-container-shell.sh
+./scripts/dev-container-shell.sh pytest -q
 ```
 
 ### ▶️ `start.sh` - Start Application
@@ -80,15 +82,15 @@ Remove generated test/coverage/cache files.
 
 ## Quick Reference
 
-| Task         | Command                       |
-| ------------ | ----------------------------- |
-| Dev shell    | `./scripts/dev-shell.sh`      |
-| Start app    | `./scripts/start.sh`          |
-| Run tests    | `./scripts/test.sh`           |
-| Format       | `./scripts/format.sh`         |
-| Type check   | `./scripts/typecheck.sh`      |
-| Compile deps | `./scripts/compile-deps.sh`   |
-| Clean        | `./scripts/clean.sh`          |
+| Task         | Command                            |
+| ------------ | ---------------------------------- |
+| Dev shell    | `./scripts/dev-container-shell.sh` |
+| Start app    | `./scripts/start.sh`               |
+| Run tests    | `./scripts/test.sh`                |
+| Format       | `./scripts/format.sh`              |
+| Type check   | `./scripts/typecheck.sh`           |
+| Compile deps | `./scripts/compile-deps.sh`        |
+| Clean        | `./scripts/clean.sh`               |
 
 ## Notes
 

@@ -73,7 +73,7 @@ If Dev Containers is not available, [docker-compose.dev.yml](docker-compose.dev.
 docker compose -f docker-compose.dev.yml up -d --build
 docker compose -f docker-compose.dev.yml exec app bash
 # or using the helper script:
-./scripts/dev-shell.sh
+./scripts/dev-container-shell.sh
 ```
 
 Inside the devcontainer, run checks with either direct commands or helper scripts:
