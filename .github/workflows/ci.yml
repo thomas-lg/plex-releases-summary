@@ -6,12 +6,24 @@ on:
     tags: ["v*"]
     paths-ignore:
       - "**.md"
+      - "LICENSE"
+      - "assets/**"
       - ".github/release-drafter.yml"
+      - ".github/CODEOWNERS"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/conventional-commit-types.json"
+      - ".github/dependabot.yml"
   pull_request:
     branches: [main, develop]
     paths-ignore:
       - "**.md"
+      - "LICENSE"
+      - "assets/**"
       - ".github/release-drafter.yml"
+      - ".github/CODEOWNERS"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/conventional-commit-types.json"
+      - ".github/dependabot.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
