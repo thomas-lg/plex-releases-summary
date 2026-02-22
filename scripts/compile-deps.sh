@@ -4,6 +4,9 @@
 
 set -e
 
+export LC_ALL=C
+export LANG=C
+
 cd "$(dirname "$0")/.."
 
 echo "📦 Compiling requirements.lock..."
