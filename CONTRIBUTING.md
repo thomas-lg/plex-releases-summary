@@ -16,12 +16,33 @@ Thank you for contributing to Plex Releases Summary.
   - [Pull Request Process](#pull-request-process)
   - [Production Image and Deployment](#production-image-and-deployment)
 
+## Branching Strategy
+
+This repository uses a structured Git flow:
+
+```
+feature/* ──► develop ──► release/vX.Y.Z ──► main
+                ▲                              │
+                └──────── nightly sync ◄───────┘
+```
+
+| Branch | Purpose | Merges into |
+| --- | --- | --- |
+| `feature/*` | New features and fixes | `develop` |
+| `develop` | Integration branch, builds `develop` Docker image | `release/vX.Y.Z` |
+| `release/vX.Y.Z` | Release preparation (version bump, changelog) | `main` |
+| `main` | Stable production branch, builds `latest` Docker image | — |
+
+**Hotfixes** go directly as a PR to `main`. The nightly sync workflow backports `main` → `develop` automatically every night at 02:00 UTC. If there's a merge conflict, a PR is opened automatically targeting `develop` for manual resolution.
+
+**Dependabot** PRs target `develop` and flow through the normal release process.
+
 ## Getting Started
 
 1. Fork the repository
 2. Clone your fork locally
-3. Create a feature branch
-4. Make your changes and open a pull request
+3. Create a `feature/*` branch from `develop`
+4. Make your changes and open a pull request targeting `develop`
 
 ## Development Setup
 

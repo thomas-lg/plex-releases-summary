@@ -1,0 +1,72 @@
+# Nightly sync: merges main into develop to keep develop up to date with hotfixes.
+# On a clean merge: pushes directly to develop (uses SYNC_TOKEN PAT to bypass develop's branch protection).
+# On conflict: creates a chore/sync-develop-<date> branch and opens a PR targeting develop for manual resolution.
+#
+# Prerequisites: create a fine-grained PAT with "Contents: Read & Write" scope on this repo
+# and store it as a repository secret named SYNC_TOKEN.
+name: Sync develop from main
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          # PAT required to push directly to develop past branch protection
+          token: ${{ secrets.SYNC_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Attempt merge of main into develop
+        id: merge
+        run: |
+          git fetch origin main
+          if git merge origin/main --no-edit; then
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+          else
+            git merge --abort
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push to develop (clean merge)
+        if: steps.merge.outputs.conflict == 'false'
+        run: git push origin develop
+
+      - name: Open conflict resolution PR
+        if: steps.merge.outputs.conflict == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          BRANCH="chore/sync-develop-${DATE}"
+          git checkout -b "${BRANCH}"
+          # Merge with conflict markers so the reviewer sees exactly what needs fixing
+          git merge origin/main --no-commit || true
+          git add -A
+          git commit -m "chore: sync develop with main — conflict resolution needed (${DATE})"
+          git push origin "${BRANCH}"
+          gh pr create \
+            --title "chore: sync develop with main (${DATE})" \
+            --body "## ⚠️ Automatic sync: \`main\` → \`develop\` (conflict detected)
+
+This PR was opened automatically by the nightly sync workflow because a merge conflict was detected between \`main\` and \`develop\`.
+
+**Action required:** Resolve the conflicts in this branch, then merge into \`develop\`." \
+            --base develop \
+            --head "${BRANCH}" \
+            --label "chore"

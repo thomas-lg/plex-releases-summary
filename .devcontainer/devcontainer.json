@@ -27,5 +27,8 @@
         "python.analysis.typeCheckingMode": "basic"
       }
     }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   }
 }
