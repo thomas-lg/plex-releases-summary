@@ -6,7 +6,6 @@
 
 <p align="center">
   <a href="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/ci.yml"><img src="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
-  <a href="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/docker-publish.yml"><img src="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/docker-publish.yml/badge.svg" alt="Docker Build and Release"/></a>
   <a href="https://codecov.io/gh/thomas-lg/plex-releases-summary"><img src="https://codecov.io/gh/thomas-lg/plex-releases-summary/branch/main/graph/badge.svg" alt="Coverage"/></a>
   <a href="https://github.com/thomas-lg/plex-releases-summary/releases/latest"><img src="https://img.shields.io/github/v/release/thomas-lg/plex-releases-summary" alt="Latest Release"/></a>
   <a href="https://ghcr.io/thomas-lg/plex-releases-summary"><img src="https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker" alt="Docker Image"/></a>
@@ -302,10 +301,16 @@ Script reference: [scripts/README.md](scripts/README.md)
 
 Pre-built images available: `ghcr.io/thomas-lg/plex-releases-summary`
 
-Tags: `latest` (stable), `vX.Y.Z` (specific versions), `sha-<commit>` (commit builds)
+| Tag | Description |
+| --- | --- |
+| `latest` | Latest stable build from `main` |
+| `develop` | Latest build from `develop` branch |
+| `vX.Y.Z` | Specific release version |
+| `sha-<commit>` | Exact commit build from `main` |
 
 ```bash
 docker pull ghcr.io/thomas-lg/plex-releases-summary:latest
+docker pull ghcr.io/thomas-lg/plex-releases-summary:develop
 ```
 
 ## Deployment Options

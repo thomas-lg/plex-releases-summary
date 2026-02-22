@@ -143,28 +143,40 @@ PR expectations:
 - Keep PRs focused
 - **Use a conventional commit prefix in the PR title** (e.g. `feat: ...`, `fix: ...`, `docs: ...`, `feat!: ...`). The CI title check validates the prefix directly — the PR will be blocked if the title doesn't match the format `<type>[optional scope][optional !]: <description>`, where the optional `!` (after the type or scoped type) marks a breaking change.
 
-  Valid types: `feat`, `fix`, `docs`, `chore`, `refactor`, `style`, `revert`, `perf`, `test`, `ci`, `build`, `deps`, `breaking`
+  Valid types: `feat`, `fix`, `docs`, `chore`, `refactor`, `style`, `revert`, `perf`, `test`, `ci`, `build`, `deps`, `breaking`, `security`, `hotfix`, `deprecate`, `release`
 
   A label is also automatically applied from the prefix by a separate workflow:
 
   | Prefix                                              | Label applied            |
   | --------------------------------------------------- | ------------------------ |
   | `feat`                                              | `feature`                |
-  | `fix`, `revert`                                     | `fix`                    |
+  | `fix`, `revert`, `hotfix`                           | `fix`                    |
   | `docs`                                              | `documentation`          |
-  | `chore`, `refactor`, `style`, `test`, `ci`, `build` | `chore`                  |
+  | `chore`, `refactor`, `style`, `test`, `build`       | `chore`                  |
+  | `ci`                                                | `github-actions`         |
   | `perf`                                              | `enhancement`            |
   | `deps`                                              | `dependencies`           |
+  | `security`                                          | `security`               |
+  | `deprecate`                                         | `deprecated`             |
   | `feat!`, `fix!`, … (breaking)                       | above label + `breaking` |
 
 - Ensure CI passes
 
 ## Production Image and Deployment
 
-This repository keeps a production Docker image workflow:
+This repository keeps a production Docker image workflow consolidated in a single CI/CD pipeline:
 
 - Production build definition: `Dockerfile`
-- Publish pipeline: `.github/workflows/docker-publish.yml`
+- CI/CD pipeline: `.github/workflows/ci.yml` (quality checks, tests, Docker build & push, release drafting)
 - Deployment example: `docker-compose.yml`
+
+The pipeline gates Docker image publishing on passing quality and test checks. Images are published to `ghcr.io/thomas-lg/plex-releases-summary` with the following tags:
+
+| Tag | When |
+| --- | --- |
+| `latest` | Push to `main` |
+| `develop` | Push to `develop` |
+| `vX.Y.Z` | Version tag (`v*`) |
+| `sha-<commit>` | Push to `main` (traceability) |
 
 Contributors should not use production compose files as the day-to-day development environment.
