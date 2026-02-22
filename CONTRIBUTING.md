@@ -75,7 +75,6 @@ Install all dependencies:
 
 ```bash
 pip install -r requirements-dev.txt
-pip install -r requirements-test.txt
 ```
 
 Copy the example environment file and fill in your values:
