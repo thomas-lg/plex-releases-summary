@@ -5,14 +5,20 @@
 </p>
 
 <p align="center">
+  <!-- Build & Distribution -->
   <a href="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/ci.yml"><img src="https://github.com/thomas-lg/plex-releases-summary/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
   <a href="https://github.com/thomas-lg/plex-releases-summary/releases/latest"><img src="https://img.shields.io/github/v/release/thomas-lg/plex-releases-summary?logo=github&logoColor=white&color=blue" alt="Latest Release"/></a>
   <a href="https://ghcr.io/thomas-lg/plex-releases-summary"><img src="https://img.shields.io/badge/docker-ghcr.io-2496ED?logo=docker&logoColor=white" alt="Docker Image"/></a>
+  <!-- Code Quality -->
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fthomas-lg%2Fplex-releases-summary%2Fmain%2Fpyproject.toml&query=%24.project.requires-python&label=python&logo=python&logoColor=white&color=3776ab" alt="Python Version"/></a>
   <a href="https://codecov.io/gh/thomas-lg/plex-releases-summary"><img src="https://codecov.io/gh/thomas-lg/plex-releases-summary/branch/main/graph/badge.svg" alt="Coverage"/></a>
+  <a href="https://docs.pydantic.dev/"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pydantic/pydantic/main/docs/badge/v2.json" alt="Pydantic v2"/></a>
   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"/></a>
   <a href="https://mypy-lang.org/"><img src="https://www.mypy-lang.org/static/mypy_badge.svg" alt="Checked with mypy"/></a>
-  <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"/></a>
+  <!-- Security & Maintenance -->
+  <a href="https://github.com/thomas-lg/plex-releases-summary/security"><img src="https://img.shields.io/badge/security-trivy-1904DA?logo=aquasecurity&logoColor=white" alt="Security: Trivy"/></a>
+  <a href="https://github.com/thomas-lg/plex-releases-summary/network/updates"><img src="https://img.shields.io/badge/dependabot-enabled-025E8C?logo=dependabot&logoColor=white" alt="Dependabot"/></a>
+  <!-- License -->
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?logo=opensourceinitiative&logoColor=white" alt="License: MIT"/></a>
 </p>
 
@@ -54,7 +60,7 @@ A lightweight Docker container that fetches recently added media from your Plex 
 
 - 📅 **Scheduled execution** with CRON-like timing (runs as daemon)
 - ▶️ **One-shot mode** for external cron jobs or manual runs (`RUN_ONCE=true`)
-- 📺 Fetches recently added movies, TV shows, episodes, music, and more
+- 📺 Fetches recently added movies, TV shows, episodes, music, and more *(music library support is untested)*
 - 🎯 Configurable time range (e.g., last 7 days)
 - 💬 **Optional Discord notifications** with rich embed formatting (including friendly "nothing new" updates)
 - 🐳 Docker-ready with minimal footprint
@@ -231,7 +237,7 @@ If Dev Containers is not available, use the same dev environment via Docker Comp
 docker compose -f docker-compose.dev.yml up -d --build
 docker compose -f docker-compose.dev.yml exec app bash
 # or:
-./scripts/dev-shell.sh
+./scripts/dev-container-shell.sh
 ```
 
 Then run contributor checks:
@@ -268,14 +274,17 @@ Script reference: [scripts/README.md](scripts/README.md)
 │   ├── test_config.py # Configuration tests
 │   ├── test_discord_client.py # Discord tests
 │   ├── test_discord_markdown.py # Markdown escaping tests
+│   ├── test_integration.py # Integration tests
 │   ├── test_logging_config.py # Logging config tests
 │   ├── test_scheduler.py # Scheduler tests
 │   └── test_tautulli_client.py # Tautulli client tests
 ├── scripts/ # Helper scripts
 │   ├── clean.sh # Clean up caches
-│   ├── dev-shell.sh # Enter dev compose shell
+│   ├── compile-deps.sh # Regenerate lockfiles from requirements files
+│   ├── dev-container-shell.sh # Enter dev container shell
 │   ├── format.sh # Format Python code
 │   ├── README.md # Scripts documentation
+│   ├── start.sh # Start the app locally
 │   ├── test.sh # Run tests
 │   └── typecheck.sh # Type-check with mypy
 ├── configs/
@@ -295,7 +304,9 @@ Script reference: [scripts/README.md](scripts/README.md)
 ├── my-plex-releases-summary.xml # Unraid template
 ├── pyproject.toml # Python project configuration
 ├── requirements-dev.txt # Development & testing dependencies
+├── requirements-dev.lock # Compiled lockfile for dev dependencies
 ├── requirements.txt # Python dependencies
+├── requirements.lock # Compiled lockfile for runtime dependencies
 └── README.md
 
 ```

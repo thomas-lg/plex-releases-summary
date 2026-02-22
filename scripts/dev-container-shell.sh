@@ -3,6 +3,16 @@
 
 set -e
 
+# Require Docker
+if ! command -v docker > /dev/null 2>&1; then
+    echo "❌ Docker is not installed or not on PATH. Please install Docker to use this script."
+    exit 1
+fi
+if ! docker info > /dev/null 2>&1; then
+    echo "❌ Docker daemon is not running. Please start Docker and try again."
+    exit 1
+fi
+
 cd "$(dirname "$0")/.."
 
 # Derive Python version from Dockerfile so dev and prod always match

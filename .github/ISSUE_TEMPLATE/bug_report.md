@@ -1,41 +1,52 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: ''
-labels: ''
+title: '[Bug] '
+labels: bug
 assignees: ''
 
 ---
 
 **Describe the bug**
+
 A clear and concise description of what the bug is.
 
 **To Reproduce**
+
 Steps to reproduce the behavior:
 
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+1. ...
+2. ...
+3. ...
 
 **Expected behavior**
+
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Environment**
 
-**Desktop (please complete the following information):**
+- Plex Releases Summary version / image tag: [e.g. `latest`, `v1.2.3`]
+- Tautulli version: [e.g. `v2.14.0`]
+- Deployment method: [e.g. Docker Compose, Unraid]
+- Host OS / architecture: [e.g. Ubuntu 22.04, `linux/arm64`]
+- Execution mode: [e.g. `run_once: true`, scheduled with cron]
 
-- OS: [e.g. iOS]
-- Browser [e.g. chrome, safari]
-- Version [e.g. 22]
+**Relevant log output**
 
-**Smartphone (please complete the following information):**
+Please include the relevant portion of the container logs (`docker logs <container>` or the contents of the `logs/` directory). Redact any API keys or webhook URLs.
 
-- Device: [e.g. iPhone6]
-- OS: [e.g. iOS8.1]
-- Browser [e.g. stock browser, safari]
-- Version [e.g. 22]
+```text
+<paste logs here>
+```
+
+**Configuration (optional)**
+
+If relevant, paste the anonymised contents of your `config.yml` (remove API keys and webhook URLs).
+
+```yaml
+<paste config here>
+```
 
 **Additional context**
+
 Add any other context about the problem here.

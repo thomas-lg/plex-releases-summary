@@ -73,7 +73,7 @@ If Dev Containers is not available, [docker-compose.dev.yml](docker-compose.dev.
 docker compose -f docker-compose.dev.yml up -d --build
 docker compose -f docker-compose.dev.yml exec app bash
 # or using the helper script:
-./scripts/dev-shell.sh
+./scripts/dev-container-shell.sh
 ```
 
 Inside the devcontainer, run checks with either direct commands or helper scripts:
@@ -90,7 +90,7 @@ Equivalent direct commands:
 black src tests
 ruff check --fix src tests
 PYTHONPATH=src mypy src
-PYTHONPATH=src pytest --cov=src --cov-branch --cov-report=xml --cov-report=term --cov-report=html
+PYTHONPATH=src pytest --cov=src --cov-branch --cov-report=xml --cov-report=term-missing --cov-report=html
 ```
 
 ### Optional Host Workflow
@@ -100,7 +100,7 @@ Host-native development is optional and not the primary workflow. If you use it,
 Install all dependencies:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements-dev.lock
 ```
 
 Copy the example environment file and fill in your values:
@@ -161,7 +161,13 @@ Before submitting:
    ./scripts/test.sh
    ```
 
-4. Update docs when behavior/configuration changes
+4. If you changed `requirements.txt` or `requirements-dev.txt`, regenerate the lockfiles and commit them:
+
+   ```bash
+   ./scripts/compile-deps.sh
+   ```
+
+5. Update docs when behavior/configuration changes
 
 PR expectations:
 

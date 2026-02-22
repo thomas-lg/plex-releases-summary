@@ -3,6 +3,7 @@
 
 # Build tools
 setuptools-scm>=8
+pip-tools>=7.4.0
 
 # Static analysis and code quality
 mypy>=1.8.0

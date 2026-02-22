@@ -24,8 +24,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     gosu nobody true
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
 
 COPY src/ src/
 COPY configs/config.yml config.yml.default

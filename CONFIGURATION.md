@@ -250,7 +250,7 @@ services:
 
 ## Discord Notification Notes
 
-- **Category summaries:** Movies, TV Shows, Albums, and Tracks are grouped into rich embeds.
+- **Category summaries:** Movies, TV Shows, TV Seasons, TV Episodes, Music Albums, Music Tracks, and Other items are each grouped into their own rich embed.
 - **Empty period:** if no items match the selected period, the app sends a single friendly "nothing new" embed.
 - **Message style:** empty-period title/body text is selected from an internal randomized message set.
 - **Large result sets:** content is trimmed/split into multiple messages to stay within Discord limits.
