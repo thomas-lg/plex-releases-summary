@@ -33,6 +33,9 @@ env:
 
 jobs:
   build-devcontainer:
+    # NOTE: Skipped on workflow_dispatch intentionally — all jobs that `need` this one
+    # (quality, tests, build-and-push) are also skipped in that case. workflow_dispatch
+    # is used solely to publish an already-drafted release via publish-release.
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -145,14 +148,14 @@ jobs:
           tags: |
             # Tag as 'latest' for pushes to main
             type=raw,value=latest,enable={{is_default_branch}}
+            # Tag as 'develop' for pushes to develop
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             # Tag as version for tags like v1.0.0
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            # Tag as sha-<commit> for traceability
-            type=sha,prefix=sha-,format=short
-            # Tag as 'dev' for pull requests
-            type=raw,value=dev,enable=${{ github.event_name == 'pull_request' }}
+            # Tag as sha-<commit> for traceability on main
+            type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Docker image
         id: build
