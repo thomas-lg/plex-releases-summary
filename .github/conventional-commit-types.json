@@ -1,20 +1,34 @@
 {
   "feat": "feature",
+  "improve": "enhancement",
+  "perf": "enhancement",
+
   "fix": "fix",
+  "hotfix": "fix",
+  "bugfix": "fix",
+  "revert": "fix",
+
+  "breaking": "breaking",
+
+  "security": "security",
+
   "docs": "documentation",
-  "chore": "chore",
+
   "refactor": "chore",
   "style": "chore",
-  "revert": "fix",
-  "perf": "enhancement",
+  "cleanup": "chore",
+  "chore": "chore",
   "test": "chore",
-  "ci": "chore",
   "build": "chore",
+
+  "ci": "github-actions",
+  "actions": "github-actions",
+
   "deps": "dependencies",
-  "breaking": "breaking",
-  "security": "security",
-  "hotfix": "fix",
+
   "deprecate": "deprecated",
+
   "release": "release",
+
   "wip": "wip"
 }

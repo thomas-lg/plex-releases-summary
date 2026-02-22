@@ -143,21 +143,25 @@ PR expectations:
 - Keep PRs focused
 - **Use a conventional commit prefix in the PR title** (e.g. `feat: ...`, `fix: ...`, `docs: ...`, `feat!: ...`). The CI title check validates the prefix directly — the PR will be blocked if the title doesn't match the format `<type>[optional scope][optional !]: <description>`, where the optional `!` (after the type or scoped type) marks a breaking change.
 
-  Valid types: `feat`, `fix`, `docs`, `chore`, `refactor`, `style`, `revert`, `perf`, `test`, `ci`, `build`, `deps`, `breaking`, `security`, `hotfix`, `deprecate`, `release`
+  Valid types: `feat`, `improve`, `perf`, `fix`, `bugfix`, `hotfix`, `revert`, `breaking`, `security`, `docs`, `refactor`, `style`, `cleanup`, `chore`, `test`, `build`, `ci`, `actions`, `deps`, `deprecate`, `release`, `wip`
 
   A label is also automatically applied from the prefix by a separate workflow:
 
-  | Prefix                                              | Label applied            |
-  | --------------------------------------------------- | ------------------------ |
-  | `feat`                                              | `feature`                |
-  | `fix`, `revert`, `hotfix`                           | `fix`                    |
-  | `docs`                                              | `documentation`          |
-  | `chore`, `refactor`, `style`, `test`, `build`, `ci` | `chore`                  |
-  | `perf`                                              | `enhancement`            |
-  | `deps`                                              | `dependencies`           |
-  | `security`                                          | `security`               |
-  | `deprecate`                                         | `deprecated`             |
-  | `feat!`, `fix!`, … (breaking)                       | above label + `breaking` |
+  | Prefix                                                   | Label applied            |
+  | -------------------------------------------------------- | ------------------------ |
+  | `feat`                                                   | `feature`                |
+  | `improve`, `perf`                                        | `enhancement`            |
+  | `fix`, `bugfix`, `hotfix`, `revert`                      | `fix`                    |
+  | `breaking`                                               | `breaking`               |
+  | `security`                                               | `security`               |
+  | `docs`                                                   | `documentation`          |
+  | `refactor`, `style`, `cleanup`, `chore`, `test`, `build` | `chore`                  |
+  | `ci`, `actions`                                          | `github-actions`         |
+  | `deps`                                                   | `dependencies`           |
+  | `deprecate`                                              | `deprecated`             |
+  | `release`                                                | `release`                |
+  | `wip`                                                    | `wip`                    |
+  | `feat!`, `fix!`, … (breaking)                            | above label + `breaking` |
 
 - Ensure CI passes
 
