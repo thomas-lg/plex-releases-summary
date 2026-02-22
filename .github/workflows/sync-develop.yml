@@ -19,6 +19,13 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Check SYNC_TOKEN is configured
+        run: |
+          if [ -z "${{ secrets.SYNC_TOKEN }}" ]; then
+            echo "::error::SYNC_TOKEN secret is not configured. Create a fine-grained PAT with 'Contents: Read & Write' and 'Pull requests: Read & Write' scopes and store it as a repository secret named SYNC_TOKEN."
+            exit 1
+          fi
+
       - name: Checkout develop
         uses: actions/checkout@v4
         with:
@@ -35,7 +42,13 @@ jobs:
       - name: Attempt merge of main into develop
         id: merge
         run: |
-          git fetch origin main
+          # Fetch both branches; fast-forward develop to pick up any concurrent merges
+          # before we attempt the main merge, reducing the chance of a push race.
+          git fetch origin develop main
+          if ! git merge --ff-only origin/develop; then
+            echo "::error::Local develop has diverged from origin/develop unexpectedly. Manual intervention required."
+            exit 1
+          fi
           if git merge origin/main --no-edit; then
             echo "conflict=false" >> "$GITHUB_OUTPUT"
           else
@@ -45,7 +58,18 @@ jobs:
 
       - name: Push to develop (clean merge)
         if: steps.merge.outputs.conflict == 'false'
-        run: git push origin develop
+        run: |
+          if ! git push origin develop; then
+            echo "Push rejected (non-fast-forward race). Fetching latest develop and rebasing..."
+            git fetch origin develop
+            if git rebase origin/develop; then
+              git push origin develop
+            else
+              git rebase --abort
+              echo "::error::Push to develop failed and rebase onto latest origin/develop also failed. Manual intervention required."
+              exit 1
+            fi
+          fi
 
       - name: Open conflict resolution PR
         if: steps.merge.outputs.conflict == 'true'
@@ -67,6 +91,11 @@ jobs:
             --state open \
             --json number,headRefName \
             --jq '.[] | select(.headRefName | startswith("chore/sync-develop-")) | [.number, .headRefName] | @tsv')
+
+          # Fetch all existing sync-develop remote refs so git log can read their
+          # parent SHAs. Without this, origin/${STALE_BRANCH} is unknown locally
+          # and BRANCH_MAIN_SHA is always empty, causing every PR to be closed.
+          git fetch origin 'refs/heads/chore/sync-develop-*:refs/remotes/origin/chore/sync-develop-*' 2>/dev/null || true
 
           while IFS=$'\t' read -r PR_NUM STALE_BRANCH; do
             [ -z "${PR_NUM}" ] && continue
