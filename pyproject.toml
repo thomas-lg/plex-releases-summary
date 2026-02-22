@@ -111,8 +111,7 @@ addopts = [
 ]
 markers = [
     "unit: Unit tests that don't require external services",
-    "integration: Integration tests that may require mocked external services",
-    "slow: Tests that take longer to run",
+    "integration: Integration tests that exercise the full pipeline with mocked HTTP",
 ]
 
 [tool.coverage.run]

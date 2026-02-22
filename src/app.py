@@ -374,7 +374,7 @@ def run_summary(config: Config) -> int:
     return exit_code
 
 
-def main():
+def main() -> int:
     """
     Main entry point: Choose between scheduled or one-shot execution mode.
 

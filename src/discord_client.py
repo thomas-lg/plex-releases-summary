@@ -608,7 +608,7 @@ class DiscordNotifier:
                     raise
 
         # This point is only reached if every attempt hit the rate-limit path
-        # without a successful response. The assert guards against an unexpected
-        # None, which would indicate a bug in the retry loop above.
-        assert response is not None, "_send_with_retry exhausted retries without raising"
+        # without a successful response.
+        if response is None:  # pragma: no cover
+            raise RuntimeError("_send_with_retry exhausted retries without raising")
         return response

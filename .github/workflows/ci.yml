@@ -72,6 +72,20 @@ jobs:
         run: |
           docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app -e PYTHONPATH=src prs-devcontainer mypy src
 
+      - name: Check lockfiles are up to date
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "${{ github.workspace }}:/app" -w /app prs-devcontainer sh -c "
+            pip-compile requirements.txt --output-file requirements.lock --annotate --quiet &&
+            pip-compile requirements-dev.txt --output-file requirements-dev.lock --annotate --quiet
+          "
+          if ! git diff --exit-code requirements.lock requirements-dev.lock; then
+            echo ""
+            echo "::error::Lockfiles are out of sync with requirements files."
+            echo "::error::Run 'pip-compile requirements.txt --output-file requirements.lock --annotate' and"
+            echo "::error::'pip-compile requirements-dev.txt --output-file requirements-dev.lock --annotate' locally and commit the result."
+            exit 1
+          fi
+
   tests:
     needs: build-devcontainer
     runs-on: ubuntu-latest
@@ -100,6 +114,31 @@ jobs:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
+
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 0
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
 
   build-and-push:
     needs: [quality, tests]
