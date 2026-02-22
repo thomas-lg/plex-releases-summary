@@ -152,8 +152,7 @@ PR expectations:
   | `feat`                                              | `feature`                |
   | `fix`, `revert`, `hotfix`                           | `fix`                    |
   | `docs`                                              | `documentation`          |
-  | `chore`, `refactor`, `style`, `test`, `build`       | `chore`                  |
-  | `ci`                                                | `github-actions`         |
+  | `chore`, `refactor`, `style`, `test`, `build`, `ci` | `chore`                  |
   | `perf`                                              | `enhancement`            |
   | `deps`                                              | `dependencies`           |
   | `security`                                          | `security`               |

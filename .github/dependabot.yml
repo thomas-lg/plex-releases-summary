@@ -33,7 +33,6 @@ updates:
       interval: "weekly"
     labels:
       - "dependencies"
-      - "github-actions"
     commit-message:
       prefix: "deps"
     groups:
