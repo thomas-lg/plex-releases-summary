@@ -2,6 +2,9 @@ name-template: "v$RESOLVED_VERSION"
 tag-template: "v$RESOLVED_VERSION"
 change-template: "- $TITLE (#$NUMBER)"
 change-title-escapes: '\<*_&'
+exclude-labels:
+  - "release"
+  - "wip"
 
 categories:
   - title: "💥 Breaking Changes"
@@ -32,9 +35,6 @@ categories:
   - title: "⚠️ Deprecations"
     labels:
       - "deprecated"
-  - title: "🏷️ Release"
-    labels:
-      - "release"
 
 version-resolver:
   major:
