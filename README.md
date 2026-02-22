@@ -103,7 +103,8 @@ That's it! On first run, the entrypoint automatically creates `config.yml` from 
 > - Config: `/app/configs/config.yml`
 > - Logs: `/app/logs`
 > - Examples: `./my-configs:/app/configs`, `./my-logs:/app/logs`
->   **For advanced configuration options**, see [CONFIGURATION.md](CONFIGURATION.md#environment-variable-behavior)
+>
+> **For advanced configuration options**, see [CONFIGURATION.md](CONFIGURATION.md#environment-variable-behavior)
 
 ## Unraid Quick Start
 
@@ -253,35 +254,35 @@ Script reference: [scripts/README.md](scripts/README.md)
 ```text
 .
 ├── src/
-│ ├── app.py # Main application logic
-│ ├── config.py # Configuration loader and validator
-│ ├── discord_client.py # Discord webhook client
-│ ├── logging_config.py # Logging configuration
-│ ├── scheduler.py # APScheduler daemon mode
-│ └── tautulli_client.py # Tautulli API client
+│   ├── app.py # Main application logic
+│   ├── config.py # Configuration loader and validator
+│   ├── discord_client.py # Discord webhook client
+│   ├── logging_config.py # Logging configuration
+│   ├── scheduler.py # APScheduler daemon mode
+│   └── tautulli_client.py # Tautulli API client
 ├── tests/ # Test suite
-│ ├── test_app.py # App logic tests
-│ ├── test_config.py # Configuration tests
-│ ├── test_discord_client.py # Discord tests
-│ ├── test_discord_markdown.py # Markdown escaping tests
-│ ├── test_logging_config.py # Logging config tests
-│ ├── test_scheduler.py # Scheduler tests
-│ └── test_tautulli_client.py # Tautulli client tests
+│   ├── test_app.py # App logic tests
+│   ├── test_config.py # Configuration tests
+│   ├── test_discord_client.py # Discord tests
+│   ├── test_discord_markdown.py # Markdown escaping tests
+│   ├── test_logging_config.py # Logging config tests
+│   ├── test_scheduler.py # Scheduler tests
+│   └── test_tautulli_client.py # Tautulli client tests
 ├── scripts/ # Helper scripts
-│ ├── clean.sh # Clean up caches
-│ ├── dev-shell.sh # Enter dev compose shell
-│ ├── format.sh # Format Python code
-│ ├── README.md # Scripts documentation
-│ ├── test.sh # Run tests
-│ └── typecheck.sh # Type-check with mypy
+│   ├── clean.sh # Clean up caches
+│   ├── dev-shell.sh # Enter dev compose shell
+│   ├── format.sh # Format Python code
+│   ├── README.md # Scripts documentation
+│   ├── test.sh # Run tests
+│   └── typecheck.sh # Type-check with mypy
 ├── configs/
-│ └── config.yml # User configuration file
+│   └── config.yml # User configuration file
 ├── CONFIGURATION.md # Complete configuration reference
 ├── .devcontainer/
-│ ├── Dockerfile.dev # Devcontainer image
-│ └── devcontainer.json # Devcontainer definition
+│   ├── Dockerfile.dev # Devcontainer image
+│   └── devcontainer.json # Devcontainer definition
 ├── .github/
-│ └── workflows/ # CI/CD pipelines
+│   └── workflows/ # CI/CD pipelines
 ├── assets/ # Project assets (screenshots, etc.)
 ├── CONTRIBUTING.md # Contribution guidelines
 ├── Dockerfile # Production Docker image
