@@ -306,7 +306,7 @@ Pre-built images available: `ghcr.io/thomas-lg/plex-releases-summary`
 | `latest` | Latest stable build from `main` |
 | `develop` | Latest build from `develop` branch |
 | `vX.Y.Z` | Specific release version |
-| `sha-<commit>` | Exact commit build from `main` |
+| `sha-<shortsha>` | Exact commit build from `main` (short commit SHA) |
 
 ```bash
 docker pull ghcr.io/thomas-lg/plex-releases-summary:latest

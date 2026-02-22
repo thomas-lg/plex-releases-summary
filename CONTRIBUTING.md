@@ -180,6 +180,6 @@ The pipeline gates Docker image publishing on passing quality and test checks. I
 | `latest` | Push to `main` |
 | `develop` | Push to `develop` |
 | `vX.Y.Z` | Version tag (`v*`) |
-| `sha-<commit>` | Push to `main` (traceability) |
+| `sha-<shortsha>` | Push to `main` (traceability; short commit SHA) |
 
 Contributors should not use production compose files as the day-to-day development environment.

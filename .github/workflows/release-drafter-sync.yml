@@ -1,0 +1,24 @@
+# Applies the release-drafter config immediately when release-drafter.yml is updated on main,
+# without triggering the full CI pipeline (quality, tests, Docker build).
+name: Sync Release Drafter Config
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - ".github/release-drafter.yml"
+
+jobs:
+    sync:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: read
+
+        steps:
+            - name: Update Draft Release
+              uses: release-drafter/release-drafter@v6
+              with:
+                  config-name: release-drafter.yml
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
