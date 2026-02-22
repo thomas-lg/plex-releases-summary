@@ -22,7 +22,7 @@ jobs:
                   org-name: thomas-lg
                   keep-at-least: 10
                   untagged-only: false
-                  skip-tags: latest,v*
+                  skip-tags: latest,develop,v*
                   token: ${{ secrets.GITHUB_TOKEN }}
                   filter-tags: sha-*
 

@@ -14,27 +14,25 @@ categories:
   - title: "🐛 Bug Fixes"
     labels:
       - "fix"
-      - "bugfix"
-      - "bug"
   - title: "📚 Documentation"
     labels:
       - "documentation"
-      - "docs"
   - title: "🔧 Maintenance"
     labels:
       - "chore"
-      - "maintenance"
+  - title: "⚙️ GitHub Actions"
+    labels:
+      - "github-actions"
   - title: "⬆️ Dependencies"
     labels:
       - "dependencies"
-      - "deps"
   - title: "🔒 Security"
     labels:
       - "security"
   - title: "⚠️ Deprecations"
     labels:
       - "deprecated"
-  - title: "🚀 Release"
+  - title: "🏷️ Release"
     labels:
       - "release"
 
@@ -42,7 +40,6 @@ version-resolver:
   major:
     labels:
       - "breaking"
-      - "breaking-change"
   minor:
     labels:
       - "feature"
@@ -50,11 +47,9 @@ version-resolver:
   patch:
     labels:
       - "fix"
-      - "bugfix"
-      - "bug"
       - "documentation"
       - "chore"
-      - "maintenance"
+      - "github-actions"
       - "dependencies"
       - "security"
       - "deprecated"
