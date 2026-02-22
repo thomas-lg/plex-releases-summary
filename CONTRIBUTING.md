@@ -34,7 +34,7 @@ feature/* ──► develop ──► release/* ──► main
 | `release/*` | Release preparation | `main` |
 | `main` | Stable production branch, builds `latest` Docker image | — |
 
-**Release branches** follow the `release/<name>` convention (e.g. `release/2026-02-22` or `release/1.0`). The version number (`vX.Y.Z`) is computed automatically by release-drafter based on the labels of merged PRs since the last tag — you don't need to know it at branch creation time. You only confirm or adjust it when publishing the draft release on GitHub.
+**Release branches** use the `release/<name>` convention — preferably date-based (e.g. `release/2026-02-22`) or version-based (e.g. `release/1.0`). The tag version (`vX.Y.Z`) is computed automatically by release-drafter from merged PR labels; confirm or adjust it when publishing the draft release on GitHub.
 
 **Hotfixes** go directly as a PR to `main`. The nightly sync workflow backports `main` → `develop` automatically every night at 02:00 UTC. If there's a merge conflict, a PR is opened automatically targeting `develop` for manual resolution.
 

@@ -2,14 +2,20 @@
 # On a clean merge: pushes directly to develop (uses SYNC_TOKEN PAT to bypass develop's branch protection).
 # On conflict: creates a chore/sync-develop-<date> branch and opens a PR targeting develop for manual resolution.
 #
-# Prerequisites: create a fine-grained PAT with "Contents: Read & Write" and "Pull requests: Read & Write" scopes on this repo
-# and store it as a repository secret named SYNC_TOKEN.
+# Prerequisites:
+#   - The develop branch must exist on the remote before this workflow runs.
+#   - Create a fine-grained PAT with "Contents: Read & Write" and "Pull requests: Read & Write" scopes on this repo
+#     and store it as a repository secret named SYNC_TOKEN.
 name: Sync develop from main
 
 on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: sync-develop
+  cancel-in-progress: false
 
 jobs:
   sync:
@@ -34,14 +40,12 @@ jobs:
           # PAT required to push directly to develop past branch protection
           token: ${{ secrets.SYNC_TOKEN }}
 
-      - name: Configure git identity
+      - name: Attempt merge of main into develop
+        id: merge
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Attempt merge of main into develop
-        id: merge
-        run: |
           # Fetch both branches; fast-forward develop to pick up any concurrent merges
           # before we attempt the main merge, reducing the chance of a push race.
           git fetch origin develop main
@@ -59,17 +63,15 @@ jobs:
       - name: Push to develop (clean merge)
         if: steps.merge.outputs.conflict == 'false'
         run: |
-          if ! git push origin develop; then
-            echo "Push rejected (non-fast-forward race). Fetching latest develop and rebasing..."
-            git fetch origin develop
-            if git rebase origin/develop; then
-              git push origin develop
-            else
-              git rebase --abort
-              echo "::error::Push to develop failed and rebase onto latest origin/develop also failed. Manual intervention required."
-              exit 1
-            fi
+          git push origin develop && exit 0
+          echo "Push rejected (non-fast-forward). Rebasing onto latest origin/develop and retrying..."
+          git fetch origin develop
+          if ! git rebase origin/develop; then
+            git rebase --abort
+            echo "::error::Push to develop failed and rebase also failed. Manual intervention required."
+            exit 1
           fi
+          git push origin develop
 
       - name: Open conflict resolution PR
         if: steps.merge.outputs.conflict == 'true'
@@ -120,11 +122,13 @@ jobs:
           git merge origin/main --no-commit || true
           git add -A
           git commit -m "chore: sync develop with main — conflict resolution needed (${DATE})"
-          git push origin "${BRANCH}"
-          PR_BODY=$(printf '## ⚠️ Automatic sync: `main` → `develop` (conflict detected)\n\nThis PR was opened automatically by the nightly sync workflow because a merge conflict was detected between `main` and `develop`.\n\n**Action required:** Resolve the conflicts in this branch, then merge into `develop`.')
+          if ! git push origin "${BRANCH}"; then
+            echo "::warning::Failed to push ${BRANCH} — possibly a concurrent workflow run pushed first. Skipping PR creation."
+            exit 0
+          fi
           gh pr create \
             --title "chore: sync develop with main (${DATE})" \
-            --body "${PR_BODY}" \
+            --body $'## ⚠️ Automatic sync: `main` → `develop` (conflict detected)\n\nThis PR was opened automatically by the nightly sync workflow because a merge conflict was detected between `main` and `develop`.\n\n**Action required:** Resolve the conflicts in this branch, then merge into `develop`.' \
             --base develop \
             --head "${BRANCH}" \
             --label "chore"
