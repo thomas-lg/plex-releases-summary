@@ -76,6 +76,15 @@ When creating a pull request, always follow the structure defined in `.github/pu
 
 PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat: add X`, `fix: correct Y`, `chore: update Z`).
 
-Valid types: `feat`, `improve`, `perf`, `fix`, `bugfix`, `hotfix`, `revert`, `breaking`, `security`, `docs`, `refactor`, `style`, `cleanup`, `chore`, `test`, `build`, `ci`, `actions`, `deps`, `deprecate`, `release`, `wip`
+Valid types are the **keys** from `.github/conventional-commit-types.json` (not the label values):
+`feat`, `improve`, `perf`, `fix`, `bugfix`, `hotfix`, `revert`, `breaking`, `security`, `docs`, `refactor`, `style`, `cleanup`, `chore`, `test`, `build`, `ci`, `actions`, `deps`, `deprecate`, `release`, `wip`
+
+> ⚠️ The JSON values are GitHub label names — they are **not** valid commit types and must never be used as PR title prefixes. The following are label names only and have no valid use as a prefix:
+> - `feature` → use `feat`
+> - `enhancement` → use `improve` or `perf`
+> - `documentation` → use `docs`
+> - `github-actions` → use `ci` or `actions`
+> - `dependencies` → use `deps`
+> - `deprecated` → use `deprecate`
 
 Append `!` before the colon to denote a breaking change (e.g. `feat!: redesign config schema`).
