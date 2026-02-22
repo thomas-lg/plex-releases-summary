@@ -36,7 +36,7 @@ feature/* ──► develop ──► release/* ──► main
 
 **Release branches** use the `release/<name>` convention — preferably date-based (e.g. `release/2026-02-22`) or version-based (e.g. `release/1.0`). The tag version (`vX.Y.Z`) is computed automatically by release-drafter from merged PR labels; confirm or adjust it when publishing the draft release on GitHub.
 
-**Hotfixes** go directly as a PR to `main`. The nightly sync workflow backports `main` → `develop` automatically every night at 02:00 UTC. If there's a merge conflict, a PR is opened automatically targeting `develop` for manual resolution.
+**Hotfixes** use a `hotfix/<short-description>` branch cut from `main`, opened as a PR targeting `main`. Follow the same conventional commit title and labeling rules as normal PRs (see [Pull Request Process](#pull-request-process)), applying the `hotfix` label if it exists. The nightly sync backports `main` → `develop` automatically at 02:00 UTC; conflicts open a PR targeting `develop` for manual resolution.
 
 > **Repository setup required:** the nightly sync needs a `SYNC_TOKEN` repository secret (fine-grained PAT with "Contents: Read & Write" and "Pull requests: Read & Write" scopes) to push directly to the protected `develop` branch. See the prerequisites comment at the top of [`.github/workflows/sync-develop.yml`](.github/workflows/sync-develop.yml) for details.
 

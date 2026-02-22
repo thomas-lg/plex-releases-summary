@@ -63,7 +63,9 @@ jobs:
       - name: Push to develop (clean merge)
         if: steps.merge.outputs.conflict == 'false'
         run: |
-          git push origin develop && exit 0
+          if git push origin develop; then
+            exit 0
+          fi
           echo "Push rejected (non-fast-forward). Rebasing onto latest origin/develop and retrying..."
           git fetch origin develop
           if ! git rebase origin/develop; then
