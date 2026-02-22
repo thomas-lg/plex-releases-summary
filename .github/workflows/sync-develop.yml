@@ -1,0 +1,136 @@
+# Nightly sync: merges main into develop to keep develop up to date with hotfixes.
+# On a clean merge: pushes directly to develop (uses SYNC_TOKEN PAT to bypass develop's branch protection).
+# On conflict: creates a chore/sync-develop-<date> branch and opens a PR targeting develop for manual resolution.
+#
+# Prerequisites:
+#   - The develop branch must exist on the remote before this workflow runs.
+#   - Create a fine-grained PAT with "Contents: Read & Write" and "Pull requests: Read & Write" scopes on this repo
+#     and store it as a repository secret named SYNC_TOKEN.
+name: Sync develop from main
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-develop
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Check SYNC_TOKEN is configured
+        run: |
+          if [ -z "${{ secrets.SYNC_TOKEN }}" ]; then
+            echo "::error::SYNC_TOKEN secret is not configured. Create a fine-grained PAT with 'Contents: Read & Write' and 'Pull requests: Read & Write' scopes and store it as a repository secret named SYNC_TOKEN."
+            exit 1
+          fi
+
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          # PAT required to push directly to develop past branch protection
+          token: ${{ secrets.SYNC_TOKEN }}
+
+      - name: Attempt merge of main into develop
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Fetch both branches; fast-forward develop to pick up any concurrent merges
+          # before we attempt the main merge, reducing the chance of a push race.
+          git fetch origin develop main
+          if ! git merge --ff-only origin/develop; then
+            echo "::error::Local develop has diverged from origin/develop unexpectedly. Manual intervention required."
+            exit 1
+          fi
+          if git merge origin/main --no-edit; then
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+          else
+            git merge --abort
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push to develop (clean merge)
+        if: steps.merge.outputs.conflict == 'false'
+        run: |
+          if git push origin develop; then
+            exit 0
+          fi
+          echo "Push rejected (non-fast-forward). Rebasing onto latest origin/develop and retrying..."
+          git fetch origin develop
+          if ! git rebase origin/develop; then
+            git rebase --abort
+            echo "::error::Push to develop failed and rebase also failed. Manual intervention required."
+            exit 1
+          fi
+          git push origin develop
+
+      - name: Open conflict resolution PR
+        if: steps.merge.outputs.conflict == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          BRANCH="chore/sync-develop-${DATE}"
+
+          CURRENT_MAIN_SHA=$(git rev-parse origin/main)
+
+          # Check whether an open conflict-resolution PR already exists.
+          # The conflict branch tip is a merge commit whose second parent is the
+          # origin/main SHA at the time the branch was created. If that SHA still
+          # matches the current origin/main tip, main hasn't changed and the
+          # existing PR's conflict markers are still accurate — no need to replace it.
+          STALE_PRS=$(gh pr list \
+            --base develop \
+            --state open \
+            --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("chore/sync-develop-")) | [.number, .headRefName] | @tsv')
+
+          # Fetch all existing sync-develop remote refs so git log can read their
+          # parent SHAs. Without this, origin/${STALE_BRANCH} is unknown locally
+          # and BRANCH_MAIN_SHA is always empty, causing every PR to be closed.
+          git fetch origin 'refs/heads/chore/sync-develop-*:refs/remotes/origin/chore/sync-develop-*' 2>/dev/null || true
+
+          while IFS=$'\t' read -r PR_NUM STALE_BRANCH; do
+            [ -z "${PR_NUM}" ] && continue
+            # Second parent of the merge commit = origin/main SHA when the branch was made
+            BRANCH_MAIN_SHA=$(git log --pretty="%P" -1 "origin/${STALE_BRANCH}" 2>/dev/null | awk '{print $2}')
+            if [ "${BRANCH_MAIN_SHA}" = "${CURRENT_MAIN_SHA}" ]; then
+              echo "PR #${PR_NUM} (${STALE_BRANCH}) is still current — main has not changed since it was opened. Keeping it."
+              exit 0
+            fi
+            echo "main has moved on since PR #${PR_NUM} was opened. Closing it and opening a fresh one."
+            gh pr close "${PR_NUM}" --comment "main has changed since this PR was opened. Superseded by a newer conflict-resolution PR." --delete-branch || true
+          done <<< "${STALE_PRS}"
+
+          # Guard: today's branch exists but no open PR (e.g. workflow_dispatch ran twice today).
+          if git ls-remote --exit-code origin "refs/heads/${BRANCH}" > /dev/null 2>&1; then
+            echo "::warning::Branch ${BRANCH} already exists and no open PR was found. Skipping to avoid a duplicate push failure."
+            exit 0
+          fi
+
+          git checkout -b "${BRANCH}"
+          # Merge with conflict markers so the reviewer sees exactly what needs fixing
+          git merge origin/main --no-commit || true
+          git add -A
+          git commit -m "chore: sync develop with main — conflict resolution needed (${DATE})"
+          if ! git push origin "${BRANCH}"; then
+            echo "::warning::Failed to push ${BRANCH} — possibly a concurrent workflow run pushed first. Skipping PR creation."
+            exit 0
+          fi
+          gh pr create \
+            --title "chore: sync develop with main (${DATE})" \
+            --body $'## ⚠️ Automatic sync: `main` → `develop` (conflict detected)\n\nThis PR was opened automatically by the nightly sync workflow because a merge conflict was detected between `main` and `develop`.\n\n**Action required:** Resolve the conflicts in this branch, then merge into `develop`.' \
+            --base develop \
+            --head "${BRANCH}" \
+            --label "chore"

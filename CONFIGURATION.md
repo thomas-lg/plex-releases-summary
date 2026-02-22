@@ -248,7 +248,7 @@ services:
       - LOG_LEVEL=DEBUG
 ```
 
-### Discord Notification Notes
+## Discord Notification Notes
 
 - **Category summaries:** Movies, TV Shows, Albums, and Tracks are grouped into rich embeds.
 - **Empty period:** if no items match the selected period, the app sends a single friendly "nothing new" embed.
