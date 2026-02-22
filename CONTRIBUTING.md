@@ -192,10 +192,11 @@ PR expectations:
 
 ## Production Image and Deployment
 
-This repository keeps a production Docker image workflow consolidated in a single CI/CD pipeline:
+This repository uses two separate workflows for CI/CD and release management:
 
 - Production build definition: `Dockerfile`
-- CI/CD pipeline: `.github/workflows/ci.yml` (quality checks, tests, Docker build & push, release drafting)
+- CI/CD pipeline: `.github/workflows/ci.yml` (quality checks, tests, Docker build & push)
+- Release drafter: `.github/workflows/draft-release.yml` (draft release notes on push to `main`; publish via `workflow_dispatch`)
 - Deployment example: `docker-compose.yml`
 
 The pipeline gates Docker image publishing on passing quality and test checks. Images are published to `ghcr.io/thomas-lg/plex-releases-summary` with the following tags:
