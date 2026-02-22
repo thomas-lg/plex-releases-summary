@@ -9,7 +9,7 @@
 # All other fields have smart defaults and work out of the box.
 # Uncomment optional fields ONLY if you want to override defaults.
 #
-# For full configuration reference, see: CONFIGURATION.md#configuration-fields
+# For full configuration reference, see: CONFIGURATION.md#configuration-fields.
 #
 # =============================================================================
 # CONFIGURATION METHODS:
@@ -28,7 +28,6 @@
 #    Reference in config.yml: tautulli_api_key: ${TAUTULLI_API_KEY}
 #    The file content is automatically read.
 #
-#
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -41,18 +40,18 @@ tautulli_url: ${TAUTULLI_URL}
 
 # Tautulli API key
 # Find it in Tautulli: Settings → Web Interface → API Key
-# Recommended: Use environment variable or secret for security
+# Recommended: Use environment variable or secret for security.
 tautulli_api_key: ${TAUTULLI_API_KEY}
 
 # -----------------------------------------------------------------------------
 # OPTIONAL FIELDS
 # -----------------------------------------------------------------------------
-# For full descriptions and examples, see: CONFIGURATION.md#optional-field-overrides
+# For full descriptions and examples, see: CONFIGURATION.md#optional-field-overrides.
 #
 # NOTE: Optional fields below use environment variable references.
 #       If you don't set an environment variable:
-#       - Undefined: silently uses default value (clean logs)
-#       - Empty string (e.g., DAYS_BACK=""): logs WARNING, uses default (possible mistake)
+#       - Undefined: silently uses default value (clean logs).
+#       - Empty string (e.g., DAYS_BACK=""): logs WARNING, uses default (possible mistake).
 #
 #       To override: Just set the environment variable in your deployment environment file
 #       (example: docker-compose.yml).
@@ -64,7 +63,7 @@ days_back: ${DAYS_BACK}
 
 # CRON schedule for automatic execution
 # Default: "0 16 * * SUN" (Sundays at 4 PM in container timezone)
-# Timezone: Defaults to UTC. Set TZ environment variable to use local timezone (e.g., TZ=America/New_York)
+# Timezone: Defaults to UTC. Set TZ environment variable to use local timezone (e.g., TZ=America/New_York).
 cron_schedule: ${CRON_SCHEDULE}
 
 # Run mode: true = run once and exit, false = continuous scheduled execution
