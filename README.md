@@ -280,9 +280,11 @@ Script reference: [scripts/README.md](scripts/README.md)
 │   └── test_tautulli_client.py # Tautulli client tests
 ├── scripts/ # Helper scripts
 │   ├── clean.sh # Clean up caches
+│   ├── compile-deps.sh # Regenerate lockfiles from requirements files
 │   ├── dev-shell.sh # Enter dev compose shell
 │   ├── format.sh # Format Python code
 │   ├── README.md # Scripts documentation
+│   ├── start.sh # Start the app locally
 │   ├── test.sh # Run tests
 │   └── typecheck.sh # Type-check with mypy
 ├── configs/
@@ -302,7 +304,9 @@ Script reference: [scripts/README.md](scripts/README.md)
 ├── my-plex-releases-summary.xml # Unraid template
 ├── pyproject.toml # Python project configuration
 ├── requirements-dev.txt # Development & testing dependencies
+├── requirements-dev.lock # Compiled lockfile for dev dependencies
 ├── requirements.txt # Python dependencies
+├── requirements.lock # Compiled lockfile for runtime dependencies
 └── README.md
 
 ```

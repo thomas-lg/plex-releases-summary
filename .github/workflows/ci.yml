@@ -81,8 +81,7 @@ jobs:
           if ! git diff --exit-code requirements.lock requirements-dev.lock; then
             echo ""
             echo "::error::Lockfiles are out of sync with requirements files."
-            echo "::error::Run 'pip-compile requirements.txt --output-file requirements.lock --annotate --strip-extras' and"
-            echo "::error::'pip-compile requirements-dev.txt --output-file requirements-dev.lock --annotate --strip-extras' locally and commit the result."
+            echo "::error::Run './scripts/compile-deps.sh' locally and commit the updated lockfiles."
             exit 1
           fi
 

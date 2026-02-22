@@ -61,6 +61,15 @@ Run mypy.
 ./scripts/typecheck.sh src/config.py         # Type check specific file
 ```
 
+### 📦 `compile-deps.sh` - Regenerate Lockfiles
+
+Recompile `requirements.lock` and `requirements-dev.lock` from their source `.txt` files.
+Run this after modifying either requirements file and commit the updated lockfiles.
+
+```bash
+./scripts/compile-deps.sh
+```
+
 ### 🧹 `clean.sh` - Clean Local Artifacts
 
 Remove generated test/coverage/cache files.
@@ -71,14 +80,15 @@ Remove generated test/coverage/cache files.
 
 ## Quick Reference
 
-| Task       | Command                  |
-| ---------- | ------------------------ |
-| Dev shell  | `./scripts/dev-shell.sh` |
-| Start app  | `./scripts/start.sh`     |
-| Run tests  | `./scripts/test.sh`      |
-| Format     | `./scripts/format.sh`    |
-| Type check | `./scripts/typecheck.sh` |
-| Clean      | `./scripts/clean.sh`     |
+| Task         | Command                       |
+| ------------ | ----------------------------- |
+| Dev shell    | `./scripts/dev-shell.sh`      |
+| Start app    | `./scripts/start.sh`          |
+| Run tests    | `./scripts/test.sh`           |
+| Format       | `./scripts/format.sh`         |
+| Type check   | `./scripts/typecheck.sh`      |
+| Compile deps | `./scripts/compile-deps.sh`   |
+| Clean        | `./scripts/clean.sh`          |
 
 ## Notes
 

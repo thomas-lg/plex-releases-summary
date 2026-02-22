@@ -164,8 +164,7 @@ Before submitting:
 4. If you changed `requirements.txt` or `requirements-dev.txt`, regenerate the lockfiles and commit them:
 
    ```bash
-   pip-compile requirements.txt --output-file requirements.lock --annotate --strip-extras
-   pip-compile requirements-dev.txt --output-file requirements-dev.lock --annotate --strip-extras
+   ./scripts/compile-deps.sh
    ```
 
 5. Update docs when behavior/configuration changes
