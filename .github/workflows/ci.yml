@@ -12,16 +12,6 @@ on:
     paths-ignore:
       - "**.md"
       - ".github/release-drafter.yml"
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: "Dry run (do not publish the release)"
-        required: false
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -33,10 +23,6 @@ env:
 
 jobs:
   build-devcontainer:
-    # NOTE: Skipped on workflow_dispatch intentionally — all jobs that `need` this one
-    # (quality, tests, build-and-push) are also skipped in that case. workflow_dispatch
-    # is used solely to publish an already-drafted release via publish-release.
-    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -118,7 +104,6 @@ jobs:
   build-and-push:
     needs: [quality, tests]
     runs-on: ubuntu-latest
-    if: github.event_name != 'workflow_dispatch'
     permissions:
       contents: read
       packages: write
@@ -178,35 +163,3 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
-
-  draft-release:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-      pull-requests: read
-
-    steps:
-      - name: Create/Update Draft Release
-        uses: release-drafter/release-drafter@v6
-        with:
-          config-name: release-drafter.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-release:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: write
-      pull-requests: read
-
-    steps:
-      - name: Publish Release
-        uses: release-drafter/release-drafter@v6
-        with:
-          config-name: release-drafter.yml
-          publish: ${{ github.event.inputs.dry_run == 'false' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

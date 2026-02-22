@@ -1,0 +1,49 @@
+name: Release Drafter
+
+on:
+    push:
+        branches: [main]
+    pull_request_target:
+        types: [opened, reopened, synchronize, edited]
+    workflow_dispatch:
+        inputs:
+            dry_run:
+                description: "Dry run (do not publish the release)"
+                required: false
+                default: "false"
+                type: choice
+                options:
+                    - "false"
+                    - "true"
+
+jobs:
+    draft-release:
+        runs-on: ubuntu-latest
+        if: github.event_name == 'push' || github.event_name == 'pull_request_target'
+        permissions:
+            contents: write
+            pull-requests: write
+
+        steps:
+            - name: Create/Update Draft Release
+              uses: release-drafter/release-drafter@v6
+              with:
+                  config-name: release-drafter.yml
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    publish-release:
+        runs-on: ubuntu-latest
+        if: github.event_name == 'workflow_dispatch'
+        permissions:
+            contents: write
+            pull-requests: read
+
+        steps:
+            - name: Publish Release
+              uses: release-drafter/release-drafter@v6
+              with:
+                  config-name: release-drafter.yml
+                  publish: ${{ github.event.inputs.dry_run == 'false' }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
