@@ -24,11 +24,10 @@ jobs:
 
         steps:
             - name: Create/Update Draft Release
-              uses: release-drafter/release-drafter@v6
+              uses: release-drafter/release-drafter@v7
               with:
                   config-name: release-drafter.yml
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
 
     publish-release:
         runs-on: ubuntu-latest
@@ -39,9 +38,8 @@ jobs:
 
         steps:
             - name: Publish Release
-              uses: release-drafter/release-drafter@v6
+              uses: release-drafter/release-drafter@v7
               with:
                   config-name: release-drafter.yml
                   publish: ${{ github.event.inputs.dry_run == 'false' }}
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
