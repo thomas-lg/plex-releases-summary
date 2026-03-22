@@ -13,24 +13,22 @@ jobs:
     cleanup:
         runs-on: ubuntu-latest
         steps:
-            - name: Delete old container images
-              uses: snok/container-retention-policy@v3
+            - name: Delete old sha-tagged images
+              uses: snok/container-retention-policy@v3.0.0
               with:
+                  account: user
                   image-names: plex-releases-summary
-                  cut-off: 30 days ago UTC
-                  account-type: personal
-                  keep-at-least: 10
-                  untagged-only: false
-                  skip-tags: latest,develop,v*
+                  cut-off: 30d
+                  keep-n-most-recent: 10
+                  tag-selection: tagged
+                  image-tags: "sha-*"
                   token: ${{ secrets.GITHUB_TOKEN }}
-                  filter-tags: sha-*
 
             - name: Delete untagged images
-              uses: snok/container-retention-policy@v3
+              uses: snok/container-retention-policy@v3.0.0
               with:
+                  account: user
                   image-names: plex-releases-summary
-                  cut-off: 7 days ago UTC
-                  account-type: personal
-                  keep-at-least: 0
-                  untagged-only: true
+                  cut-off: 7d
+                  tag-selection: untagged
                   token: ${{ secrets.GITHUB_TOKEN }}
